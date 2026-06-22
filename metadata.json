@@ -1,0 +1,8 @@
+{
+  "name": "FintechCore",
+  "description": "Um sistema premium de controle financeiro pessoal, com receitas, despesas, gráficos interativos, metas de sonhos e consultoria financeira integrada.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
