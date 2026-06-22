@@ -6,20 +6,20 @@
     <title>FintechCore — Gerenciador Financeiro Premium</title>
     
     <!-- PWA primary configs and Manifest -->
-    <link rel="manifest" href="/manifest.json" />
+    <link rel="manifest" href="./manifest.json" />
     <meta name="theme-color" content="#020617" />
     
     <!-- iOS / Safari PWA support -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="FintechCore" />
-    <link rel="apple-touch-icon" href="/icon-512.png" />
+    <link rel="apple-touch-icon" href="./icon-512.png" />
     
     <!-- Service Worker Registration -->
     <script>
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
-          navigator.serviceWorker.register('/sw.js')
+          navigator.serviceWorker.register('./sw.js')
             .then((reg) => console.log('FintechCore Service Worker registrado com sucesso:', reg.scope))
             .catch((err) => console.error('Erro ao registrar Service Worker do FintechCore:', err));
         });

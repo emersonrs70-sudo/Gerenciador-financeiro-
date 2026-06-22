@@ -2,38 +2,38 @@
   "short_name": "FintechCore",
   "name": "FintechCore — Gerenciador Financeiro Premium",
   "description": "Seu organizador de finanças pessoais com IA, relatórios dinâmicos e metas de consistência.",
-  "start_url": "/",
+  "start_url": "./",
   "display": "standalone",
   "background_color": "#020617",
   "theme_color": "#020617",
   "orientation": "portrait-primary",
   "icons": [
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "any"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "192x192",
       "purpose": "maskable"
     },
     {
-      "src": "/icon-512.png",
+      "src": "./icon-512.png",
       "type": "image/png",
       "sizes": "512x512",
       "purpose": "maskable"
     },
     {
-      "src": "/icon.svg",
+      "src": "./icon.svg",
       "type": "image/svg+xml",
       "sizes": "any",
       "purpose": "any maskable"
