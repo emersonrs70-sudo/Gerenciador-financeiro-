@@ -233,6 +233,14 @@ export default function App() {
     });
   };
 
+  const selectMonth = (monthIndex: number) => {
+    setDataAncorada((prev) => {
+      const next = new Date(prev);
+      next.setMonth(monthIndex);
+      return next;
+    });
+  };
+
   const resetToToday = () => {
     setDataAncorada(new Date());
   };
@@ -478,7 +486,7 @@ export default function App() {
               t.type === 'sucesso'
                 ? 'border-emerald-200 dark:border-emerald-950 text-emerald-600 dark:text-emerald-400'
                 : t.type === 'erro'
-                ? 'border-red-200 dark:border-red-950 text-red-650 dark:text-red-420'
+                ? 'border-red-200 dark:border-red-950 text-red-600 dark:text-red-400'
                 : 'border-blue-200 dark:border-blue-950 text-blue-600 dark:text-blue-400'
             }`}
           >
@@ -511,28 +519,54 @@ export default function App() {
           </div>
 
           <div className="flex items-center justify-between w-full sm:w-auto gap-3">
-            <div className="flex items-center bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-1 sm:flex-none">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-1 sm:flex-none">
               <button
                 onClick={prevMonth}
-                className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all"
+                className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
-              <span className="text-xs font-black px-3 min-w-[110px] text-center text-slate-700 dark:text-slate-350 tracking-tight">
-                {MONTHS[currentMonth]} {currentYear}
-              </span>
+
+              {/* Régua de meses com animação de seleção */}
+              <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5 px-0.5 max-w-[200px] xs:max-w-[240px] sm:max-w-[340px] md:max-w-[420px] lg:max-w-md xl:max-w-lg select-none">
+                {MONTHS.map((m, idx) => {
+                  const isSelected = currentMonth === idx;
+                  const abbrev = m.substring(0, 3);
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => selectMonth(idx)}
+                      className={`relative px-2.5 py-1 text-[11px] font-black rounded-md cursor-pointer transition-all duration-300 ease-out z-10 flex-shrink-0 select-none ${
+                        isSelected
+                          ? 'text-white bg-purple-600 shadow-sm scale-105'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-900'
+                      }`}
+                    >
+                      {abbrev}
+                    </button>
+                  );
+                })}
+              </div>
+
               <button
                 onClick={nextMonth}
-                className="p-1.5 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all"
+                className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all flex-shrink-0"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
+
+              <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 flex-shrink-0" />
+
               <button
                 onClick={resetToToday}
-                className="text-[10px] bg-white dark:bg-slate-800 px-2 py-1.5 rounded-lg ml-1.5 hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold transition-all hover:shadow-3xs cursor-pointer"
+                className="text-[10px] bg-white dark:bg-slate-800 px-2 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold transition-all hover:shadow-3xs cursor-pointer flex-shrink-0"
               >
                 Hoje
               </button>
+
+              <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 px-1.5 flex-shrink-0">
+                {currentYear}
+              </span>
             </div>
 
             {/* FLAME STREAK DIARIO METEORS */}

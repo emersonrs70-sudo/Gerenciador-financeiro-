@@ -38,7 +38,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     e.preventDefault();
     if (!descricao || !valor || !data) return;
 
-    const catToUse = modo === 'receita' ? 'Receita' : categoria;
+    const catToUse = categoria;
     await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo);
 
     // Reset fields
@@ -61,17 +61,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
         <button
           onClick={() => setModo('despesa')}
-          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all ${
+          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
             modo === 'despesa'
               ? 'bg-red-600 text-white shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:bg-slate-250 dark:hover:bg-slate-900'
           }`}
         >
-          📈 Registrar Gasto
+          📉 Registrar Gasto
         </button>
         <button
           onClick={() => setModo('receita')}
-          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all ${
+          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
             modo === 'receita'
               ? 'bg-emerald-500 text-white shadow-xs'
               : 'text-slate-500 dark:text-slate-400 hover:bg-slate-250 dark:hover:bg-slate-900'
@@ -129,54 +129,55 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           />
         </div>
 
+        {/* Categoria is now displayed for both expenses and incomes */}
+        <div>
+          <div className="flex justify-between items-center mb-1">
+            <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+              Categoria
+            </label>
+            <button
+              type="button"
+              onClick={() => setCriandoCategoria(!criandoCategoria)}
+              className="text-[10px] text-purple-600 hover:underline font-bold cursor-pointer"
+            >
+              {criandoCategoria ? 'Selecionar Existente' : '+ Criar Nova'}
+            </button>
+          </div>
+
+          {!criandoCategoria ? (
+            <select
+              value={categoria}
+              onChange={(e) => setCategoria(e.target.value)}
+              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+            >
+              {categorias.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="flex gap-1.5 mt-1">
+              <input
+                type="text"
+                placeholder="Ex: Viagens, Pets"
+                value={novaCategoriaNome}
+                onChange={(e) => setNovaCategoriaNome(e.target.value)}
+                className="flex-1 bg-slate-50 dark:bg-slate-950 border border-purple-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+              />
+              <button
+                type="button"
+                onClick={handleCriarCategoria}
+                className="bg-purple-600 text-white text-xs px-3 rounded-xl font-bold hover:bg-purple-700 active:scale-95 transition-all cursor-pointer"
+              >
+                Criar
+              </button>
+            </div>
+          )}
+        </div>
+
         {modo === 'despesa' && (
           <>
-            <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
-                  Categoria
-                </label>
-                <button
-                  type="button"
-                  onClick={() => setCriandoCategoria(!criandoCategoria)}
-                  className="text-[10px] text-purple-600 hover:underline font-bold"
-                >
-                  {criandoCategoria ? 'Selecionar Existente' : '+ Criar Nova'}
-                </button>
-              </div>
-
-              {!criandoCategoria ? (
-                <select
-                  value={categoria}
-                  onChange={(e) => setCategoria(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
-                >
-                  {categorias.map((cat) => (
-                    <option key={cat} value={cat}>
-                      {cat}
-                    </option>
-                  ))}
-                </select>
-              ) : (
-                <div className="flex gap-1.5 mt-1">
-                  <input
-                    type="text"
-                    placeholder="Ex: Viagens, Pets"
-                    value={novaCategoriaNome}
-                    onChange={(e) => setNovaCategoriaNome(e.target.value)}
-                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-purple-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCriarCategoria}
-                    className="bg-purple-600 text-white text-xs px-3 rounded-xl font-bold hover:bg-purple-700 active:scale-95 transition-all"
-                  >
-                    Criar
-                  </button>
-                </div>
-              )}
-            </div>
-
             <div>
               <label className="text-[10px] font-black text-slate-400 dark:text-slate-455 uppercase tracking-wider">
                 Tipo de Gasto
@@ -210,7 +211,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         <button
           type="submit"
           className={`w-full text-white text-xs font-black py-3 rounded-xl transition-all shadow-xs active:scale-98 flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer ${
-            modo === 'despesa' ? 'bg-red-650 hover:bg-red-750' : 'bg-emerald-500 hover:bg-emerald-600'
+            modo === 'despesa' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-500 hover:bg-emerald-600'
           }`}
         >
           <PlusCircle className="w-4 h-4" />
