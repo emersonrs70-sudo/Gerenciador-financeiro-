@@ -829,6 +829,8 @@ export default function App() {
                 onAddProject={handleAddProject}
                 onDeleteProject={handleDeleteProject}
                 saldoReal={saldoRealAcumulado}
+                currentMonth={currentMonth}
+                currentYear={currentYear}
               />
             </div>
           </div>

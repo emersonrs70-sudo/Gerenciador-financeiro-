@@ -11,6 +11,8 @@ interface SubPanelsProps {
   onAddProject: (nome: string, valor: number, dataAlvo: string) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
   saldoReal: number;
+  currentMonth: number;
+  currentYear: number;
 }
 
 export const SubPanels: React.FC<SubPanelsProps> = ({
@@ -19,7 +21,9 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
   projects,
   onAddProject,
   onDeleteProject,
-  saldoReal
+  saldoReal,
+  currentMonth,
+  currentYear
 }) => {
   // Draggable sliders state for Fat Cutter
   const [lazerCorte, setLazerCorte] = useState<number>(0);
@@ -36,13 +40,14 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
   const formatValue = (v: number) =>
     `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = new Date().getMonth();
-
   // Filter current month transactions for localized calculations
   const currentMonthTrans = transactions.filter(t => {
-    const d = new Date(t.data);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    if (!t.data) return false;
+    const parts = t.data.split('-');
+    if (parts.length < 3) return false;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Convert 1-12 to 0-11
+    return month === currentMonth && year === currentYear;
   });
 
   const despesasMes = currentMonthTrans.filter(t => t.tipoItem === 'despesa');
