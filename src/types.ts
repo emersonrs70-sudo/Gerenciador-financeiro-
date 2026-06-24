@@ -21,3 +21,13 @@ export interface Project {
 export type ExtratoFilter = 'todos' | 'despesas' | 'receitas';
 
 export type SubPainelType = 'saldo-real' | 'saldo' | 'receitas' | 'despesas' | 'metas' | null;
+
+export interface AppNotification {
+  id: string;
+  titulo: string;
+  mensagem: string;
+  data: string; // ISO string
+  lida: boolean;
+  tipo: 'alerta' | 'ofensiva' | 'sucesso' | 'info';
+}
+

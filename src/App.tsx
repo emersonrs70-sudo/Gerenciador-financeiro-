@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification
 } from './types';
 import {
   supabase, testConnection, DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
@@ -19,6 +19,7 @@ import { TransactionTable } from './components/TransactionTable';
 import { FinancialCharts } from './components/FinancialCharts';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
+import { NotificationCenter } from './components/NotificationCenter';
 
 interface Toast {
   id: string;
@@ -86,6 +87,90 @@ export default function App() {
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 3500);
+  };
+
+  // Notifications state initialized from localStorage
+  const [notifications, setNotifications] = useState<AppNotification[]>(() => {
+    return getLocal<AppNotification[]>('local_notifications', [
+      {
+        id: 'n-welcome',
+        titulo: 'Bem-vindo ao FintechCore! 👋',
+        mensagem: 'Sua Central de Notificações está ativa! Cadastre receitas e despesas para ver seu orçamento 50-30-20 se desenhar automaticamente.',
+        data: new Date().toISOString(),
+        lida: false,
+        tipo: 'sucesso'
+      }
+    ]);
+  });
+
+  // Helper to send browser & in-app notifications
+  const sendSystemNotification = (
+    titulo: string,
+    mensagem: string,
+    tipo: 'alerta' | 'ofensiva' | 'sucesso' | 'info' = 'info'
+  ) => {
+    const newNotification: AppNotification = {
+      id: crypto.randomUUID(),
+      titulo,
+      mensagem,
+      data: new Date().toISOString(),
+      lida: false,
+      tipo
+    };
+
+    setNotifications((prev) => {
+      const updated = [newNotification, ...prev];
+      saveLocal('local_notifications', updated);
+      return updated;
+    });
+
+    // Mirror to standard visible toasts
+    showToast(`${titulo}: ${mensagem}`, tipo === 'alerta' ? 'erro' : 'sucesso');
+
+    // Browser Desktop Notification
+    if ('Notification' in window && Notification.permission === 'granted') {
+      try {
+        new Notification(titulo, {
+          body: mensagem,
+          icon: '/favicon.ico'
+        });
+      } catch (err) {
+        console.warn('Native notification failed:', err);
+      }
+    }
+  };
+
+  const handleMarkAllRead = () => {
+    const updated = notifications.map(n => ({ ...n, lida: true }));
+    setNotifications(updated);
+    saveLocal('local_notifications', updated);
+    showToast('Todas as notificações foram lidas!', 'sucesso');
+  };
+
+  const handleMarkRead = (id: string) => {
+    const updated = notifications.map(n => n.id === id ? { ...n, lida: true } : n);
+    setNotifications(updated);
+    saveLocal('local_notifications', updated);
+  };
+
+  const handleDeleteNotification = (id: string) => {
+    const updated = notifications.filter(n => n.id !== id);
+    setNotifications(updated);
+    saveLocal('local_notifications', updated);
+  };
+
+  const handleClearAllNotifications = () => {
+    setNotifications([]);
+    saveLocal('local_notifications', []);
+    showToast('Histórico de notificações limpo!', 'info');
+  };
+
+  const handleSendTestNotification = () => {
+    sendSystemNotification(
+      '🔔 Notificação Funcional',
+      'Excelente! Suas notificações push do FintechCore estão configuradas e funcionando perfeitamente.',
+      'sucesso'
+    );
   };
 
   // 1. Initial Data Fetching from Supabase, mirroring to local storage
@@ -549,6 +634,119 @@ export default function App() {
 
   const loggedToday = checkLoggedToday();
 
+  // Automated budget & streak rules checks
+  useEffect(() => {
+    if (transactions.length === 0) return;
+
+    const todayStr = new Date().toISOString().split('T')[0];
+
+    // 1. Streak Alert (Lembrete de Registro Diário)
+    const alreadyStreakWarned = notifications.some(
+      (n) => n.tipo === 'ofensiva' && n.data.startsWith(todayStr)
+    );
+    if (!loggedToday && !alreadyStreakWarned) {
+      sendSystemNotification(
+        '🔥 Ofensiva em Risco!',
+        'Você ainda não registrou transações hoje! Registre despesas ou receitas para manter seu streak ativo.',
+        'ofensiva'
+      );
+    }
+
+    // 2. Budget Thresholds Warning (50-30-20 Rules)
+    const currentMonthTrans = transactions.filter((t) => {
+      if (!t.data) return false;
+      const parts = t.data.split('-');
+      if (parts.length < 3) return false;
+      const year = parseInt(parts[0], 10);
+      const month = parseInt(parts[1], 10) - 1;
+      return month === currentMonth && year === currentYear;
+    });
+
+    const totalIncome = currentMonthTrans.filter(t => t.tipoItem === 'receita').reduce((s, t) => s + t.valor, 0);
+    const despesasMes = currentMonthTrans.filter(t => t.tipoItem === 'despesa');
+
+    const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
+    const actualNeeds = despesasMes
+      .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
+      .reduce((s, d) => s + d.valor, 0);
+      
+    const actualWants = despesasMes
+      .filter((d) => !needsCategories.includes(d.categoria.toLowerCase()))
+      .reduce((s, d) => s + d.valor, 0);
+
+    const incomeBase = totalIncome === 0 ? 5000 : totalIncome;
+    const idealNeeds = incomeBase * 0.50;
+    const idealWants = incomeBase * 0.30;
+
+    // Check Needs
+    if (actualNeeds > idealNeeds) {
+      const warnedNeedsKey = `warn-needs-${currentYear}-${currentMonth}`;
+      const alreadyWarnedNeeds = notifications.some(n => n.id === warnedNeedsKey);
+      if (!alreadyWarnedNeeds) {
+        const excess = actualNeeds - idealNeeds;
+        const newNotif: AppNotification = {
+          id: warnedNeedsKey,
+          titulo: '⚠️ Limite de Necessidades Excedido',
+          mensagem: `Seus gastos essenciais (R$ ${actualNeeds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassaram a recomendação de 50% do seu orçamento em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          data: new Date().toISOString(),
+          lida: false,
+          tipo: 'alerta'
+        };
+        setNotifications(prev => {
+          const updated = [newNotif, ...prev];
+          saveLocal('local_notifications', updated);
+          return updated;
+        });
+        showToast('Atenção: Limite de Necessidades (50%) foi excedido!', 'erro');
+      }
+    }
+
+    // Check Wants
+    if (actualWants > idealWants) {
+      const warnedWantsKey = `warn-wants-${currentYear}-${currentMonth}`;
+      const alreadyWarnedWants = notifications.some(n => n.id === warnedWantsKey);
+      if (!alreadyWarnedWants) {
+        const excess = actualWants - idealWants;
+        const newNotif: AppNotification = {
+          id: warnedWantsKey,
+          titulo: '⚠️ Limite de Lazer Excedido',
+          mensagem: `Seus gastos de estilo de vida (R$ ${actualWants.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excederam o limite ideal de 30% em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          data: new Date().toISOString(),
+          lida: false,
+          tipo: 'alerta'
+        };
+        setNotifications(prev => {
+          const updated = [newNotif, ...prev];
+          saveLocal('local_notifications', updated);
+          return updated;
+        });
+        showToast('Atenção: Limite de Lazer & Desejos (30%) foi excedido!', 'erro');
+      }
+    }
+
+    // 3. Projected Balance Warning
+    if (saldoProjetadoFimDoMes < 0) {
+      const warnedBalanceKey = `warn-balance-${currentYear}-${currentMonth}`;
+      const alreadyWarnedBalance = notifications.some(n => n.id === warnedBalanceKey);
+      if (!alreadyWarnedBalance) {
+        const newNotif: AppNotification = {
+          id: warnedBalanceKey,
+          titulo: '🔴 Saldo Projetado Negativo',
+          mensagem: `Suas despesas superaram suas receitas neste mês. Sua projeção atual é de fechar o mês com saldo negativo de R$ ${Math.abs(saldoProjetadoFimDoMes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          data: new Date().toISOString(),
+          lida: false,
+          tipo: 'alerta'
+        };
+        setNotifications(prev => {
+          const updated = [newNotif, ...prev];
+          saveLocal('local_notifications', updated);
+          return updated;
+        });
+        showToast('Atenção: Seu saldo projetado está negativo para este mês!', 'erro');
+      }
+    }
+  }, [transactions, currentMonth, currentYear, loggedToday, saldoProjetadoFimDoMes]);
+
   // Dreams overall progress ratio compared to real accumulative total balance
   const totalDreamCost = projects.reduce((sum, p) => sum + p.valor, 0);
   const dreamsProgressRatio =
@@ -625,6 +823,14 @@ export default function App() {
                   <Download className="w-4 h-4" />
                 </button>
               )}
+              <NotificationCenter
+                notifications={notifications}
+                onMarkAllRead={handleMarkAllRead}
+                onMarkRead={handleMarkRead}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAll={handleClearAllNotifications}
+                onSendTestNotification={handleSendTestNotification}
+              />
               <button
                 onClick={() => setIsStreakModalOpen(true)}
                 className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer ${
@@ -730,6 +936,15 @@ export default function App() {
                   <span>Instalar App</span>
                 </button>
               )}
+
+              <NotificationCenter
+                notifications={notifications}
+                onMarkAllRead={handleMarkAllRead}
+                onMarkRead={handleMarkRead}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAll={handleClearAllNotifications}
+                onSendTestNotification={handleSendTestNotification}
+              />
 
               {/* LIGHT/DARK MODE TOGGLE */}
               <button
