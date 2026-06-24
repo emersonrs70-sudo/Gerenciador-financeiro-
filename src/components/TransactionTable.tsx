@@ -82,8 +82,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
   // Filter current month transactions for period ledger
   const currentMonthTransactions = transactions.filter((t) => {
-    const d = new Date(t.data);
-    return d.getMonth() === currentMonth && d.getFullYear() === currentYear;
+    if (!t.data) return false;
+    const parts = t.data.split('-');
+    if (parts.length < 3) return false;
+    const year = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1; // Convert 1-12 to 0-11
+    return month === currentMonth && year === currentYear;
   });
 
   // Filter based on selected ledger type
