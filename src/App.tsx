@@ -192,8 +192,8 @@ export default function App() {
 
             // Seed to Supabase background to make sandbox rich natively
             await Promise.all([
-              supabase.from('fin_despesas').insert(DEFAULT_DESPESAS),
-              supabase.from('fin_receitas').insert(DEFAULT_RECEITAS),
+              supabase.from('fin_despesas').insert(DEFAULT_DESPESAS.map(({ tipoItem, ...rest }) => rest)),
+              supabase.from('fin_receitas').insert(DEFAULT_RECEITAS.map(({ tipoItem, ...rest }) => rest)),
               supabase.from('fin_projetos').insert(DEFAULT_PROJETOS)
             ]).catch(err => console.warn('Supabase initial seed error:', err));
           }
@@ -335,7 +335,8 @@ export default function App() {
     if (isOnline) {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { error } = await supabase.from(table).insert([newTransaction]);
+        const { tipoItem: _, ...dbTransaction } = newTransaction;
+        const { error } = await supabase.from(table).insert([dbTransaction]);
         if (error) {
           console.warn('Supabase insertion error, proceeding local-only:', error);
         }
