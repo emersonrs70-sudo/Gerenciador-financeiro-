@@ -207,8 +207,65 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           </div>
         )}
 
+        {/* Mobile-optimized List (Visible on Mobile only, hidden on SM+) */}
+        <div className="block sm:hidden space-y-2.5">
+          {ledgerTransactions.length === 0 ? (
+            <div className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium text-xs">
+              Nenhum lançamento registrado neste mês.
+            </div>
+          ) : (
+            ledgerTransactions.map((item) => {
+              const isDesp = item.tipoItem === 'despesa';
+              return (
+                <div
+                  key={item.id}
+                  className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-850/60 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold whitespace-nowrap">
+                        {formatDate(item.data)}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[8px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider truncate max-w-[100px]">
+                        {item.categoria}
+                      </span>
+                    </div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">
+                      {item.descricao}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-xs font-black ${isDesp ? 'text-red-500' : 'text-emerald-500'}`}>
+                      {isDesp ? '-' : '+'} R$ {item.valor.toFixed(2)}
+                    </p>
+                    <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">
+                      Saldo: {formatCurrency(transactionBalances[item.id] ?? 0)}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1 shrink-0 border-l border-slate-200/80 dark:border-slate-800 pl-2">
+                    <button
+                      onClick={() => startEdit(item)}
+                      className="p-1.5 hover:text-blue-500 dark:hover:text-blue-400 text-slate-400 dark:text-slate-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      title="Editar"
+                    >
+                      <Pencil className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => onDeleteTransaction(item.id, item.tipoItem)}
+                      className="p-1.5 hover:text-red-500 dark:hover:text-red-400 text-slate-400 dark:text-slate-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      title="Remover"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
         {/* Ledger items list */}
-        <div className="overflow-x-auto rounded-xl">
+        <div className="hidden sm:block overflow-x-auto rounded-xl">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-250 dark:border-slate-850 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black bg-slate-50 dark:bg-slate-950/40">
@@ -338,7 +395,46 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           </div>
         </div>
 
-        <div className="overflow-x-auto max-h-72 overflow-y-auto rounded-xl shadow-inner border border-slate-150 dark:border-slate-800/80">
+        {/* Mobile-optimized global history list */}
+        <div className="block sm:hidden space-y-2.5 max-h-72 overflow-y-auto pr-1">
+          {searchedTransactions.length === 0 ? (
+            <div className="p-6 text-center text-slate-400 dark:text-slate-655 font-medium text-xs">
+              Nenhum registro corresponde aos filtros de pesquisa informados.
+            </div>
+          ) : (
+            searchedTransactions.map((item) => {
+              const isDesp = item.tipoItem === 'despesa';
+              return (
+                <div
+                  key={item.id}
+                  className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-850/60 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
+                >
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold whitespace-nowrap">
+                        {formatDate(item.data)}
+                      </span>
+                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[8px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate max-w-[100px]">
+                        {item.categoria}
+                      </span>
+                    </div>
+                    <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">
+                      {item.descricao}
+                    </p>
+                  </div>
+                  <div className="text-right shrink-0">
+                    <p className={`text-xs font-black ${isDesp ? 'text-red-500' : 'text-emerald-500'}`}>
+                      {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
+                    </p>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Global history table list (Visible on SM+ screens, hidden on Mobile) */}
+        <div className="hidden sm:block overflow-x-auto max-h-72 overflow-y-auto rounded-xl shadow-inner border border-slate-150 dark:border-slate-800/80">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="border-b border-slate-200 dark:border-slate-850 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-xs">
