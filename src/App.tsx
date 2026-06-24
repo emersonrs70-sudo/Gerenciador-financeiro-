@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download
@@ -536,12 +537,19 @@ export default function App() {
                     <button
                       key={m}
                       onClick={() => selectMonth(idx)}
-                      className={`relative px-2.5 py-1 text-[11px] font-black rounded-md cursor-pointer transition-all duration-300 ease-out z-10 flex-shrink-0 select-none ${
+                      className={`relative px-2 py-1 text-[11px] font-black rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
                         isSelected
-                          ? 'text-white bg-purple-600 shadow-sm scale-105'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-slate-900'
+                          ? 'text-white font-extrabold'
+                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
                       }`}
                     >
+                      {isSelected && (
+                        <motion.div
+                          layoutId="activeMonthIndicator"
+                          className="absolute inset-0 bg-purple-600 rounded-md -z-10 shadow-xs"
+                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        />
+                      )}
                       {abbrev}
                     </button>
                   );
