@@ -1,13 +1,20 @@
 import React, { useState } from 'react';
 import {
-  ListChecks, History, Trash2, Info, AlertTriangle, Search, Filter
+  ListChecks, History, Trash2, Info, AlertTriangle, Search, Filter, Pencil, X
 } from 'lucide-react';
 import { Transaction, ExtratoFilter } from '../types';
 
 interface TransactionTableProps {
   transactions: Transaction[];
   onDeleteTransaction: (id: string, tipoItem: 'despesa' | 'receita') => Promise<void>;
+  onUpdateTransaction: (
+    id: string,
+    tipoItem: 'despesa' | 'receita',
+    updatedData: { descricao: string; valor: number; data: string; categoria: string }
+  ) => Promise<void>;
   categorias: string[];
+  categoriasDespesa: string[];
+  categoriasReceita: string[];
   currentMonth: number;
   currentYear: number;
 }
@@ -15,7 +22,10 @@ interface TransactionTableProps {
 export const TransactionTable: React.FC<TransactionTableProps> = ({
   transactions,
   onDeleteTransaction,
+  onUpdateTransaction,
   categorias,
+  categoriasDespesa,
+  categoriasReceita,
   currentMonth,
   currentYear
 }) => {
@@ -24,6 +34,51 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   // General History / Search state
   const [buscaHistorico, setBuscaHistorico] = useState('');
   const [filtroCatHistorico, setFiltroCatHistorico] = useState('todas');
+
+  // Editing transaction state
+  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editDescricao, setEditDescricao] = useState('');
+  const [editValor, setEditValor] = useState<number>(0);
+  const [editData, setEditData] = useState('');
+  const [editCategoria, setEditCategoria] = useState('');
+
+  const startEdit = (transaction: Transaction) => {
+    setEditingTransaction(transaction);
+    setEditDescricao(transaction.descricao);
+    setEditValor(transaction.valor);
+    setEditData(transaction.data);
+    setEditCategoria(transaction.categoria);
+  };
+
+  const saveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTransaction) return;
+    if (!editDescricao.trim() || editValor <= 0 || !editData || !editCategoria) return;
+
+    await onUpdateTransaction(editingTransaction.id, editingTransaction.tipoItem, {
+      descricao: editDescricao.trim(),
+      valor: editValor,
+      data: editData,
+      categoria: editCategoria
+    });
+
+    setEditingTransaction(null);
+  };
+
+  // Compute cumulative running balance chronologically across ALL transactions
+  const transactionBalances: { [id: string]: number } = {};
+  let accumulatedBalance = 0;
+  const chronologicalAll = [...transactions].sort((a, b) => {
+    const timeA = new Date(a.data).getTime();
+    const timeB = new Date(b.data).getTime();
+    if (timeA !== timeB) return timeA - timeB;
+    return (a.id || '').localeCompare(b.id || '');
+  });
+  chronologicalAll.forEach((item) => {
+    const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
+    accumulatedBalance += value;
+    transactionBalances[item.id] = accumulatedBalance;
+  });
 
   // Filter current month transactions for period ledger
   const currentMonthTransactions = transactions.filter((t) => {
@@ -157,7 +212,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <th className="p-3">Descrição</th>
                 <th className="p-3">Categoria</th>
                 <th className="p-3 text-right">Valor</th>
-                <th className="p-3 text-center">Remover</th>
+                <th className="p-3 text-center">Ações</th>
               </tr>
             </thead>
             <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
@@ -186,20 +241,35 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                           {item.categoria}
                         </span>
                       </td>
-                      <td
-                        className={`p-3 text-right font-black ${
-                          isDesp ? 'text-red-500' : 'text-emerald-500'
-                        }`}
-                      >
-                        {isDesp ? '-' : '+'} R$ {item.valor.toFixed(2)}
+                      <td className="p-3 text-right">
+                        <div
+                          className={`font-black ${
+                            isDesp ? 'text-red-500' : 'text-emerald-500'
+                          }`}
+                        >
+                          {isDesp ? '-' : '+'} R$ {item.valor.toFixed(2)}
+                        </div>
+                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">
+                          Saldo: {formatCurrency(transactionBalances[item.id] ?? 0)}
+                        </div>
                       </td>
                       <td className="p-3 text-center">
-                        <button
-                          onClick={() => onDeleteTransaction(item.id, item.tipoItem)}
-                          className="p-1.5 hover:text-red-500 dark:hover:text-red-400 text-slate-400 dark:text-slate-650 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => startEdit(item)}
+                            className="p-1.5 hover:text-blue-500 dark:hover:text-blue-400 text-slate-400 dark:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            title="Editar lançamento"
+                          >
+                            <Pencil className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => onDeleteTransaction(item.id, item.tipoItem)}
+                            className="p-1.5 hover:text-red-500 dark:hover:text-red-400 text-slate-400 dark:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            title="Remover lançamento"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -315,6 +385,100 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           </table>
         </div>
       </div>
+
+      {editingTransaction && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
+                Editar Lançamento ({editingTransaction.tipoItem === 'despesa' ? 'Despesa' : 'Receita'})
+              </h3>
+              <button
+                onClick={() => setEditingTransaction(null)}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <form onSubmit={saveEdit} className="space-y-4">
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  Descrição
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={editDescricao}
+                  onChange={(e) => setEditDescricao(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Valor (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    required
+                    min="0.01"
+                    value={editValor || ''}
+                    onChange={(e) => setEditValor(parseFloat(e.target.value) || 0)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Data
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editData}
+                    onChange={(e) => setEditData(e.target.value)}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  Categoria
+                </label>
+                <select
+                  value={editCategoria}
+                  onChange={(e) => setEditCategoria(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                >
+                  {(editingTransaction.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita).map((cat) => (
+                    <option key={cat} value={cat}>
+                      {cat}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingTransaction(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

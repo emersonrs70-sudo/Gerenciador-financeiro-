@@ -385,6 +385,46 @@ export default function App() {
     showToast('Lançamento removido com sucesso!', 'info');
   };
 
+  // Update transaction handler
+  const handleUpdateTransaction = async (
+    id: string,
+    tipoItem: 'despesa' | 'receita',
+    updatedData: { descricao: string; valor: number; data: string; categoria: string }
+  ) => {
+    if (isOnline) {
+      try {
+        const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
+        const { error } = await supabase
+          .from(table)
+          .update({
+            descricao: updatedData.descricao,
+            valor: updatedData.valor,
+            data: updatedData.data,
+            categoria: updatedData.categoria
+          })
+          .eq('id', id);
+        if (error) {
+          console.warn('Supabase update error:', error);
+        }
+      } catch (err) {
+        console.warn('Supabase connectivity issue during update, fallback local:', err);
+      }
+    }
+
+    const updated = transactions.map((t) => {
+      if (t.id === id) {
+        return { ...t, ...updatedData };
+      }
+      return t;
+    });
+    setTransactions(updated);
+
+    saveLocal('local_despesas', updated.filter((t) => t.tipoItem === 'despesa'));
+    saveLocal('local_receitas', updated.filter((t) => t.tipoItem === 'receita'));
+
+    showToast('Lançamento atualizado com sucesso!', 'sucesso');
+  };
+
   // Add dream/project planner handler
   const handleAddProject = async (nome: string, valor: number, dataAlvo: string) => {
     const newProj: Project = {
@@ -550,27 +590,59 @@ export default function App() {
       {/* HEADER BAR */}
       <header className="w-full bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-4 sticky top-0 z-40 shadow-xs">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black text-base shadow-md shadow-purple-500/20 uppercase tracking-tight">
-              F
+          <div className="flex items-center justify-between w-full sm:w-auto">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black text-base shadow-md shadow-purple-500/20 uppercase tracking-tight">
+                F
+              </div>
+              <div>
+                <h1 className="text-base font-black tracking-tight flex items-center gap-1 text-slate-800 dark:text-white">
+                  Fintech<span className="text-purple-600">Core</span>
+                  <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-bold uppercase ml-1">
+                    v5.0 – React
+                  </span>
+                </h1>
+              </div>
+              {isOnline ? (
+                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5" title="Supabase Conectado" />
+              ) : (
+                <span className="inline-block w-2 h-2 rounded-full bg-amber-500 ml-1.5" title="Modo Local Ativo" />
+              )}
             </div>
-            <div>
-              <h1 className="text-base font-black tracking-tight flex items-center gap-1 text-slate-800 dark:text-white">
-                Fintech<span className="text-purple-600">Core</span>
-                <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-bold uppercase ml-1">
-                  v5.0 – React
-                </span>
-              </h1>
+
+            {/* Streak & Theme Toggle for mobile header */}
+            <div className="flex items-center gap-2 sm:hidden">
+              {deferredPrompt && (
+                <button
+                  onClick={triggerInstallApp}
+                  className="flex items-center justify-center w-8 h-8 bg-emerald-500 text-white rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 border border-emerald-400/20"
+                  title="Instalar App"
+                >
+                  <Download className="w-4 h-4" />
+                </button>
+              )}
+              <button
+                onClick={() => setIsStreakModalOpen(true)}
+                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer ${
+                  streak > 0
+                    ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'
+                    : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800/80'
+                }`}
+              >
+                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
+                <span>{streak}</span>
+              </button>
+              <button
+                onClick={toggleTheme}
+                className="p-1.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 dark:text-slate-400 transition-all"
+              >
+                {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
+              </button>
             </div>
-            {isOnline ? (
-              <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5" title="Supabase Conectado" />
-            ) : (
-              <span className="inline-block w-2 h-2 rounded-full bg-amber-500 ml-1.5" title="Modo Local Ativo" />
-            )}
           </div>
 
-          <div className="flex items-center justify-between w-full sm:w-auto gap-3">
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 flex-1 sm:flex-none">
+          <div className="flex flex-col sm:flex-row items-center justify-between w-full sm:w-auto gap-3">
+            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto justify-between sm:justify-start">
               <button
                 onClick={prevMonth}
                 className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all flex-shrink-0"
@@ -627,39 +699,42 @@ export default function App() {
               </span>
             </div>
 
-            {/* FLAME STREAK DIARIO METEORS */}
-            <button
-              onClick={() => setIsStreakModalOpen(true)}
-              title="Clique para ver níveis, medalhas e resumo"
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer active:scale-95 ${
-                streak > 0
-                  ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 hover:bg-amber-100/80 dark:hover:bg-amber-950/30 hover:border-amber-300 dark:hover:border-amber-800 hover:scale-[1.03] shadow-3xs'
-                  : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-250 dark:border-slate-800/80 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 shadow-inner'
-              }`}
-            >
-              <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
-              <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
-            </button>
-
-            {/* PWA INSTALL TRIGGER */}
-            {deferredPrompt && (
+            {/* Desktop Actions Only */}
+            <div className="hidden sm:flex items-center gap-3">
+              {/* FLAME STREAK DIARIO METEORS */}
               <button
-                onClick={triggerInstallApp}
-                className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 border border-emerald-400/20"
-                title="Instalar FintechCore como aplicativo"
+                onClick={() => setIsStreakModalOpen(true)}
+                title="Clique para ver níveis, medalhas e resumo"
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer active:scale-95 ${
+                  streak > 0
+                    ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 hover:bg-amber-100/80 dark:hover:bg-amber-950/30 hover:border-amber-300 dark:hover:border-amber-800 hover:scale-[1.03] shadow-3xs'
+                    : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-250 dark:border-slate-800/80 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 shadow-inner'
+                }`}
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Instalar App</span>
+                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
+                <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
               </button>
-            )}
 
-            {/* LIGHT/DARK MODE TOGGLE */}
-            <button
-              onClick={toggleTheme}
-              className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-2xs cursor-pointer text-slate-500 dark:text-slate-400 transition-all font-bold"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
-            </button>
+              {/* PWA INSTALL TRIGGER */}
+              {deferredPrompt && (
+                <button
+                  onClick={triggerInstallApp}
+                  className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 border border-emerald-400/20"
+                  title="Instalar FintechCore como aplicativo"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Instalar App</span>
+                </button>
+              )}
+
+              {/* LIGHT/DARK MODE TOGGLE */}
+              <button
+                onClick={toggleTheme}
+                className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-2xs cursor-pointer text-slate-500 dark:text-slate-400 transition-all font-bold"
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              </button>
+            </div>
           </div>
         </div>
       </header>
@@ -768,7 +843,10 @@ export default function App() {
               <TransactionTable
                 transactions={transactions}
                 onDeleteTransaction={handleDeleteTransaction}
+                onUpdateTransaction={handleUpdateTransaction}
                 categorias={[...new Set([...categoriasDespesa, ...categoriasReceita])]}
+                categoriasDespesa={categoriasDespesa}
+                categoriasReceita={categoriasReceita}
                 currentMonth={currentMonth}
                 currentYear={currentYear}
               />
