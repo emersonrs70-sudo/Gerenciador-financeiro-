@@ -139,48 +139,181 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
       )}
 
       {/* 2. TERMOMETRO DE SOBRA */}
-      {activeType === 'saldo' && (
-        <div className="p-5 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/15 dark:to-indigo-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 space-y-3.5 shadow-xs">
-          <div className="border-b border-purple-100 dark:border-purple-900/20 pb-2">
-            <h4 className="text-xs font-black text-purple-800 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <PieChart className="w-4 h-4 text-purple-600 dark:text-purple-400" />
-              Direcionador Orçamentário (Regra 50-30-20)
-            </h4>
+      {activeType === 'saldo' && (() => {
+        const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
+        
+        // Mapear gastos reais do mês
+        const actualNeeds = despesasMes
+          .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
+          .reduce((s, d) => s + d.valor, 0);
+          
+        const actualWants = despesasMes
+          .filter((d) => !needsCategories.includes(d.categoria.toLowerCase()))
+          .reduce((s, d) => s + d.valor, 0);
+
+        // Definir se é simulação ou real
+        const isSimulation = totalReceitasMes === 0;
+        const incomeBase = isSimulation ? 5000 : totalReceitasMes;
+        
+        const idealNeeds = incomeBase * 0.50;
+        const idealWants = incomeBase * 0.30;
+        const idealSavings = incomeBase * 0.20;
+        
+        const actualSaved = isSimulation 
+          ? Math.max(0, 5000 - totalDespesasMes) 
+          : Math.max(0, totalReceitasMes - totalDespesasMes);
+
+        // Percentuais de uso do orçamento
+        const needsPct = idealNeeds > 0 ? (actualNeeds / idealNeeds) * 100 : 0;
+        const wantsPct = idealWants > 0 ? (actualWants / idealWants) * 100 : 0;
+        const savingsPct = idealSavings > 0 ? (actualSaved / idealSavings) * 100 : 0;
+
+        return (
+          <div className="p-5 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/15 dark:to-indigo-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-100 dark:border-purple-900/20 pb-3 gap-2">
+              <div>
+                <h4 className="text-xs font-black text-purple-800 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
+                  <PieChart className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                  Direcionador Orçamentário Estratégico (Regra 50-30-20)
+                </h4>
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                  Mapeamento de despesas reais versus alocação ideal baseada em sua receita
+                </p>
+              </div>
+              <span className={`text-[9px] font-black px-2.5 py-1 rounded-full self-start sm:self-center uppercase tracking-wider ${
+                isSimulation 
+                  ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-250 dark:border-amber-900/30' 
+                  : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
+              }`}>
+                {isSimulation ? 'Simulação (Renda R$ 5.000)' : 'Orçamento Real Ativo'}
+              </span>
+            </div>
+
+            {isSimulation && (
+              <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-150 dark:border-amber-900/25 p-3 rounded-xl flex items-start gap-2">
+                <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+                <p className="text-[10px] text-amber-850 dark:text-amber-300 leading-tight">
+                  <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
+                </p>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* ESSENCIAIS - 50% */}
+              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Necessidades (50%)</span>
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Essenciais</span>
+                  </div>
+                  <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                    {formatValue(idealNeeds)}
+                  </span>
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
+                  <span className="text-slate-500 dark:text-slate-400">Gasto Real:</span>
+                  <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-red-500' : 'text-slate-700 dark:text-slate-350'}`}>
+                    {formatValue(actualNeeds)}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${actualNeeds > idealNeeds ? 'bg-red-500' : 'bg-purple-500'}`} 
+                      style={{ width: `${needsPct}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+                    <span className={actualNeeds > idealNeeds ? 'text-red-500' : 'text-purple-500'}>
+                      {needsPct.toFixed(0)}% Consumido
+                    </span>
+                    <span className="text-slate-400">
+                      {actualNeeds > idealNeeds ? 'Excedeu!' : 'No limite'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* DESEJOS - 30% */}
+              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Estilo de Vida (30%)</span>
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Lazer & Desejos</span>
+                  </div>
+                  <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                    {formatValue(idealWants)}
+                  </span>
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
+                  <span className="text-slate-500 dark:text-slate-400">Gasto Real:</span>
+                  <span className={`font-bold ${actualWants > idealWants ? 'text-red-500' : 'text-slate-700 dark:text-slate-350'}`}>
+                    {formatValue(actualWants)}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full transition-all duration-500 ${actualWants > idealWants ? 'bg-red-500' : 'bg-blue-500'}`} 
+                      style={{ width: `${wantsPct}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+                    <span className={actualWants > idealWants ? 'text-red-500' : 'text-blue-500'}>
+                      {wantsPct.toFixed(0)}% Consumido
+                    </span>
+                    <span className="text-slate-400">
+                      {actualWants > idealWants ? 'Excedeu!' : 'Sob controle'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* POUPANÇA / RESERVA - 20% */}
+              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Futuro / Reserva (20%)</span>
+                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Poupança & Projetos</span>
+                  </div>
+                  <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                    {formatValue(idealSavings)}
+                  </span>
+                </div>
+                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
+                  <span className="text-slate-500 dark:text-slate-400">Sobra Poupar:</span>
+                  <span className="font-bold text-emerald-500">
+                    {formatValue(actualSaved)}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                    <div 
+                      className="bg-emerald-500 h-full transition-all duration-500" 
+                      style={{ width: `${savingsPct}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+                    <span className="text-emerald-500">
+                      {savingsPct.toFixed(0)}% Meta Atingida
+                    </span>
+                    <span className="text-slate-400">
+                      {actualSaved >= idealSavings ? 'Meta batida! 🎉' : 'Abaixo da meta'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5 p-3 bg-white/50 dark:bg-slate-900/40 rounded-xl border border-purple-100/20 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+              <span>💡</span>
+              <span>
+                <strong>Como funciona o mapeamento automático:</strong> Despesas categorizadas como <em>Moradia</em>, <em>Alimentação</em>, e <em>Transporte</em> são somadas automaticamente em <strong>Necessidades</strong>. Todas as outras categorias (como <em>Lazer</em> e <em>Outros</em>) são direcionadas para <strong>Estilo de Vida</strong>. A diferença restante é o que você consegue efetivamente <strong>Poupar</strong>!
+              </span>
+            </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="bg-white/80 dark:bg-slate-950/50 p-3 rounded-xl border border-purple-100/30 dark:border-slate-800/60">
-              <div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-350 mb-1">
-                <span>🎯 Projetos de Vida (50%)</span>
-                <span className="text-purple-600 font-extrabold">{formatValue(sobraMes * 0.5)}</span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-purple-500 h-full" style={{ width: '50%' }}></div>
-              </div>
-            </div>
-            <div className="bg-white/80 dark:bg-slate-950/50 p-3 rounded-xl border border-purple-100/30 dark:border-slate-800/60">
-              <div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-350 mb-1">
-                <span>🛡️ Reserva de Emergência (30%)</span>
-                <span className="text-blue-500 font-extrabold">{formatValue(sobraMes * 0.3)}</span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-blue-500 h-full" style={{ width: '30%' }}></div>
-              </div>
-            </div>
-            <div className="bg-white/80 dark:bg-slate-950/50 p-3 rounded-xl border border-purple-100/30 dark:border-slate-800/60">
-              <div className="flex justify-between text-[10px] font-bold text-slate-700 dark:text-slate-350 mb-1">
-                <span>🍿 Estilo de Vida Livre (20%)</span>
-                <span className="text-emerald-500 font-extrabold">{formatValue(sobraMes * 0.2)}</span>
-              </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
-                <div className="bg-emerald-500 h-full" style={{ width: '20%' }}></div>
-              </div>
-            </div>
-          </div>
-          <p className="text-[10px] text-slate-400 leading-relaxed font-medium">
-            Sua sobra orçamentária projetada para este mês é de <strong className="text-slate-600 dark:text-slate-350">{formatValue(sobraMes)}</strong>. Esta divisão metodológica sugere como você pode alocar seu capital residual para enriquecimento sólido, autocontenção e lazer seguro.
-          </p>
-        </div>
-      )}
+        );
+      })()}
 
       {/* 3. B-A-BA DE INVESTIMENTO */}
       {activeType === 'receitas' && (
