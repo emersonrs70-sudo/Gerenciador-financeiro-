@@ -8,8 +8,8 @@ import {
   Transaction, Project, SubPainelType, ExtratoFilter
 } from './types';
 import {
-  supabase, testConnection, DEFAULT_CATEGORIES, DEFAULT_DESPESAS,
-  DEFAULT_RECEITAS, DEFAULT_PROJETOS, getLocal, saveLocal
+  supabase, testConnection, DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
+  DEFAULT_DESPESAS, DEFAULT_RECEITAS, DEFAULT_PROJETOS, getLocal, saveLocal
 } from './lib/supabase';
 import { NudgeBanner } from './components/NudgeBanner';
 import { MetricCard } from './components/MetricCard';
@@ -37,7 +37,8 @@ export default function App() {
 
   // App dataset state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categorias, setCategorias] = useState<string[]>(DEFAULT_CATEGORIES);
+  const [categoriasDespesa, setCategoriasDespesa] = useState<string[]>(DEFAULT_CATEGORIES_DESPESA);
+  const [categoriasReceita, setCategoriasReceita] = useState<string[]>(DEFAULT_CATEGORIES_RECEITA);
   const [projects, setProjects] = useState<Project[]>([]);
 
   // Selection statuses
@@ -103,23 +104,58 @@ export default function App() {
       let fetchedDespesas: Transaction[] = [];
       let fetchedReceitas: Transaction[] = [];
       let fetchedProjetos: Project[] = [];
-      let fetchedCategorias: string[] = [...DEFAULT_CATEGORIES];
+      let fetchedCategoriasDespesa: string[] = [...DEFAULT_CATEGORIES_DESPESA];
+      let fetchedCategoriasReceita: string[] = [...DEFAULT_CATEGORIES_RECEITA];
+
+      const cachedCategoriasDespesa = getLocal<string[]>('local_categorias_despesa', DEFAULT_CATEGORIES_DESPESA);
+      const cachedCategoriasReceita = getLocal<string[]>('local_categorias_receita', DEFAULT_CATEGORIES_RECEITA);
 
       if (connected) {
         try {
-          // Fetch custom categories
-          const { data: catData } = await supabase.from('fin_categorias').select('nome');
-          if (catData && catData.length > 0) {
-            fetchedCategorias = [...new Set([...DEFAULT_CATEGORIES, ...catData.map((c) => c.nome)])];
-          }
-
-          // Fetch despesas
+          // Fetch despesas first
           const { data: despData } = await supabase.from('fin_despesas').select('*');
           if (despData) fetchedDespesas = despData.map(d => ({ ...d, tipoItem: 'despesa' }));
 
           // Fetch receitas
           const { data: recData } = await supabase.from('fin_receitas').select('*');
           if (recData) fetchedReceitas = recData.map(r => ({ ...r, tipoItem: 'receita' }));
+
+          // Fetch custom categories
+          const { data: catData } = await supabase.from('fin_categorias').select('nome');
+          if (catData && catData.length > 0) {
+            const dbNames = catData.map((c) => c.nome);
+            const newDespesaSet = new Set([...DEFAULT_CATEGORIES_DESPESA]);
+            const newReceitaSet = new Set([...DEFAULT_CATEGORIES_RECEITA]);
+
+            dbNames.forEach((name) => {
+              if (DEFAULT_CATEGORIES_RECEITA.includes(name)) {
+                newReceitaSet.add(name);
+              } else if (DEFAULT_CATEGORIES_DESPESA.includes(name)) {
+                newDespesaSet.add(name);
+              } else {
+                const isCachedReceita = cachedCategoriasReceita.includes(name);
+                const isCachedDespesa = cachedCategoriasDespesa.includes(name);
+                if (isCachedReceita && !isCachedDespesa) {
+                  newReceitaSet.add(name);
+                } else if (isCachedDespesa && !isCachedReceita) {
+                  newDespesaSet.add(name);
+                } else {
+                  const usedInReceitas = fetchedReceitas.some((r) => r.categoria === name);
+                  const usedInDespesas = fetchedDespesas.some((d) => d.categoria === name);
+                  if (usedInReceitas) {
+                    newReceitaSet.add(name);
+                  } else if (usedInDespesas) {
+                    newDespesaSet.add(name);
+                  } else {
+                    newDespesaSet.add(name);
+                  }
+                }
+              }
+            });
+
+            fetchedCategoriasDespesa = [...newDespesaSet];
+            fetchedCategoriasReceita = [...newReceitaSet];
+          }
 
           // Fetch projects
           const { data: projData } = await supabase.from('fin_projetos').select('*');
@@ -136,13 +172,13 @@ export default function App() {
       const cachedDespesas = getLocal<Transaction[]>('local_despesas', []);
       const cachedReceitas = getLocal<Transaction[]>('local_receitas', []);
       const cachedProjects = getLocal<Project[]>('local_projects', []);
-      const cachedCategorias = getLocal<string[]>('local_categorias', DEFAULT_CATEGORIES);
 
       const hasInitialized = localStorage.getItem('fintech_initialized') === 'true';
       let finalDespesas: Transaction[] = [];
       let finalReceitas: Transaction[] = [];
       let finalProjects: Project[] = [];
-      let finalCategorias: string[] = [];
+      let finalCategoriasDespesa: string[] = [];
+      let finalCategoriasReceita: string[] = [];
 
       if (!hasInitialized) {
         if (connected) {
@@ -151,7 +187,8 @@ export default function App() {
             fetchedDespesas = [...DEFAULT_DESPESAS];
             fetchedReceitas = [...DEFAULT_RECEITAS];
             fetchedProjetos = [...DEFAULT_PROJETOS];
-            fetchedCategorias = [...DEFAULT_CATEGORIES];
+            fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
+            fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
 
             // Seed to Supabase background to make sandbox rich natively
             await Promise.all([
@@ -163,13 +200,15 @@ export default function App() {
           finalDespesas = fetchedDespesas;
           finalReceitas = fetchedReceitas;
           finalProjects = fetchedProjetos;
-          finalCategorias = fetchedCategorias;
+          finalCategoriasDespesa = fetchedCategoriasDespesa;
+          finalCategoriasReceita = fetchedCategoriasReceita;
         } else {
           // Offline and first load, fallback to defaults
           finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS;
           finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS;
           finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS;
-          finalCategorias = cachedCategorias.length > 0 ? cachedCategorias : DEFAULT_CATEGORIES;
+          finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
+          finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
         }
         localStorage.setItem('fintech_initialized', 'true');
       } else {
@@ -178,26 +217,30 @@ export default function App() {
           finalDespesas = fetchedDespesas;
           finalReceitas = fetchedReceitas;
           finalProjects = fetchedProjetos;
-          finalCategorias = fetchedCategorias;
+          finalCategoriasDespesa = fetchedCategoriasDespesa;
+          finalCategoriasReceita = fetchedCategoriasReceita;
         } else {
           finalDespesas = cachedDespesas;
           finalReceitas = cachedReceitas;
           finalProjects = cachedProjects;
-          finalCategorias = cachedCategorias;
+          finalCategoriasDespesa = cachedCategoriasDespesa;
+          finalCategoriasReceita = cachedCategoriasReceita;
         }
       }
 
       const finalTransactions = [...finalDespesas, ...finalReceitas];
 
       setTransactions(finalTransactions);
-      setCategorias(finalCategorias);
+      setCategoriasDespesa(finalCategoriasDespesa);
+      setCategoriasReceita(finalCategoriasReceita);
       setProjects(finalProjects);
 
       // Save to local storage for subsequent offline entries
       saveLocal('local_despesas', finalTransactions.filter(t => t.tipoItem === 'despesa'));
       saveLocal('local_receitas', finalTransactions.filter(t => t.tipoItem === 'receita'));
       saveLocal('local_projects', finalProjects);
-      saveLocal('local_categorias', finalCategorias);
+      saveLocal('local_categorias_despesa', finalCategoriasDespesa);
+      saveLocal('local_categorias_receita', finalCategoriasReceita);
     }
 
     initData();
@@ -249,7 +292,7 @@ export default function App() {
   // --- CRUD ACTIONS ---
 
   // Add category handler
-  const handleAddCategory = async (nome: string) => {
+  const handleAddCategory = async (nome: string, tipoItem: 'despesa' | 'receita') => {
     let success = false;
     if (isOnline) {
       try {
@@ -260,9 +303,15 @@ export default function App() {
       }
     }
 
-    const updated = [...categorias, nome];
-    setCategorias(updated);
-    saveLocal('local_categorias', updated);
+    if (tipoItem === 'despesa') {
+      const updated = [...categoriasDespesa, nome];
+      setCategoriasDespesa(updated);
+      saveLocal('local_categorias_despesa', updated);
+    } else {
+      const updated = [...categoriasReceita, nome];
+      setCategoriasReceita(updated);
+      saveLocal('local_categorias_receita', updated);
+    }
     showToast(`Categoria "${nome}" adicionada com sucesso!`, 'sucesso');
   };
 
@@ -709,7 +758,8 @@ export default function App() {
         <div className={mobileTabActive === 'transacoes' ? 'block' : 'hidden md:block'}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <TransactionForm
-              categorias={categorias}
+              categoriasDespesa={categoriasDespesa}
+              categoriasReceita={categoriasReceita}
               onAddTransaction={handleAddTransaction}
               onAddCategory={handleAddCategory}
             />
@@ -717,7 +767,7 @@ export default function App() {
               <TransactionTable
                 transactions={transactions}
                 onDeleteTransaction={handleDeleteTransaction}
-                categorias={categorias}
+                categorias={[...new Set([...categoriasDespesa, ...categoriasReceita])]}
                 currentMonth={currentMonth}
                 currentYear={currentYear}
               />
@@ -729,7 +779,7 @@ export default function App() {
         <div className={mobileTabActive === 'planejador' ? 'block' : 'hidden md:block'}>
           <FinancialCharts
             transactions={transactions}
-            categorias={categorias}
+            categorias={categoriasDespesa}
             currentMonth={currentMonth}
             currentYear={currentYear}
           />

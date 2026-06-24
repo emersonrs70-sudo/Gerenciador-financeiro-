@@ -3,7 +3,8 @@ import { PlusCircle, ListTodo } from 'lucide-react';
 import { Category, Transaction } from '../types';
 
 interface TransactionFormProps {
-  categorias: string[];
+  categoriasDespesa: string[];
+  categoriasReceita: string[];
   onAddTransaction: (
     descricao: string,
     valor: number,
@@ -11,11 +12,12 @@ interface TransactionFormProps {
     categoria: string,
     tipoItem: 'despesa' | 'receita'
   ) => Promise<void>;
-  onAddCategory: (nome: string) => Promise<void>;
+  onAddCategory: (nome: string, tipoItem: 'despesa' | 'receita') => Promise<void>;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
-  categorias,
+  categoriasDespesa,
+  categoriasReceita,
   onAddTransaction,
   onAddCategory
 }) => {
@@ -27,7 +29,16 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
 
-  const [categoria, setCategoria] = useState(categorias[0] || 'Outros');
+  const activeCategorias = modo === 'despesa' ? categoriasDespesa : categoriasReceita;
+  const [categoria, setCategoria] = useState('');
+
+  React.useEffect(() => {
+    const currentCats = modo === 'despesa' ? categoriasDespesa : categoriasReceita;
+    if (!currentCats.includes(categoria)) {
+      setCategoria(currentCats[0] || 'Outros');
+    }
+  }, [modo, categoriasDespesa, categoriasReceita]);
+
   const [criandoCategoria, setCriandoCategoria] = useState(false);
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
 
@@ -48,11 +59,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const handleCriarCategoria = async () => {
     const nomeLimpo = novaCategoriaNome.trim();
-    if (nomeLimpo && !categorias.includes(nomeLimpo)) {
-      await onAddCategory(nomeLimpo);
-      setCategoria(nomeLimpo);
-      setNovaCategoriaNome('');
-      setCriandoCategoria(false);
+    if (nomeLimpo) {
+      const activeCats = modo === 'despesa' ? categoriasDespesa : categoriasReceita;
+      if (!activeCats.includes(nomeLimpo)) {
+        await onAddCategory(nomeLimpo, modo);
+        setCategoria(nomeLimpo);
+        setNovaCategoriaNome('');
+        setCriandoCategoria(false);
+      }
     }
   };
 
@@ -150,7 +164,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               onChange={(e) => setCategoria(e.target.value)}
               className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
             >
-              {categorias.map((cat) => (
+              {activeCategorias.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>

@@ -19,7 +19,9 @@ export async function testConnection(): Promise<boolean> {
 }
 
 // Default static lists
-export const DEFAULT_CATEGORIES = ["Moradia", "Alimentação", "Transporte", "Lazer", "Outros"];
+export const DEFAULT_CATEGORIES_DESPESA = ["Moradia", "Alimentação", "Transporte", "Lazer", "Outros"];
+export const DEFAULT_CATEGORIES_RECEITA = ["Salário", "Freelance", "Investimentos", "Reembolsos", "Outras Receitas"];
+export const DEFAULT_CATEGORIES = DEFAULT_CATEGORIES_DESPESA;
 
 export const DEFAULT_DESPESAS: Transaction[] = [
   { id: 'd1', descricao: 'Supermercado da Semana', valor: 350.50, data: '2026-06-15', categoria: 'Alimentação', tipoItem: 'despesa' },
@@ -29,8 +31,8 @@ export const DEFAULT_DESPESAS: Transaction[] = [
 ];
 
 export const DEFAULT_RECEITAS: Transaction[] = [
-  { id: 'r1', descricao: 'Salário Principal', valor: 5500.00, data: '2026-06-05', categoria: 'Receita', tipoItem: 'receita' },
-  { id: 'r2', descricao: 'Projeto Freelance', valor: 1500.00, data: '2026-06-18', categoria: 'Receita', tipoItem: 'receita' }
+  { id: 'r1', descricao: 'Salário Principal', valor: 5500.00, data: '2026-06-05', categoria: 'Salário', tipoItem: 'receita' },
+  { id: 'r2', descricao: 'Projeto Freelance', valor: 1500.00, data: '2026-06-18', categoria: 'Freelance', tipoItem: 'receita' }
 ];
 
 export const DEFAULT_PROJETOS: Project[] = [
