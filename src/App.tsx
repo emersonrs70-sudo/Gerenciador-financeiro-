@@ -1108,6 +1108,19 @@ export default function App() {
           const isSelected = selectedAccountId === acc.id;
           const isCard = acc.tipo === 'credito';
           const balance = accountBalances[acc.id] ?? 0;
+          
+          let displayBalance = balance;
+          if (isCard) {
+            const currentBillMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+            const cardExpensesForMonth = transactions
+              .filter(t => t.accountId === acc.id && t.tipoItem === 'despesa' && t.faturaMes === currentBillMonthStr)
+              .reduce((sum, t) => sum + t.valor, 0);
+            const cardPaymentsForMonth = transactions
+              .filter(t => t.accountId === acc.id && t.tipoItem === 'receita' && t.faturaMes === currentBillMonthStr)
+              .reduce((sum, t) => sum + t.valor, 0);
+            displayBalance = cardExpensesForMonth - cardPaymentsForMonth;
+          }
+
           return (
             <div
               key={acc.id}
@@ -1131,7 +1144,7 @@ export default function App() {
                   <p className="text-xs font-black truncate mt-0.5">{acc.nome}</p>
                   <p className="text-[10px] font-semibold mt-1">
                     {isCard ? 'Fatura: ' : 'Saldo: '}
-                    {formatCurrency(balance)}
+                    {formatCurrency(isCard ? displayBalance : balance)}
                   </p>
                   {isCard && acc.limiteCredito && (
                     <p className={`text-[8px] font-semibold opacity-80 mt-0.5`}>
