@@ -653,7 +653,7 @@ export default function App() {
     if (isOnline) {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { tipoItem: _, ...dbTransaction } = newTransaction;
+        const { tipoItem: _, accountId: _acc, faturaMes: _fat, ...dbTransaction } = newTransaction;
         const serializedDesc = `${descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}`;
         const dbTransactionWithUser = {
           ...dbTransaction,
