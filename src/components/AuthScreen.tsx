@@ -98,7 +98,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
         const { data, error } = await supabase
           .from('fin_despesas')
           .select('*')
-          .eq('id', `${trimmedEmail}:__profile__`);
+          .ilike('descricao', `__profile__ | email:${trimmedEmail} |%`);
 
         if (error) {
           console.error('Supabase query error:', error);
@@ -107,10 +107,10 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
 
         if (data && data.length > 0) {
           const desc = data[0].descricao;
-          const pwdMatch = desc.match(/__profile_password:(.*?)__name:(.*)/);
+          const pwdMatch = desc.match(/\| name:(.*?) \| password:(.*)/);
           if (pwdMatch) {
-            const savedPwd = pwdMatch[1];
-            const savedName = pwdMatch[2];
+            const savedName = pwdMatch[1].trim();
+            const savedPwd = pwdMatch[2].trim();
             if (savedPwd === password) {
               setSuccessMsg(`Bem-vindo de volta, ${savedName}! Carregando painel exclusivo...`);
               setTimeout(() => {
@@ -127,8 +127,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
           if (trimmedEmail === 'emersonrs70@gmail.com' && password === '1234') {
             // Register automatically as the master account migration
             await supabase.from('fin_despesas').insert([{
-              id: `${trimmedEmail}:__profile__`,
-              descricao: `__profile_password:${password}__name:Emerson`,
+              id: crypto.randomUUID(),
+              descricao: `__profile__ | email:${trimmedEmail} | name:Emerson | password:${password}`,
               valor: 0,
               data: '2000-01-01',
               categoria: 'Sistema'
@@ -144,7 +144,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
         const { data: existing, error: checkError } = await supabase
           .from('fin_despesas')
           .select('*')
-          .eq('id', `${trimmedEmail}:__profile__`);
+          .ilike('descricao', `__profile__ | email:${trimmedEmail} |%`);
 
         if (checkError) {
           throw new Error('Erro ao validar existência da conta no Supabase.');
@@ -160,8 +160,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
         const { error: insertError } = await supabase
           .from('fin_despesas')
           .insert([{
-            id: `${trimmedEmail}:__profile__`,
-            descricao: `__profile_password:${password}__name:${trimmedName}`,
+            id: crypto.randomUUID(),
+            descricao: `__profile__ | email:${trimmedEmail} | name:${trimmedName} | password:${password}`,
             valor: 0,
             data: '2000-01-01',
             categoria: 'Sistema'

@@ -209,21 +209,48 @@ export default function App() {
           // Fetch despesas first
           const { data: despData } = await supabase.from('fin_despesas').select('*');
           if (despData) {
-            const userPrefix = `${currentUser.email}:`;
             fetchedDespesas = despData
-              .filter(d => !d.id.includes('__profile__'))
-              .filter(d => d.id.startsWith(userPrefix) || (!d.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'))
-              .map(d => ({ ...d, tipoItem: 'despesa' }));
+              .filter(d => {
+                const desc = d.descricao || '';
+                if (desc.startsWith('__profile__ |')) return false;
+                const match = desc.match(/(.*?) \| user:(.*)/);
+                if (match) {
+                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
+                }
+                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
+              })
+              .map(d => {
+                const desc = d.descricao || '';
+                const match = desc.match(/(.*?) \| user:(.*)/);
+                return {
+                  ...d,
+                  descricao: match ? match[1].trim() : desc,
+                  tipoItem: 'despesa'
+                };
+              });
           }
 
           // Fetch receitas
           const { data: recData } = await supabase.from('fin_receitas').select('*');
           if (recData) {
-            const userPrefix = `${currentUser.email}:`;
             fetchedReceitas = recData
-              .filter(r => !r.id.includes('__profile__'))
-              .filter(r => r.id.startsWith(userPrefix) || (!r.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'))
-              .map(r => ({ ...r, tipoItem: 'receita' }));
+              .filter(r => {
+                const desc = r.descricao || '';
+                const match = desc.match(/(.*?) \| user:(.*)/);
+                if (match) {
+                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
+                }
+                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
+              })
+              .map(r => {
+                const desc = r.descricao || '';
+                const match = desc.match(/(.*?) \| user:(.*)/);
+                return {
+                  ...r,
+                  descricao: match ? match[1].trim() : desc,
+                  tipoItem: 'receita'
+                };
+              });
           }
 
           // Fetch custom categories
@@ -266,9 +293,23 @@ export default function App() {
           // Fetch projects
           const { data: projData } = await supabase.from('fin_projetos').select('*');
           if (projData) {
-            const userPrefix = `${currentUser.email}:`;
             fetchedProjetos = projData
-              .filter(p => p.id.startsWith(userPrefix) || (!p.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'));
+              .filter(p => {
+                const name = p.nome || '';
+                const match = name.match(/(.*?) \| user:(.*)/);
+                if (match) {
+                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
+                }
+                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
+              })
+              .map(p => {
+                const name = p.nome || '';
+                const match = name.match(/(.*?) \| user:(.*)/);
+                return {
+                  ...p,
+                  nome: match ? match[1].trim() : name
+                };
+              });
           }
 
           showToast('Sincronizado com Supabase com sucesso!', 'sucesso');
@@ -293,18 +334,33 @@ export default function App() {
       if (!hasInitialized) {
         if (connected) {
           if (fetchedDespesas.length === 0 && fetchedReceitas.length === 0 && fetchedProjetos.length === 0) {
-            // Database is completely empty for this user, let's pre-seed with unique user-specific IDs
-            fetchedDespesas = [...DEFAULT_DESPESAS].map(d => ({ ...d, id: `${currentUser.email}:${d.id}` }));
-            fetchedReceitas = [...DEFAULT_RECEITAS].map(r => ({ ...r, id: `${currentUser.email}:${r.id}` }));
-            fetchedProjetos = [...DEFAULT_PROJETOS].map(p => ({ ...p, id: `${currentUser.email}:${p.id}` }));
+            // Seed to Supabase with proper format
+            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }) => ({
+              ...rest,
+              id: crypto.randomUUID(),
+              descricao: `${rest.descricao} | user:${currentUser.email}`
+            }));
+            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }) => ({
+              ...rest,
+              id: crypto.randomUUID(),
+              descricao: `${rest.descricao} | user:${currentUser.email}`
+            }));
+            const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
+              ...p,
+              id: crypto.randomUUID(),
+              nome: `${p.nome} | user:${currentUser.email}`
+            }));
+
+            fetchedDespesas = despesasToSeed.map(d => ({ ...d, descricao: d.descricao.split(' | user:')[0], tipoItem: 'despesa' as const }));
+            fetchedReceitas = receitasToSeed.map(r => ({ ...r, descricao: r.descricao.split(' | user:')[0], tipoItem: 'receita' as const }));
+            fetchedProjetos = projetosToSeed.map(p => ({ ...p, nome: p.nome.split(' | user:')[0] }));
             fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
             fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
 
-            // Seed to Supabase background to make sandbox rich natively
             await Promise.all([
-              supabase.from('fin_despesas').insert(fetchedDespesas.map(({ tipoItem, ...rest }) => rest)),
-              supabase.from('fin_receitas').insert(fetchedReceitas.map(({ tipoItem, ...rest }) => rest)),
-              supabase.from('fin_projetos').insert(fetchedProjetos)
+              supabase.from('fin_despesas').insert(despesasToSeed),
+              supabase.from('fin_receitas').insert(receitasToSeed),
+              supabase.from('fin_projetos').insert(projetosToSeed)
             ]).catch(err => console.warn('Supabase initial seed error:', err));
           }
           finalDespesas = fetchedDespesas;
@@ -313,10 +369,10 @@ export default function App() {
           finalCategoriasDespesa = fetchedCategoriasDespesa;
           finalCategoriasReceita = fetchedCategoriasReceita;
         } else {
-          // Offline and first load, fallback to defaults
-          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map(d => ({ ...d, id: `${currentUser.email}:${d.id}` }));
-          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map(r => ({ ...r, id: `${currentUser.email}:${r.id}` }));
-          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: `${currentUser.email}:${p.id}` }));
+          // Offline and first load, fallback to defaults with standard random UUIDs
+          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map(d => ({ ...d, id: crypto.randomUUID() }));
+          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map(r => ({ ...r, id: crypto.randomUUID() }));
+          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: crypto.randomUUID() }));
           finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
           finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
         }
@@ -433,8 +489,9 @@ export default function App() {
     categoria: string,
     tipoItem: 'despesa' | 'receita'
   ) => {
+    const transactionId = crypto.randomUUID();
     const newTransaction: Transaction = {
-      id: `${currentUser!.email}:${crypto.randomUUID()}`,
+      id: transactionId,
       descricao,
       valor,
       data,
@@ -446,7 +503,11 @@ export default function App() {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
         const { tipoItem: _, ...dbTransaction } = newTransaction;
-        const { error } = await supabase.from(table).insert([dbTransaction]);
+        const dbTransactionWithUser = {
+          ...dbTransaction,
+          descricao: `${descricao} | user:${currentUser!.email}`
+        };
+        const { error } = await supabase.from(table).insert([dbTransactionWithUser]);
         if (error) {
           console.warn('Supabase insertion error, proceeding local-only:', error);
         }
@@ -507,7 +568,7 @@ export default function App() {
         const { error } = await supabase
           .from(table)
           .update({
-            descricao: updatedData.descricao,
+            descricao: `${updatedData.descricao} | user:${currentUser!.email}`,
             valor: updatedData.valor,
             data: updatedData.data,
             categoria: updatedData.categoria
@@ -537,8 +598,9 @@ export default function App() {
 
   // Add dream/project planner handler
   const handleAddProject = async (nome: string, valor: number, dataAlvo: string) => {
+    const projectId = crypto.randomUUID();
     const newProj: Project = {
-      id: `${currentUser!.email}:${crypto.randomUUID()}`,
+      id: projectId,
       nome,
       valor,
       dataAlvo
@@ -546,7 +608,11 @@ export default function App() {
 
     if (isOnline) {
       try {
-        const { error } = await supabase.from('fin_projetos').insert([newProj]);
+        const dbProject = {
+          ...newProj,
+          nome: `${nome} | user:${currentUser!.email}`
+        };
+        const { error } = await supabase.from('fin_projetos').insert([dbProject]);
         if (error) console.warn('Supabase projects insertion error:', error);
       } catch (err) {
         console.warn('Could not insert project on Supabase, fallback local:', err);

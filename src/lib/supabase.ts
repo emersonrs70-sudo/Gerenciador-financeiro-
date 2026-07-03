@@ -4,7 +4,24 @@ import { Transaction, Category, Project } from '../types';
 const SUPABASE_URL = 'https://uhvxrxqioovjvwjqbyes.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVodnhyeHFpb292anZ3anFieWVzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODE0NTMxMjcsImV4cCI6MjA5NzAyOTEyN30.8RDULQ6XpN3WqLg7i_jrAFB4210gMD85HXWQO7yFIvs';
 
-export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  global: {
+    headers: {
+      get 'x-user-email'() {
+        try {
+          const userStr = localStorage.getItem('fintech_current_user');
+          if (userStr) {
+            const parsed = JSON.parse(userStr);
+            return parsed && parsed.email ? parsed.email : '';
+          }
+        } catch (e) {
+          console.error('Error reading user email for header:', e);
+        }
+        return '';
+      }
+    }
+  }
+});
 
 // Helper to check if we can successfully query Supabase
 export async function testConnection(): Promise<boolean> {
