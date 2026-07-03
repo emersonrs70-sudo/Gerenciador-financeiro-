@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
 } from './types';
 import {
   supabase, testConnection, DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
@@ -167,7 +167,7 @@ export default function App() {
 
   // Trigger Toast Notification
   const showToast = (msg: string, type: 'sucesso' | 'info' | 'erro' = 'sucesso') => {
-    const id = crypto.randomUUID();
+    const id = safeRandomUUID();
     setToasts((prev) => [...prev, { id, msg, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
@@ -195,7 +195,7 @@ export default function App() {
     tipo: 'alerta' | 'ofensiva' | 'sucesso' | 'info' = 'info'
   ) => {
     const newNotification: AppNotification = {
-      id: crypto.randomUUID(),
+      id: safeRandomUUID(),
       titulo,
       mensagem,
       data: new Date().toISOString(),
@@ -408,7 +408,7 @@ export default function App() {
               const seedCreatedAt = new Date(baseTime + index * 1000).toISOString();
               const descWithAcc = `${rest.descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''} [created:${seedCreatedAt}]`;
               return {
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 descricao: `${descWithAcc} | user:${currentUser.email}`,
                 valor: rest.valor,
                 data: rest.data,
@@ -420,7 +420,7 @@ export default function App() {
               const seedCreatedAt = new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString();
               const descWithAcc = `${rest.descricao} [acc:${accountId}] [created:${seedCreatedAt}]`;
               return {
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 descricao: `${descWithAcc} | user:${currentUser.email}`,
                 valor: rest.valor,
                 data: rest.data,
@@ -429,7 +429,7 @@ export default function App() {
             });
             const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
               ...p,
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
               nome: `${p.nome} | user:${currentUser.email}`
             }));
 
@@ -462,7 +462,7 @@ export default function App() {
             }
             return {
               ...d,
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
               accountId,
               faturaMes,
               created_at: new Date(baseTime + index * 1000).toISOString()
@@ -472,12 +472,12 @@ export default function App() {
             let accountId = 'santander';
             return {
               ...r,
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
               accountId,
               created_at: new Date(baseTime + (index + 10) * 1000).toISOString()
             };
           });
-          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: crypto.randomUUID() }));
+          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: safeRandomUUID() }));
           finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
           finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
         }
@@ -596,7 +596,7 @@ export default function App() {
     accountId: string = 'geral',
     faturaMes?: string
   ) => {
-    const transactionId = crypto.randomUUID();
+    const transactionId = safeRandomUUID();
     const newTransaction: Transaction = {
       id: transactionId,
       descricao,
@@ -714,7 +714,7 @@ export default function App() {
 
   // Add dream/project planner handler
   const handleAddProject = async (nome: string, valor: number, dataAlvo: string) => {
-    const projectId = crypto.randomUUID();
+    const projectId = safeRandomUUID();
     const newProj: Project = {
       id: projectId,
       nome,
@@ -1509,7 +1509,7 @@ export default function App() {
                 if (!nome.trim()) return;
 
                 const newAcc: BankAccount = {
-                  id: crypto.randomUUID(),
+                  id: safeRandomUUID(),
                   nome: nome.trim(),
                   tipo,
                   saldoInicial: tipo === 'credito' ? 0 : saldoInicial,

@@ -12,7 +12,7 @@ import {
   TrendingUp,
   BrainCircuit
 } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, safeRandomUUID } from '../types';
 
 interface TransactionSuggestion {
   id: string;
@@ -266,7 +266,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
     setTimeout(() => {
       setIsTyping(false);
       const botMsg: Message = {
-        id: crypto.randomUUID(),
+        id: safeRandomUUID(),
         sender: 'bot',
         text: `*Lançamento Confirmado!* ✅\nAdicionei a ${tipoItem === 'despesa' ? 'despesa' : 'receita'} de *${descricao}* no valor de *R$ ${valor.toFixed(2)}* (categoria *${categoria}*) com sucesso. Seu saldo real foi atualizado!`,
         time: getFormattedTime()
@@ -301,7 +301,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
     if (!text) return;
 
     const userMsg: Message = {
-      id: crypto.randomUUID(),
+      id: safeRandomUUID(),
       sender: 'user',
       text,
       time: getFormattedTime()
@@ -321,7 +321,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
         if (incompleteTx) {
           setIncompleteTx(null);
           const botMsg: Message = {
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             sender: 'bot',
             text: 'Entendido, senhor. Operação pendente cancelada. Como posso ajudá-lo agora?',
             time: getFormattedTime()
@@ -377,12 +377,12 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
               setIncompleteTx(null);
 
               const botMsg: Message = {
-                id: crypto.randomUUID(),
+                id: safeRandomUUID(),
                 sender: 'bot',
                 text: `Entendido, senhor. Registrei o valor de *R$ ${parsed.toFixed(2)}*. Confirme os detalhes do lançamento abaixo para consolidarmos no sistema:`,
                 time: getFormattedTime(),
                 suggestion: {
-                  id: crypto.randomUUID(),
+                  id: safeRandomUUID(),
                   descricao: updatedTx.descricao || (updatedTx.tipoItem === 'despesa' ? 'Nova Despesa' : 'Nova Receita'),
                   valor: parsed,
                   data: updatedTx.data || new Date().toISOString().split('T')[0],
@@ -397,7 +397,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
           }
 
           const botMsg: Message = {
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             sender: 'bot',
             text: `Perdão, senhor. Não identifiquei um valor monetário válido para *"#{incompleteTx.descricao}"*. Qual o valor em reais?`,
             time: getFormattedTime()
@@ -479,7 +479,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
 
       if (matchesSearch) {
         const botMsg: Message = {
-          id: crypto.randomUUID(),
+          id: safeRandomUUID(),
           sender: 'bot',
           text: queryResponse,
           time: getFormattedTime()
@@ -548,7 +548,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
         });
 
         const botMsg: Message = {
-          id: crypto.randomUUID(),
+          id: safeRandomUUID(),
           sender: 'bot',
           text: `Perfeito. Preparando o registro de uma ${tipoItem === 'despesa' ? 'despesa' : 'receita'} para *"${description}"*. Qual o valor correspondente, senhor?`,
           time: getFormattedTime()
@@ -639,12 +639,12 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
 
         if (parsedValue > 0) {
           const botMsg: Message = {
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             sender: 'bot',
             text: `Perfeito, senhor. Consegui processar o comando. Confirme os dados abaixo para adicionarmos no FintechCore:`,
             time: getFormattedTime(),
             suggestion: {
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
               descricao: description,
               valor: parsedValue,
               data: parsedDateStr,
@@ -656,7 +656,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
           setMessages((prev) => [...prev, botMsg]);
         } else {
           const botMsg: Message = {
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             sender: 'bot',
             text: `Reconheci o comando de lançamento para *"${description}"*, mas não encontrei um valor numérico válido. Qual o valor, senhor?`,
             time: getFormattedTime()
@@ -710,7 +710,7 @@ export const PersonalAIAdvisor: React.FC<PersonalAIAdvisorProps> = ({
       }
 
       const botMsg: Message = {
-        id: crypto.randomUUID(),
+        id: safeRandomUUID(),
         sender: 'bot',
         text: replyText,
         time: getFormattedTime()

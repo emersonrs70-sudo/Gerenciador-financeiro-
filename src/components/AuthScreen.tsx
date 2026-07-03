@@ -13,6 +13,7 @@ import {
   Database
 } from 'lucide-react';
 import { supabase, testConnection } from '../lib/supabase';
+import { safeRandomUUID } from '../types';
 
 interface AuthScreenProps {
   onLoginSuccess: (user: { email: string; name: string }) => void;
@@ -127,7 +128,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
           if (trimmedEmail === 'emersonrs70@gmail.com' && password === '1234') {
             // Register automatically as the master account migration
             await supabase.from('fin_despesas').insert([{
-              id: crypto.randomUUID(),
+              id: safeRandomUUID(),
               descricao: `__profile__ | email:${trimmedEmail} | name:Emerson | password:${password}`,
               valor: 0,
               data: '2000-01-01',
@@ -161,7 +162,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
         const { error: insertError } = await supabase
           .from('fin_despesas')
           .insert([{
-            id: crypto.randomUUID(),
+            id: safeRandomUUID(),
             descricao: `__profile__ | email:${trimmedEmail} | name:${trimmedName} | password:${password}`,
             valor: 0,
             data: '2000-01-01',
