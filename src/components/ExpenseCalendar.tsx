@@ -85,6 +85,26 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
     if (!dateStr) return { despesas: 0, receitas: 0, items: [] };
     const dayTransactions = transactions.filter(t => t.data === dateStr);
     
+    const getCreatedTime = (t: Transaction) => {
+      if (t.created_at) {
+        const parsed = new Date(t.created_at).getTime();
+        if (!isNaN(parsed)) return parsed;
+      }
+      const match = (t.id || '').match(/^[dr](\d+)$/);
+      if (match) {
+        return parseInt(match[1], 10);
+      }
+      return 0;
+    };
+
+    // Sort items so the newest is at the top, matching the ledger list descending sort
+    dayTransactions.sort((a, b) => {
+      const createdA = getCreatedTime(a);
+      const createdB = getCreatedTime(b);
+      if (createdA !== createdB) return createdB - createdA;
+      return (b.id || '').localeCompare(a.id || '');
+    });
+    
     const despesas = dayTransactions
       .filter(t => t.tipoItem === 'despesa')
       .reduce((sum, t) => sum + t.valor, 0);

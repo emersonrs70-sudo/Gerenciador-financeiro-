@@ -334,15 +334,18 @@ export default function App() {
         if (connected) {
           if (fetchedDespesas.length === 0 && fetchedReceitas.length === 0 && fetchedProjetos.length === 0) {
             // Seed to Supabase with proper format
-            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }) => ({
+            const baseTime = Date.now();
+            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }, index) => ({
               ...rest,
               id: crypto.randomUUID(),
-              descricao: `${rest.descricao} | user:${currentUser.email}`
+              descricao: `${rest.descricao} | user:${currentUser.email}`,
+              created_at: new Date(baseTime + index * 1000).toISOString()
             }));
-            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }) => ({
+            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }, index) => ({
               ...rest,
               id: crypto.randomUUID(),
-              descricao: `${rest.descricao} | user:${currentUser.email}`
+              descricao: `${rest.descricao} | user:${currentUser.email}`,
+              created_at: new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString()
             }));
             const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
               ...p,
@@ -369,8 +372,9 @@ export default function App() {
           finalCategoriasReceita = fetchedCategoriasReceita;
         } else {
           // Offline and first load, fallback to defaults with standard random UUIDs
-          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map(d => ({ ...d, id: crypto.randomUUID() }));
-          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map(r => ({ ...r, id: crypto.randomUUID() }));
+          const baseTime = Date.now();
+          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map((d, index) => ({ ...d, id: crypto.randomUUID(), created_at: new Date(baseTime + index * 1000).toISOString() }));
+          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map((r, index) => ({ ...r, id: crypto.randomUUID(), created_at: new Date(baseTime + (index + 10) * 1000).toISOString() }));
           finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: crypto.randomUUID() }));
           finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
           finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
@@ -495,7 +499,8 @@ export default function App() {
       valor,
       data,
       categoria,
-      tipoItem
+      tipoItem,
+      created_at: new Date().toISOString()
     };
 
     if (isOnline) {

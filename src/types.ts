@@ -5,6 +5,7 @@ export interface Transaction {
   data: string; // YYYY-MM-DD
   categoria: string;
   tipoItem: 'despesa' | 'receita';
+  created_at?: string;
 }
 
 export interface Category {

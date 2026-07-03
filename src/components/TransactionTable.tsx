@@ -65,6 +65,20 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     setEditingTransaction(null);
   };
 
+  // Helper to extract or fallback chronological insertion sequence
+  const getCreatedTime = (t: Transaction) => {
+    if (t.created_at) {
+      const parsed = new Date(t.created_at).getTime();
+      if (!isNaN(parsed)) return parsed;
+    }
+    // Fallback for default static transactions (e.g. d1, d2)
+    const match = (t.id || '').match(/^[dr](\d+)$/);
+    if (match) {
+      return parseInt(match[1], 10);
+    }
+    return 0;
+  };
+
   // Compute cumulative running balance chronologically across ALL transactions
   const transactionBalances: { [id: string]: number } = {};
   let accumulatedBalance = 0;
@@ -72,6 +86,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     const timeA = new Date(a.data).getTime();
     const timeB = new Date(b.data).getTime();
     if (timeA !== timeB) return timeA - timeB;
+    
+    const createdA = getCreatedTime(a);
+    const createdB = getCreatedTime(b);
+    if (createdA !== createdB) return createdA - createdB;
+
     return (a.id || '').localeCompare(b.id || '');
   });
   chronologicalAll.forEach((item) => {
@@ -97,8 +116,18 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     return true;
   });
 
-  // Sort by date descending
-  ledgerTransactions.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  // Sort by date descending, and then by exact insertion order descending (newest on top)
+  ledgerTransactions.sort((a, b) => {
+    const timeA = new Date(a.data).getTime();
+    const timeB = new Date(b.data).getTime();
+    if (timeA !== timeB) return timeB - timeA;
+
+    const createdA = getCreatedTime(a);
+    const createdB = getCreatedTime(b);
+    if (createdA !== createdB) return createdB - createdA;
+
+    return (b.id || '').localeCompare(a.id || '');
+  });
 
   // Global search filtering (All history)
   let searchedTransactions = [...transactions];
@@ -113,7 +142,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       (t) => t.categoria === filtroCatHistorico
     );
   }
-  searchedTransactions.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
+  
+  // Sort search results by date descending, and then by exact insertion order descending
+  searchedTransactions.sort((a, b) => {
+    const timeA = new Date(a.data).getTime();
+    const timeB = new Date(b.data).getTime();
+    if (timeA !== timeB) return timeB - timeA;
+
+    const createdA = getCreatedTime(a);
+    const createdB = getCreatedTime(b);
+    if (createdA !== createdB) return createdB - createdA;
+
+    return (b.id || '').localeCompare(a.id || '');
+  });
 
   // Calculations of over-expenditures/gargalos in current month
   const despesasMes = currentMonthTransactions.filter((t) => t.tipoItem === 'despesa');
