@@ -5,6 +5,7 @@ import {
 } from 'recharts';
 import { BarChart3 } from 'lucide-react';
 import { Transaction } from '../types';
+import { ExpenseCalendar } from './ExpenseCalendar';
 
 interface FinancialChartsProps {
   transactions: Transaction[];
@@ -405,6 +406,14 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           </div>
         </div>
       </div>
+
+      {/* COMPACT INTERACTIVE PERIOD THERMOMETER */}
+      <ExpenseCalendar
+        transactions={transactions}
+        currentMonth={currentMonth}
+        currentYear={currentYear}
+        periodoFiltro={periodoFiltro}
+      />
     </div>
   );
 };

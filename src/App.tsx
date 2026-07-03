@@ -20,7 +20,6 @@ import { FinancialCharts } from './components/FinancialCharts';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
-import { ExpenseCalendar } from './components/ExpenseCalendar';
 import { AuthScreen } from './components/AuthScreen';
 
 interface Toast {
@@ -1164,13 +1163,6 @@ export default function App() {
                 activeRingColor="ring-2 ring-indigo-500/40 dark:ring-indigo-500/30 border-indigo-400/40 dark:border-indigo-800"
               />
             </section>
-
-            {/* INTERACTIVE MONTHLY EXPENSE CALENDAR (THERMOMETER) */}
-            <ExpenseCalendar
-              transactions={transactions}
-              currentMonth={currentMonth}
-              currentYear={currentYear}
-            />
 
             {/* SUBPANELS RICH EXPANSION container */}
             <div id="container-subpaineis" className="w-full">

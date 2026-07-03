@@ -147,7 +147,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
           .ilike('descricao', `__profile__ | email:${trimmedEmail} |%`);
 
         if (checkError) {
-          throw new Error('Erro ao validar existência da conta no Supabase.');
+          console.error('Supabase check error during signup:', checkError);
+          throw new Error(`Erro ao validar existência da conta no Supabase: ${checkError.message || 'Sem mensagem'} (${checkError.code || ''})`);
         }
 
         if (existing && existing.length > 0) {
@@ -168,8 +169,8 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
           }]);
 
         if (insertError) {
-          console.error(insertError);
-          throw new Error('Falha ao registrar novo perfil no servidor.');
+          console.error('Supabase insert error during signup:', insertError);
+          throw new Error(`Falha ao registrar novo perfil no servidor: ${insertError.message || 'Sem mensagem'} (${insertError.code || ''}). ${insertError.details || ''} ${insertError.hint || ''}`);
         }
 
         setSuccessMsg('Cadastro realizado com sucesso! Inicializando seu cofre...');
