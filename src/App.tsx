@@ -29,6 +29,46 @@ interface Toast {
   type: 'sucesso' | 'info' | 'erro';
 }
 
+function parseTransactionFromDb(item: any, tipoItem: 'despesa' | 'receita'): Transaction {
+  const desc = item.descricao || '';
+  const match = desc.match(/(.*?) \| user:(.*)/);
+  let cleanDesc = match ? match[1].trim() : desc;
+
+  let accountId = 'santander';
+  let faturaMes = undefined;
+  let created_at = undefined;
+
+  const accMatch = cleanDesc.match(/\[acc:(.*?)\]/);
+  if (accMatch) {
+    accountId = accMatch[1];
+    if (['nubank', 'itau', 'carteira', 'geral'].includes(accountId)) {
+      accountId = 'santander';
+    }
+    cleanDesc = cleanDesc.replace(/\[acc:(.*?)\]/, '').trim();
+  }
+
+  const billMatch = cleanDesc.match(/\[bill:(.*?)\]/);
+  if (billMatch) {
+    faturaMes = billMatch[1];
+    cleanDesc = cleanDesc.replace(/\[bill:(.*?)\]/, '').trim();
+  }
+
+  const createdMatch = cleanDesc.match(/\[created:(.*?)\]/);
+  if (createdMatch) {
+    created_at = createdMatch[1];
+    cleanDesc = cleanDesc.replace(/\[created:(.*?)\]/, '').trim();
+  }
+
+  return {
+    ...item,
+    descricao: cleanDesc,
+    tipoItem,
+    accountId,
+    faturaMes,
+    created_at: created_at || item.created_at
+  };
+}
+
 const MONTHS = [
   'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
@@ -257,37 +297,7 @@ export default function App() {
                 }
                 return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
               })
-              .map(d => {
-                const desc = d.descricao || '';
-                const match = desc.match(/(.*?) \| user:(.*)/);
-                let cleanDesc = match ? match[1].trim() : desc;
-
-                let accountId = 'santander';
-                let faturaMes = undefined;
-
-                const accMatch = cleanDesc.match(/\[acc:(.*?)\]/);
-                if (accMatch) {
-                  accountId = accMatch[1];
-                  if (['nubank', 'itau', 'carteira', 'geral'].includes(accountId)) {
-                    accountId = 'santander';
-                  }
-                  cleanDesc = cleanDesc.replace(/\[acc:(.*?)\]/, '').trim();
-                }
-
-                const billMatch = cleanDesc.match(/\[bill:(.*?)\]/);
-                if (billMatch) {
-                  faturaMes = billMatch[1];
-                  cleanDesc = cleanDesc.replace(/\[bill:(.*?)\]/, '').trim();
-                }
-
-                return {
-                  ...d,
-                  descricao: cleanDesc,
-                  tipoItem: 'despesa',
-                  accountId,
-                  faturaMes
-                };
-              });
+              .map(d => parseTransactionFromDb(d, 'despesa'));
           }
 
           // Fetch receitas
@@ -302,37 +312,7 @@ export default function App() {
                 }
                 return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
               })
-              .map(r => {
-                const desc = r.descricao || '';
-                const match = desc.match(/(.*?) \| user:(.*)/);
-                let cleanDesc = match ? match[1].trim() : desc;
-
-                let accountId = 'santander';
-                let faturaMes = undefined;
-
-                const accMatch = cleanDesc.match(/\[acc:(.*?)\]/);
-                if (accMatch) {
-                  accountId = accMatch[1];
-                  if (['nubank', 'itau', 'carteira', 'geral'].includes(accountId)) {
-                    accountId = 'santander';
-                  }
-                  cleanDesc = cleanDesc.replace(/\[acc:(.*?)\]/, '').trim();
-                }
-
-                const billMatch = cleanDesc.match(/\[bill:(.*?)\]/);
-                if (billMatch) {
-                  faturaMes = billMatch[1];
-                  cleanDesc = cleanDesc.replace(/\[bill:(.*?)\]/, '').trim();
-                }
-
-                return {
-                  ...r,
-                  descricao: cleanDesc,
-                  tipoItem: 'receita',
-                  accountId,
-                  faturaMes
-                };
-              });
+              .map(r => parseTransactionFromDb(r, 'receita'));
           }
 
           // Fetch custom categories
@@ -425,22 +405,26 @@ export default function App() {
                 accountId = 'santander-cartao';
                 faturaMes = '2026-07';
               }
-              const descWithAcc = `${rest.descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}`;
+              const seedCreatedAt = new Date(baseTime + index * 1000).toISOString();
+              const descWithAcc = `${rest.descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''} [created:${seedCreatedAt}]`;
               return {
-                ...rest,
                 id: crypto.randomUUID(),
                 descricao: `${descWithAcc} | user:${currentUser.email}`,
-                created_at: new Date(baseTime + index * 1000).toISOString()
+                valor: rest.valor,
+                data: rest.data,
+                categoria: rest.categoria
               };
             });
             const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }, index) => {
               let accountId = 'santander';
-              const descWithAcc = `${rest.descricao} [acc:${accountId}]`;
+              const seedCreatedAt = new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString();
+              const descWithAcc = `${rest.descricao} [acc:${accountId}] [created:${seedCreatedAt}]`;
               return {
-                ...rest,
                 id: crypto.randomUUID(),
                 descricao: `${descWithAcc} | user:${currentUser.email}`,
-                created_at: new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString()
+                valor: rest.valor,
+                data: rest.data,
+                categoria: rest.categoria
               };
             });
             const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
@@ -449,33 +433,8 @@ export default function App() {
               nome: `${p.nome} | user:${currentUser.email}`
             }));
 
-            fetchedDespesas = despesasToSeed.map(d => {
-              const cleanDesc = d.descricao.split(' | user:')[0];
-              const parts = cleanDesc.split(' [acc:');
-              const mainDesc = parts[0];
-              const accPart = parts[1] || '';
-              const accId = accPart.split(']')[0] || 'geral';
-              const billMatch = accPart.match(/\[bill:(.*?)\]/);
-              return {
-                ...d,
-                descricao: mainDesc,
-                tipoItem: 'despesa' as const,
-                accountId: accId,
-                faturaMes: billMatch ? billMatch[1] : undefined
-              };
-            });
-            fetchedReceitas = receitasToSeed.map(r => {
-              const cleanDesc = r.descricao.split(' | user:')[0];
-              const parts = cleanDesc.split(' [acc:');
-              const mainDesc = parts[0];
-              const accId = parts[1]?.split(']')[0] || 'geral';
-              return {
-                ...r,
-                descricao: mainDesc,
-                tipoItem: 'receita' as const,
-                accountId: accId
-              };
-            });
+            fetchedDespesas = despesasToSeed.map(d => parseTransactionFromDb(d, 'despesa'));
+            fetchedReceitas = receitasToSeed.map(r => parseTransactionFromDb(r, 'receita'));
             fetchedProjetos = projetosToSeed.map(p => ({ ...p, nome: p.nome.split(' | user:')[0] }));
             fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
             fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
@@ -653,8 +612,8 @@ export default function App() {
     if (isOnline) {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { tipoItem: _, accountId: _acc, faturaMes: _fat, ...dbTransaction } = newTransaction;
-        const serializedDesc = `${descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}`;
+        const { tipoItem: _, accountId: _acc, faturaMes: _fat, created_at: _cat, ...dbTransaction } = newTransaction;
+        const serializedDesc = `${descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}${newTransaction.created_at ? ` [created:${newTransaction.created_at}]` : ''}`;
         const dbTransactionWithUser = {
           ...dbTransaction,
           descricao: `${serializedDesc} | user:${currentUser!.email}`
