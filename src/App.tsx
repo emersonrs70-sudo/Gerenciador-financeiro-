@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
-  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download
+  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification
@@ -20,6 +20,8 @@ import { FinancialCharts } from './components/FinancialCharts';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
+import { ExpenseCalendar } from './components/ExpenseCalendar';
+import { AuthScreen } from './components/AuthScreen';
 
 interface Toast {
   id: string;
@@ -33,6 +35,11 @@ const MONTHS = [
 ];
 
 export default function App() {
+  // Current logged in user profile
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string } | null>(() => {
+    return getLocal<{ email: string; name: string } | null>('fintech_current_user', null);
+  });
+
   // Calendar Anchored date
   const [dataAncorada, setDataAncorada] = useState<Date>(() => new Date());
 
@@ -186,24 +193,38 @@ export default function App() {
       const connected = await testConnection();
       setIsOnline(connected);
 
+      if (!currentUser) return;
+
       let fetchedDespesas: Transaction[] = [];
       let fetchedReceitas: Transaction[] = [];
       let fetchedProjetos: Project[] = [];
       let fetchedCategoriasDespesa: string[] = [...DEFAULT_CATEGORIES_DESPESA];
       let fetchedCategoriasReceita: string[] = [...DEFAULT_CATEGORIES_RECEITA];
 
-      const cachedCategoriasDespesa = getLocal<string[]>('local_categorias_despesa', DEFAULT_CATEGORIES_DESPESA);
-      const cachedCategoriasReceita = getLocal<string[]>('local_categorias_receita', DEFAULT_CATEGORIES_RECEITA);
+      const cachedCategoriasDespesa = getLocal<string[]>(`local_categorias_despesa_${currentUser.email}`, DEFAULT_CATEGORIES_DESPESA);
+      const cachedCategoriasReceita = getLocal<string[]>(`local_categorias_receita_${currentUser.email}`, DEFAULT_CATEGORIES_RECEITA);
 
       if (connected) {
         try {
           // Fetch despesas first
           const { data: despData } = await supabase.from('fin_despesas').select('*');
-          if (despData) fetchedDespesas = despData.map(d => ({ ...d, tipoItem: 'despesa' }));
+          if (despData) {
+            const userPrefix = `${currentUser.email}:`;
+            fetchedDespesas = despData
+              .filter(d => !d.id.includes('__profile__'))
+              .filter(d => d.id.startsWith(userPrefix) || (!d.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'))
+              .map(d => ({ ...d, tipoItem: 'despesa' }));
+          }
 
           // Fetch receitas
           const { data: recData } = await supabase.from('fin_receitas').select('*');
-          if (recData) fetchedReceitas = recData.map(r => ({ ...r, tipoItem: 'receita' }));
+          if (recData) {
+            const userPrefix = `${currentUser.email}:`;
+            fetchedReceitas = recData
+              .filter(r => !r.id.includes('__profile__'))
+              .filter(r => r.id.startsWith(userPrefix) || (!r.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'))
+              .map(r => ({ ...r, tipoItem: 'receita' }));
+          }
 
           // Fetch custom categories
           const { data: catData } = await supabase.from('fin_categorias').select('nome');
@@ -244,7 +265,11 @@ export default function App() {
 
           // Fetch projects
           const { data: projData } = await supabase.from('fin_projetos').select('*');
-          if (projData) fetchedProjetos = projData;
+          if (projData) {
+            const userPrefix = `${currentUser.email}:`;
+            fetchedProjetos = projData
+              .filter(p => p.id.startsWith(userPrefix) || (!p.id.includes(':') && currentUser.email === 'emersonrs70@gmail.com'));
+          }
 
           showToast('Sincronizado com Supabase com sucesso!', 'sucesso');
         } catch (err) {
@@ -254,11 +279,11 @@ export default function App() {
       }
 
       // If online fetched arrays are empty AND we have no local cache, seed with defaults so the user has an operational starting screen
-      const cachedDespesas = getLocal<Transaction[]>('local_despesas', []);
-      const cachedReceitas = getLocal<Transaction[]>('local_receitas', []);
-      const cachedProjects = getLocal<Project[]>('local_projects', []);
+      const cachedDespesas = getLocal<Transaction[]>(`local_despesas_${currentUser.email}`, []);
+      const cachedReceitas = getLocal<Transaction[]>(`local_receitas_${currentUser.email}`, []);
+      const cachedProjects = getLocal<Project[]>(`local_projects_${currentUser.email}`, []);
 
-      const hasInitialized = localStorage.getItem('fintech_initialized') === 'true';
+      const hasInitialized = localStorage.getItem(`fintech_initialized_${currentUser.email}`) === 'true';
       let finalDespesas: Transaction[] = [];
       let finalReceitas: Transaction[] = [];
       let finalProjects: Project[] = [];
@@ -268,18 +293,18 @@ export default function App() {
       if (!hasInitialized) {
         if (connected) {
           if (fetchedDespesas.length === 0 && fetchedReceitas.length === 0 && fetchedProjetos.length === 0) {
-            // Database is completely empty, let's pre-seed
-            fetchedDespesas = [...DEFAULT_DESPESAS];
-            fetchedReceitas = [...DEFAULT_RECEITAS];
-            fetchedProjetos = [...DEFAULT_PROJETOS];
+            // Database is completely empty for this user, let's pre-seed with unique user-specific IDs
+            fetchedDespesas = [...DEFAULT_DESPESAS].map(d => ({ ...d, id: `${currentUser.email}:${d.id}` }));
+            fetchedReceitas = [...DEFAULT_RECEITAS].map(r => ({ ...r, id: `${currentUser.email}:${r.id}` }));
+            fetchedProjetos = [...DEFAULT_PROJETOS].map(p => ({ ...p, id: `${currentUser.email}:${p.id}` }));
             fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
             fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
 
             // Seed to Supabase background to make sandbox rich natively
             await Promise.all([
-              supabase.from('fin_despesas').insert(DEFAULT_DESPESAS.map(({ tipoItem, ...rest }) => rest)),
-              supabase.from('fin_receitas').insert(DEFAULT_RECEITAS.map(({ tipoItem, ...rest }) => rest)),
-              supabase.from('fin_projetos').insert(DEFAULT_PROJETOS)
+              supabase.from('fin_despesas').insert(fetchedDespesas.map(({ tipoItem, ...rest }) => rest)),
+              supabase.from('fin_receitas').insert(fetchedReceitas.map(({ tipoItem, ...rest }) => rest)),
+              supabase.from('fin_projetos').insert(fetchedProjetos)
             ]).catch(err => console.warn('Supabase initial seed error:', err));
           }
           finalDespesas = fetchedDespesas;
@@ -289,13 +314,13 @@ export default function App() {
           finalCategoriasReceita = fetchedCategoriasReceita;
         } else {
           // Offline and first load, fallback to defaults
-          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS;
-          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS;
-          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS;
+          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map(d => ({ ...d, id: `${currentUser.email}:${d.id}` }));
+          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map(r => ({ ...r, id: `${currentUser.email}:${r.id}` }));
+          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: `${currentUser.email}:${p.id}` }));
           finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
           finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
         }
-        localStorage.setItem('fintech_initialized', 'true');
+        localStorage.setItem(`fintech_initialized_${currentUser.email}`, 'true');
       } else {
         // App is already initialized. We strictly respect the direct state (even if empty lists).
         if (connected) {
@@ -321,15 +346,15 @@ export default function App() {
       setProjects(finalProjects);
 
       // Save to local storage for subsequent offline entries
-      saveLocal('local_despesas', finalTransactions.filter(t => t.tipoItem === 'despesa'));
-      saveLocal('local_receitas', finalTransactions.filter(t => t.tipoItem === 'receita'));
-      saveLocal('local_projects', finalProjects);
-      saveLocal('local_categorias_despesa', finalCategoriasDespesa);
-      saveLocal('local_categorias_receita', finalCategoriasReceita);
+      saveLocal(`local_despesas_${currentUser.email}`, finalTransactions.filter(t => t.tipoItem === 'despesa'));
+      saveLocal(`local_receitas_${currentUser.email}`, finalTransactions.filter(t => t.tipoItem === 'receita'));
+      saveLocal(`local_projects_${currentUser.email}`, finalProjects);
+      saveLocal(`local_categorias_despesa_${currentUser.email}`, finalCategoriasDespesa);
+      saveLocal(`local_categorias_receita_${currentUser.email}`, finalCategoriasReceita);
     }
 
     initData();
-  }, []);
+  }, [currentUser]);
 
   // Theme support toggler
   const toggleTheme = () => {
@@ -391,11 +416,11 @@ export default function App() {
     if (tipoItem === 'despesa') {
       const updated = [...categoriasDespesa, nome];
       setCategoriasDespesa(updated);
-      saveLocal('local_categorias_despesa', updated);
+      saveLocal(`local_categorias_despesa_${currentUser!.email}`, updated);
     } else {
       const updated = [...categoriasReceita, nome];
       setCategoriasReceita(updated);
-      saveLocal('local_categorias_receita', updated);
+      saveLocal(`local_categorias_receita_${currentUser!.email}`, updated);
     }
     showToast(`Categoria "${nome}" adicionada com sucesso!`, 'sucesso');
   };
@@ -409,7 +434,7 @@ export default function App() {
     tipoItem: 'despesa' | 'receita'
   ) => {
     const newTransaction: Transaction = {
-      id: crypto.randomUUID(),
+      id: `${currentUser!.email}:${crypto.randomUUID()}`,
       descricao,
       valor,
       data,
@@ -434,8 +459,8 @@ export default function App() {
     setTransactions(updated);
 
     // Filter and update local caches
-    saveLocal('local_despesas', updated.filter(t => t.tipoItem === 'despesa'));
-    saveLocal('local_receitas', updated.filter(t => t.tipoItem === 'receita'));
+    saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
+    saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
 
     showToast(
       tipoItem === 'despesa'
@@ -464,8 +489,8 @@ export default function App() {
     const updated = transactions.filter((t) => t.id !== id);
     setTransactions(updated);
 
-    saveLocal('local_despesas', updated.filter(t => t.tipoItem === 'despesa'));
-    saveLocal('local_receitas', updated.filter(t => t.tipoItem === 'receita'));
+    saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
+    saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
 
     showToast('Lançamento removido com sucesso!', 'info');
   };
@@ -504,8 +529,8 @@ export default function App() {
     });
     setTransactions(updated);
 
-    saveLocal('local_despesas', updated.filter((t) => t.tipoItem === 'despesa'));
-    saveLocal('local_receitas', updated.filter((t) => t.tipoItem === 'receita'));
+    saveLocal(`local_despesas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'despesa'));
+    saveLocal(`local_receitas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'receita'));
 
     showToast('Lançamento atualizado com sucesso!', 'sucesso');
   };
@@ -513,7 +538,7 @@ export default function App() {
   // Add dream/project planner handler
   const handleAddProject = async (nome: string, valor: number, dataAlvo: string) => {
     const newProj: Project = {
-      id: crypto.randomUUID(),
+      id: `${currentUser!.email}:${crypto.randomUUID()}`,
       nome,
       valor,
       dataAlvo
@@ -530,7 +555,7 @@ export default function App() {
 
     const updated = [...projects, newProj];
     setProjects(updated);
-    saveLocal('local_projects', updated);
+    saveLocal(`local_projects_${currentUser!.email}`, updated);
 
     showToast(`Sonho "${nome}" projetado com sucesso! 🚀`, 'sucesso');
   };
@@ -550,9 +575,21 @@ export default function App() {
 
     const updated = projects.filter((p) => p.id !== id);
     setProjects(updated);
-    saveLocal('local_projects', updated);
+    saveLocal(`local_projects_${currentUser!.email}`, updated);
 
     showToast('Projeto de meta deletado.', 'info');
+  };
+
+  const handleLogout = () => {
+    if (window.confirm('Deseja realmente fechar seu cofre financeiro?')) {
+      setCurrentUser(null);
+      localStorage.removeItem('fintech_current_user');
+      setTransactions([]);
+      setProjects([]);
+      setCategoriasDespesa(DEFAULT_CATEGORIES_DESPESA);
+      setCategoriasReceita(DEFAULT_CATEGORIES_RECEITA);
+      showToast('Cofre FintechCore fechado com sucesso!', 'info');
+    }
   };
 
   // --- STATS ANALYSERS ---
@@ -768,6 +805,10 @@ export default function App() {
     }
   };
 
+  if (!currentUser) {
+    return <AuthScreen onLoginSuccess={(user) => { setCurrentUser(user); saveLocal('fintech_current_user', user); }} isOnline={isOnline} />;
+  }
+
   return (
     <div className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans antialiased transition-all duration-300 pb-20 md:pb-6 relative">
       {/* TOAST SYSTEM ALERTS STREAM */}
@@ -848,6 +889,13 @@ export default function App() {
               >
                 {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
               </button>
+              <button
+                onClick={handleLogout}
+                className="p-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:text-rose-400 rounded-xl cursor-pointer transition-all active:scale-95"
+                title="Sair do Cofre"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+              </button>
             </div>
           </div>
 
@@ -911,6 +959,13 @@ export default function App() {
 
             {/* Desktop Actions Only */}
             <div className="hidden sm:flex items-center gap-3">
+              {currentUser && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/25 rounded-xl text-xs font-black text-purple-600 dark:text-purple-400">
+                  <User className="w-3.5 h-3.5" />
+                  <span>{currentUser.name}</span>
+                </div>
+              )}
+
               {/* FLAME STREAK DIARIO METEORS */}
               <button
                 onClick={() => setIsStreakModalOpen(true)}
@@ -952,6 +1007,15 @@ export default function App() {
                 className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-2xs cursor-pointer text-slate-500 dark:text-slate-400 transition-all font-bold"
               >
                 {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
+              </button>
+
+              {/* LOGOUT BUTTON */}
+              <button
+                onClick={handleLogout}
+                className="p-2.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all hover:shadow-2xs active:scale-95"
+                title="Sair do Cofre"
+              >
+                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1035,6 +1099,13 @@ export default function App() {
               />
             </section>
 
+            {/* INTERACTIVE MONTHLY EXPENSE CALENDAR (THERMOMETER) */}
+            <ExpenseCalendar
+              transactions={transactions}
+              currentMonth={currentMonth}
+              currentYear={currentYear}
+            />
+
             {/* SUBPANELS RICH EXPANSION container */}
             <div id="container-subpaineis" className="w-full">
               <SubPanels
@@ -1087,7 +1158,11 @@ export default function App() {
       </main>
 
       {/* FLOATING ADVISORY AI SERVICES CHATBOT */}
-      <PersonalAIAdvisor transactions={transactions} saldoReal={saldoRealAcumulado} />
+      <PersonalAIAdvisor
+        transactions={transactions}
+        saldoReal={saldoRealAcumulado}
+        onAddTransaction={handleAddTransaction}
+      />
 
       {/* SYSTEM METERS BOTTOM NAVIGATION BAR (Exclusively mobile tab bar) */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-40 flex justify-around py-2.5 md:hidden shadow-lg">
