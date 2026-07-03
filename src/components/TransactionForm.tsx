@@ -67,13 +67,72 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     if (!descricao || !valor || !data) return;
 
     const account = accounts.find(a => a.id === accountId);
-    let faturaMes: string | undefined = undefined;
-    if (account && account.tipo === 'credito') {
-      faturaMes = getBillMonthForDate(data, account.diaFechamento);
-    }
-
     const catToUse = categoria;
-    await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+
+    if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
+      try {
+        const startDate = new Date(data + 'T12:00:00');
+        const [limitYearStr, limitMonthStr] = validadeFixo.split('-');
+        const limitYear = parseInt(limitYearStr, 10);
+        const limitMonth = parseInt(limitMonthStr, 10) - 1; // 0-indexed month
+
+        let currentYear = startDate.getFullYear();
+        let currentMonth = startDate.getMonth();
+        const targetDay = startDate.getDate();
+
+        while (true) {
+          if (currentYear > limitYear || (currentYear === limitYear && currentMonth > limitMonth)) {
+            break;
+          }
+
+          const d = new Date(currentYear, currentMonth, 1);
+          const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+          const dayToUse = Math.min(targetDay, maxDays);
+          
+          const yyyy = currentYear;
+          const mm = String(currentMonth + 1).padStart(2, '0');
+          const dd = String(dayToUse).padStart(2, '0');
+          const dateStr = `${yyyy}-${mm}-${dd}`;
+
+          let faturaMesForDate: string | undefined = undefined;
+          if (account && account.tipo === 'credito') {
+            faturaMesForDate = getBillMonthForDate(dateStr, account.diaFechamento);
+          }
+
+          const formattedMonth = String(currentMonth + 1).padStart(2, '0');
+          const recDescricao = `${descricao} (${formattedMonth}/${currentYear})`;
+
+          await onAddTransaction(
+            recDescricao,
+            parseFloat(valor),
+            dateStr,
+            catToUse,
+            modo,
+            accountId,
+            faturaMesForDate
+          );
+
+          currentMonth++;
+          if (currentMonth > 11) {
+            currentMonth = 0;
+            currentYear++;
+          }
+        }
+      } catch (err) {
+        console.error('Error generating recurring transactions:', err);
+        let faturaMes: string | undefined = undefined;
+        if (account && account.tipo === 'credito') {
+          faturaMes = getBillMonthForDate(data, account.diaFechamento);
+        }
+        await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+      }
+    } else {
+      let faturaMes: string | undefined = undefined;
+      if (account && account.tipo === 'credito') {
+        faturaMes = getBillMonthForDate(data, account.diaFechamento);
+      }
+      await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+    }
 
     // Reset fields
     setDescricao('');

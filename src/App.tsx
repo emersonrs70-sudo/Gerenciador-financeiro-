@@ -668,12 +668,13 @@ export default function App() {
       }
     }
 
-    const updated = [...transactions, newTransaction];
-    setTransactions(updated);
-
-    // Filter and update local caches
-    saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
-    saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
+    setTransactions(prev => {
+      const updated = [...prev, newTransaction];
+      // Filter and update local caches
+      saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
+      saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
+      return updated;
+    });
 
     showToast(
       tipoItem === 'despesa'
