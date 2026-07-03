@@ -5,7 +5,7 @@ import {
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount
 } from './types';
 import {
   supabase, testConnection, DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
@@ -21,6 +21,7 @@ import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { AuthScreen } from './components/AuthScreen';
+import { CreditCardBills } from './components/CreditCardBills';
 
 interface Toast {
   id: string;
@@ -47,6 +48,44 @@ export default function App() {
   const [categoriasDespesa, setCategoriasDespesa] = useState<string[]>(DEFAULT_CATEGORIES_DESPESA);
   const [categoriasReceita, setCategoriasReceita] = useState<string[]>(DEFAULT_CATEGORIES_RECEITA);
   const [projects, setProjects] = useState<Project[]>([]);
+
+  // Bank Accounts state (loaded from cache)
+  const [accounts, setAccounts] = useState<BankAccount[]>(() => {
+    const cached = getLocal<BankAccount[]>('local_bank_accounts', []);
+    if (cached.length === 0 || cached.some(acc => ['nubank', 'itau', 'carteira'].includes(acc.id))) {
+      const defaultAccs: BankAccount[] = [
+        { id: 'santander', nome: 'Santander', tipo: 'corrente', saldoInicial: 800, cor: 'bg-red-600' },
+        { id: 'santander-cartao', nome: 'Santander SX', tipo: 'credito', saldoInicial: 0, cor: 'bg-red-750', limiteCredito: 5000, diaFechamento: 5, diaVencimento: 12 }
+      ];
+      saveLocal('local_bank_accounts', defaultAccs);
+      return defaultAccs;
+    }
+    return cached;
+  });
+
+  const [selectedAccountId, setSelectedAccountId] = useState<string>('consolidado');
+  const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState<boolean>(false);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+
+  const handleDeleteAccount = (id: string) => {
+    if (accounts.length <= 1) {
+      showToast('Você precisa manter pelo menos uma conta ativa!', 'erro');
+      return;
+    }
+    if (window.confirm('Tem certeza que deseja apagar essa conta? Todas as transações vinculadas a ela serão mantidas, mas sem vínculo de conta.')) {
+      const updated = accounts.filter(acc => acc.id !== id);
+      setAccounts(updated);
+      if (selectedAccountId === id) {
+        setSelectedAccountId('consolidado');
+      }
+      showToast('Conta removida com sucesso!', 'sucesso');
+    }
+  };
+
+  useEffect(() => {
+    saveLocal('local_bank_accounts', accounts);
+  }, [accounts]);
 
   // Selection statuses
   const [subpainelAberto, setSubpainelAberto] = useState<SubPainelType>(null);
@@ -221,10 +260,32 @@ export default function App() {
               .map(d => {
                 const desc = d.descricao || '';
                 const match = desc.match(/(.*?) \| user:(.*)/);
+                let cleanDesc = match ? match[1].trim() : desc;
+
+                let accountId = 'santander';
+                let faturaMes = undefined;
+
+                const accMatch = cleanDesc.match(/\[acc:(.*?)\]/);
+                if (accMatch) {
+                  accountId = accMatch[1];
+                  if (['nubank', 'itau', 'carteira', 'geral'].includes(accountId)) {
+                    accountId = 'santander';
+                  }
+                  cleanDesc = cleanDesc.replace(/\[acc:(.*?)\]/, '').trim();
+                }
+
+                const billMatch = cleanDesc.match(/\[bill:(.*?)\]/);
+                if (billMatch) {
+                  faturaMes = billMatch[1];
+                  cleanDesc = cleanDesc.replace(/\[bill:(.*?)\]/, '').trim();
+                }
+
                 return {
                   ...d,
-                  descricao: match ? match[1].trim() : desc,
-                  tipoItem: 'despesa'
+                  descricao: cleanDesc,
+                  tipoItem: 'despesa',
+                  accountId,
+                  faturaMes
                 };
               });
           }
@@ -244,10 +305,32 @@ export default function App() {
               .map(r => {
                 const desc = r.descricao || '';
                 const match = desc.match(/(.*?) \| user:(.*)/);
+                let cleanDesc = match ? match[1].trim() : desc;
+
+                let accountId = 'santander';
+                let faturaMes = undefined;
+
+                const accMatch = cleanDesc.match(/\[acc:(.*?)\]/);
+                if (accMatch) {
+                  accountId = accMatch[1];
+                  if (['nubank', 'itau', 'carteira', 'geral'].includes(accountId)) {
+                    accountId = 'santander';
+                  }
+                  cleanDesc = cleanDesc.replace(/\[acc:(.*?)\]/, '').trim();
+                }
+
+                const billMatch = cleanDesc.match(/\[bill:(.*?)\]/);
+                if (billMatch) {
+                  faturaMes = billMatch[1];
+                  cleanDesc = cleanDesc.replace(/\[bill:(.*?)\]/, '').trim();
+                }
+
                 return {
                   ...r,
-                  descricao: match ? match[1].trim() : desc,
-                  tipoItem: 'receita'
+                  descricao: cleanDesc,
+                  tipoItem: 'receita',
+                  accountId,
+                  faturaMes
                 };
               });
           }
@@ -335,26 +418,64 @@ export default function App() {
           if (fetchedDespesas.length === 0 && fetchedReceitas.length === 0 && fetchedProjetos.length === 0) {
             // Seed to Supabase with proper format
             const baseTime = Date.now();
-            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }, index) => ({
-              ...rest,
-              id: crypto.randomUUID(),
-              descricao: `${rest.descricao} | user:${currentUser.email}`,
-              created_at: new Date(baseTime + index * 1000).toISOString()
-            }));
-            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }, index) => ({
-              ...rest,
-              id: crypto.randomUUID(),
-              descricao: `${rest.descricao} | user:${currentUser.email}`,
-              created_at: new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString()
-            }));
+            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }, index) => {
+              let accountId = 'santander';
+              let faturaMes = undefined;
+              if (index === 2 || index === 3) {
+                accountId = 'santander-cartao';
+                faturaMes = '2026-07';
+              }
+              const descWithAcc = `${rest.descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}`;
+              return {
+                ...rest,
+                id: crypto.randomUUID(),
+                descricao: `${descWithAcc} | user:${currentUser.email}`,
+                created_at: new Date(baseTime + index * 1000).toISOString()
+              };
+            });
+            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }, index) => {
+              let accountId = 'santander';
+              const descWithAcc = `${rest.descricao} [acc:${accountId}]`;
+              return {
+                ...rest,
+                id: crypto.randomUUID(),
+                descricao: `${descWithAcc} | user:${currentUser.email}`,
+                created_at: new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString()
+              };
+            });
             const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
               ...p,
               id: crypto.randomUUID(),
               nome: `${p.nome} | user:${currentUser.email}`
             }));
 
-            fetchedDespesas = despesasToSeed.map(d => ({ ...d, descricao: d.descricao.split(' | user:')[0], tipoItem: 'despesa' as const }));
-            fetchedReceitas = receitasToSeed.map(r => ({ ...r, descricao: r.descricao.split(' | user:')[0], tipoItem: 'receita' as const }));
+            fetchedDespesas = despesasToSeed.map(d => {
+              const cleanDesc = d.descricao.split(' | user:')[0];
+              const parts = cleanDesc.split(' [acc:');
+              const mainDesc = parts[0];
+              const accPart = parts[1] || '';
+              const accId = accPart.split(']')[0] || 'geral';
+              const billMatch = accPart.match(/\[bill:(.*?)\]/);
+              return {
+                ...d,
+                descricao: mainDesc,
+                tipoItem: 'despesa' as const,
+                accountId: accId,
+                faturaMes: billMatch ? billMatch[1] : undefined
+              };
+            });
+            fetchedReceitas = receitasToSeed.map(r => {
+              const cleanDesc = r.descricao.split(' | user:')[0];
+              const parts = cleanDesc.split(' [acc:');
+              const mainDesc = parts[0];
+              const accId = parts[1]?.split(']')[0] || 'geral';
+              return {
+                ...r,
+                descricao: mainDesc,
+                tipoItem: 'receita' as const,
+                accountId: accId
+              };
+            });
             fetchedProjetos = projetosToSeed.map(p => ({ ...p, nome: p.nome.split(' | user:')[0] }));
             fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
             fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
@@ -373,8 +494,30 @@ export default function App() {
         } else {
           // Offline and first load, fallback to defaults with standard random UUIDs
           const baseTime = Date.now();
-          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map((d, index) => ({ ...d, id: crypto.randomUUID(), created_at: new Date(baseTime + index * 1000).toISOString() }));
-          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map((r, index) => ({ ...r, id: crypto.randomUUID(), created_at: new Date(baseTime + (index + 10) * 1000).toISOString() }));
+          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map((d, index) => {
+            let accountId = 'santander';
+            let faturaMes = undefined;
+            if (index === 2 || index === 3) {
+              accountId = 'santander-cartao';
+              faturaMes = '2026-07';
+            }
+            return {
+              ...d,
+              id: crypto.randomUUID(),
+              accountId,
+              faturaMes,
+              created_at: new Date(baseTime + index * 1000).toISOString()
+            };
+          });
+          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map((r, index) => {
+            let accountId = 'santander';
+            return {
+              ...r,
+              id: crypto.randomUUID(),
+              accountId,
+              created_at: new Date(baseTime + (index + 10) * 1000).toISOString()
+            };
+          });
           finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: crypto.randomUUID() }));
           finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
           finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
@@ -490,7 +633,9 @@ export default function App() {
     valor: number,
     data: string,
     categoria: string,
-    tipoItem: 'despesa' | 'receita'
+    tipoItem: 'despesa' | 'receita',
+    accountId: string = 'geral',
+    faturaMes?: string
   ) => {
     const transactionId = crypto.randomUUID();
     const newTransaction: Transaction = {
@@ -500,6 +645,8 @@ export default function App() {
       data,
       categoria,
       tipoItem,
+      accountId,
+      faturaMes,
       created_at: new Date().toISOString()
     };
 
@@ -507,9 +654,10 @@ export default function App() {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
         const { tipoItem: _, ...dbTransaction } = newTransaction;
+        const serializedDesc = `${descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}`;
         const dbTransactionWithUser = {
           ...dbTransaction,
-          descricao: `${descricao} | user:${currentUser!.email}`
+          descricao: `${serializedDesc} | user:${currentUser!.email}`
         };
         const { error } = await supabase.from(table).insert([dbTransactionWithUser]);
         if (error) {
@@ -564,15 +712,19 @@ export default function App() {
   const handleUpdateTransaction = async (
     id: string,
     tipoItem: 'despesa' | 'receita',
-    updatedData: { descricao: string; valor: number; data: string; categoria: string }
+    updatedData: { descricao: string; valor: number; data: string; categoria: string; accountId?: string; faturaMes?: string }
   ) => {
+    const accId = updatedData.accountId || 'geral';
+    const fatStr = updatedData.faturaMes || '';
+    const serializedDesc = `${updatedData.descricao} [acc:${accId}]${fatStr ? ` [bill:${fatStr}]` : ''}`;
+
     if (isOnline) {
       try {
         const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
         const { error } = await supabase
           .from(table)
           .update({
-            descricao: `${updatedData.descricao} | user:${currentUser!.email}`,
+            descricao: `${serializedDesc} | user:${currentUser!.email}`,
             valor: updatedData.valor,
             data: updatedData.data,
             categoria: updatedData.categoria
@@ -667,8 +819,45 @@ export default function App() {
   const currentYear = dataAncorada.getFullYear();
   const currentMonth = dataAncorada.getMonth();
 
+  // --- MULTIBANCO ACCOUNT CALCULATORS ---
+  const getAccountBalances = () => {
+    const balances: { [accId: string]: number } = {};
+    accounts.forEach((acc) => {
+      if (acc.tipo === 'credito') {
+        const cardExpenses = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
+        const cardPayments = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
+        balances[acc.id] = cardExpenses - cardPayments; // spent amount
+      } else {
+        const income = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
+        const expenses = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
+        balances[acc.id] = acc.saldoInicial + income - expenses;
+      }
+    });
+    return balances;
+  };
+
+  const accountBalances = getAccountBalances();
+
+  // Consolidated checking/savings accounts cash
+  const totalCashConsolidated = accounts
+    .filter(acc => acc.tipo !== 'credito')
+    .reduce((sum, acc) => sum + (accountBalances[acc.id] ?? 0), 0);
+
+  // Consolidated credit cards spent
+  const totalCardSpentConsolidated = accounts
+    .filter(acc => acc.tipo === 'credito')
+    .reduce((sum, acc) => sum + (accountBalances[acc.id] ?? 0), 0);
+
+  // Derive metrics depending on selected account tab
+  const activeAccount = accounts.find((a) => a.id === selectedAccountId);
+
+  // Filter the transactions depending on active tab
+  const displayedTransactions = selectedAccountId === 'consolidado'
+    ? transactions
+    : transactions.filter((t) => t.accountId === selectedAccountId);
+
   // Filter list by currently selected month of the year
-  const currentMonthTransactions = transactions.filter((t) => {
+  const currentMonthTransactions = displayedTransactions.filter((t) => {
     if (!t.data) return false;
     const parts = t.data.split('-');
     if (parts.length < 3) return false;
@@ -686,10 +875,15 @@ export default function App() {
   // Expected cash surplus at the end of the month
   const saldoProjetadoFimDoMes = totalReceitasMes - totalDespesasMes;
 
-  // Real Accumulative Total balance across ALL entries in database
-  const saldoRealAcumulado =
-    transactions.filter((t) => t.tipoItem === 'receita').reduce((s, t) => s + t.valor, 0) -
-    transactions.filter((t) => t.tipoItem === 'despesa').reduce((s, t) => s + t.valor, 0);
+  // Real available cash or available credit depending on active account selection
+  let saldoRealAcumulado = totalCashConsolidated;
+  if (selectedAccountId !== 'consolidado' && activeAccount) {
+    if (activeAccount.tipo === 'credito') {
+      saldoRealAcumulado = Math.max((activeAccount.limiteCredito || 0) - (accountBalances[activeAccount.id] ?? 0), 0);
+    } else {
+      saldoRealAcumulado = accountBalances[activeAccount.id] ?? 0;
+    }
+  }
 
   // Active Logging Streak Score
   const computeStreak = () => {
@@ -864,6 +1058,134 @@ export default function App() {
     return `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
+  const renderSidebarContent = () => (
+    <div className="space-y-4">
+      <div className="flex justify-between items-center border-b border-slate-150 dark:border-slate-800 pb-2.5">
+        <div className="flex items-center gap-1.5">
+          <Wallet className="w-4.5 h-4.5 text-purple-600 shrink-0" />
+          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            Contas & Cartões
+          </h3>
+        </div>
+        <button
+          onClick={() => setIsAddAccountModalOpen(true)}
+          className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-2.5 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
+        >
+          + Cadastrar
+        </button>
+      </div>
+
+      <div className="flex flex-col gap-2.5 max-h-[500px] overflow-y-auto pr-1">
+        {/* Consolidated View Button */}
+        <button
+          onClick={() => {
+            setSelectedAccountId('consolidado');
+            setIsMobileSidebarOpen(false);
+          }}
+          className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex justify-between items-center group relative ${
+            selectedAccountId === 'consolidado'
+              ? 'bg-slate-800 dark:bg-slate-100 dark:text-slate-900 text-white border-transparent shadow-md'
+              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-100'
+          }`}
+        >
+          <div className="truncate pr-2">
+            <p className={`text-[8px] font-extrabold uppercase tracking-wider ${selectedAccountId === 'consolidado' ? 'text-white/80 dark:text-slate-600' : 'text-slate-400'}`}>
+              Geral
+            </p>
+            <p className="text-xs font-black truncate mt-0.5">Consolidado</p>
+            <p className="text-[10px] font-semibold mt-1 opacity-90 truncate">
+              Disp: {formatCurrency(totalCashConsolidated)}
+            </p>
+          </div>
+          <div className={`p-1.5 rounded-lg shrink-0 ${selectedAccountId === 'consolidado' ? 'bg-white/10 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+            Σ
+          </div>
+        </button>
+
+        {/* Individual accounts list */}
+        {accounts.map((acc) => {
+          const isSelected = selectedAccountId === acc.id;
+          const isCard = acc.tipo === 'credito';
+          const balance = accountBalances[acc.id] ?? 0;
+          return (
+            <div
+              key={acc.id}
+              className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col gap-2 group relative ${
+                isSelected
+                  ? `${acc.cor} text-white border-transparent shadow-md`
+                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-100'
+              }`}
+            >
+              <div 
+                className="cursor-pointer flex justify-between items-start"
+                onClick={() => {
+                  setSelectedAccountId(acc.id);
+                  setIsMobileSidebarOpen(false);
+                }}
+              >
+                <div className="truncate pr-2 flex-1">
+                  <p className={`text-[8px] font-extrabold uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                    {isCard ? 'Cartão de Crédito' : 'Deb/Corrente'}
+                  </p>
+                  <p className="text-xs font-black truncate mt-0.5">{acc.nome}</p>
+                  <p className="text-[10px] font-semibold mt-1">
+                    {isCard ? 'Fatura: ' : 'Saldo: '}
+                    {formatCurrency(balance)}
+                  </p>
+                  {isCard && acc.limiteCredito && (
+                    <p className={`text-[8px] font-semibold opacity-80 mt-0.5`}>
+                      Disponível: {formatCurrency(Math.max(acc.limiteCredito - balance, 0))}
+                    </p>
+                  )}
+                </div>
+
+                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/15' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                  {isCard ? (
+                    <span className="text-[10px]">💳</span>
+                  ) : (
+                    <span className="text-[10px]">🏦</span>
+                  )}
+                </div>
+              </div>
+
+              {/* Edit and Delete operations */}
+              <div className="flex justify-end gap-1.5 border-t border-dotted border-slate-200/40 pt-1.5 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setEditingAccount(acc);
+                  }}
+                  className={`p-1 rounded-md text-[9px] font-black cursor-pointer flex items-center gap-1 hover:scale-[1.03] active:scale-95 transition-all ${
+                    isSelected 
+                      ? 'bg-white/10 text-white hover:bg-white/20' 
+                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-850 dark:text-slate-300 dark:hover:bg-slate-750'
+                  }`}
+                  title="Editar Conta"
+                >
+                  ⚙️ Editar
+                </button>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleDeleteAccount(acc.id);
+                  }}
+                  className={`p-1 rounded-md text-[9px] font-black cursor-pointer flex items-center gap-1 hover:scale-[1.03] active:scale-95 transition-all ${
+                    isSelected 
+                      ? 'bg-red-500/20 text-red-100 hover:bg-red-500/30' 
+                      : 'bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40'
+                  }`}
+                  title="Excluir Conta"
+                >
+                  🗑️ Excluir
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
   const handleSubPanelToggle = (type: SubPainelType) => {
     setSubpainelAberto((prev) => (prev === type ? null : type));
     // Slide beautifully down to view if activated
@@ -905,13 +1227,20 @@ export default function App() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
           <div className="flex items-center justify-between w-full sm:w-auto">
             <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsMobileSidebarOpen(true)}
+                className="lg:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center"
+                title="Ver Contas e Cartões"
+              >
+                <Wallet className="w-4.5 h-4.5 text-purple-600" />
+              </button>
               <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black text-base shadow-md shadow-purple-500/20 uppercase tracking-tight">
                 F
               </div>
               <div>
                 <h1 className="text-base font-black tracking-tight flex items-center gap-1 text-slate-800 dark:text-white">
                   Fintech<span className="text-purple-600">Core</span>
-                  <span className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-bold uppercase ml-1">
+                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-bold uppercase ml-1">
                     v5.0 – React
                   </span>
                 </h1>
@@ -923,17 +1252,8 @@ export default function App() {
               )}
             </div>
 
-            {/* Streak & Theme Toggle for mobile header */}
+            {/* Streak & Notification for mobile header */}
             <div className="flex items-center gap-2 sm:hidden">
-              {deferredPrompt && (
-                <button
-                  onClick={triggerInstallApp}
-                  className="flex items-center justify-center w-8 h-8 bg-emerald-500 text-white rounded-xl transition-all cursor-pointer shadow-sm active:scale-95 border border-emerald-400/20"
-                  title="Instalar App"
-                >
-                  <Download className="w-4 h-4" />
-                </button>
-              )}
               <NotificationCenter
                 notifications={notifications}
                 onMarkAllRead={handleMarkAllRead}
@@ -944,7 +1264,7 @@ export default function App() {
               />
               <button
                 onClick={() => setIsStreakModalOpen(true)}
-                className={`flex items-center gap-1 px-2 py-1 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer ${
                   streak > 0
                     ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'
                     : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800/80'
@@ -952,19 +1272,6 @@ export default function App() {
               >
                 <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
                 <span>{streak}</span>
-              </button>
-              <button
-                onClick={toggleTheme}
-                className="p-1.5 bg-slate-100 dark:bg-slate-950 hover:bg-slate-200 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 dark:text-slate-400 transition-all"
-              >
-                {isDarkMode ? <Sun className="w-3.5 h-3.5 text-amber-500" /> : <Moon className="w-3.5 h-3.5 text-slate-600" />}
-              </button>
-              <button
-                onClick={handleLogout}
-                className="p-1.5 bg-rose-500/10 border border-rose-500/20 text-rose-500 hover:text-rose-400 rounded-xl cursor-pointer transition-all active:scale-95"
-                title="Sair do Cofre"
-              >
-                <LogOut className="w-3.5 h-3.5" />
               </button>
             </div>
           </div>
@@ -1093,15 +1400,25 @@ export default function App() {
       </header>
 
       {/* CENTER STAGE CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 mt-5 space-y-6">
-        {/* ROW 1: MOBILE ADAPTATIVE SHEETS */}
-        <div className={mobileTabActive === 'dashboard' ? 'block' : 'hidden md:block'}>
-          <div className="space-y-4">
-            {/* NUDGING DAILY FOCUS FEEDBACK */}
-            <NudgeBanner streak={streak} registrouHoje={loggedToday} />
+      <main className="max-w-7xl mx-auto px-4 md:px-6 mt-5">
+        <div className="flex flex-col lg:flex-row gap-6 items-start">
+          
+          {/* DESKTOP SIDEBAR MENU LATERAL */}
+          <aside className="hidden lg:block w-72 flex-shrink-0 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-5 rounded-2xl shadow-2xs self-start sticky top-24 space-y-4">
+            {renderSidebarContent()}
+          </aside>
 
-            {/* PREMIUM METRIC CARDS GRID */}
-            <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+          {/* MAIN STAGE CONTENTS */}
+          <div className="flex-1 w-full space-y-6">
+            
+            {/* ROW 1: MOBILE ADAPTATIVE SHEETS */}
+            <div className={mobileTabActive === 'dashboard' ? 'block' : 'hidden md:block'}>
+              <div className="space-y-4">
+                {/* NUDGING DAILY FOCUS FEEDBACK */}
+                <NudgeBanner streak={streak} registrouHoje={loggedToday} />
+
+                {/* PREMIUM METRIC CARDS GRID */}
+                <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
               <MetricCard
                 id="card-saldo-real"
                 title="Disponível Hoje"
@@ -1169,6 +1486,17 @@ export default function App() {
               />
             </section>
 
+            {/* CREDIT CARD BILLING STATEMENTS EXPANSION */}
+            {activeAccount && activeAccount.tipo === 'credito' && (
+              <CreditCardBills
+                activeAccount={activeAccount}
+                transactions={transactions}
+                checkingAccounts={accounts.filter(a => a.tipo !== 'credito')}
+                onAddTransaction={handleAddTransaction}
+                accountBalances={accountBalances}
+              />
+            )}
+
             {/* SUBPANELS RICH EXPANSION container */}
             <div id="container-subpaineis" className="w-full">
               <SubPanels
@@ -1185,6 +1513,189 @@ export default function App() {
           </div>
         </div>
 
+        {/* ACCOUNT REGISTRATION MODAL */}
+        {isAddAccountModalOpen && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
+                <Wallet className="w-4 h-4 text-purple-600" />
+                Cadastrar Nova Conta / Cartão
+              </h3>
+
+              <form onSubmit={(e) => {
+                e.preventDefault();
+                const target = e.target as HTMLFormElement;
+                const nome = (target.elements.namedItem('nome') as HTMLInputElement).value;
+                const tipo = (target.elements.namedItem('tipo') as HTMLSelectElement).value as any;
+                const saldoInicial = parseFloat((target.elements.namedItem('saldoInicial') as HTMLInputElement).value) || 0;
+                const cor = (target.elements.namedItem('cor') as HTMLSelectElement).value;
+                const limiteCredito = parseFloat((target.elements.namedItem('limiteCredito') as HTMLInputElement)?.value) || 0;
+                const diaFechamento = parseInt((target.elements.namedItem('diaFechamento') as HTMLInputElement)?.value) || 5;
+                const diaVencimento = parseInt((target.elements.namedItem('diaVencimento') as HTMLInputElement)?.value) || 12;
+
+                if (!nome.trim()) return;
+
+                const newAcc: BankAccount = {
+                  id: crypto.randomUUID(),
+                  nome: nome.trim(),
+                  tipo,
+                  saldoInicial: tipo === 'credito' ? 0 : saldoInicial,
+                  cor,
+                  limiteCredito: tipo === 'credito' ? limiteCredito : undefined,
+                  diaFechamento: tipo === 'credito' ? diaFechamento : undefined,
+                  diaVencimento: tipo === 'credito' ? diaVencimento : undefined
+                };
+
+                setAccounts(prev => [...prev, newAcc]);
+                setIsAddAccountModalOpen(false);
+                showToast(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
+              }} className="space-y-3.5">
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Nome da Conta / Cartão
+                  </label>
+                  <input
+                    type="text"
+                    name="nome"
+                    required
+                    placeholder="Ex: Inter, Santander, Caixa..."
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      Tipo de Conta
+                    </label>
+                    <select
+                      name="tipo"
+                      required
+                      onChange={(e) => {
+                        const limitDiv = document.getElementById('credit-card-fields');
+                        const balanceLabel = document.getElementById('initial-balance-label');
+                        const balanceInput = document.getElementById('initial-balance-input') as HTMLInputElement;
+                        if (limitDiv && balanceLabel && balanceInput) {
+                          if (e.target.value === 'credito') {
+                            limitDiv.style.display = 'block';
+                            balanceLabel.style.display = 'none';
+                            balanceInput.style.display = 'none';
+                            balanceInput.required = false;
+                          } else {
+                            limitDiv.style.display = 'none';
+                            balanceLabel.style.display = 'block';
+                            balanceInput.style.display = 'block';
+                            balanceInput.required = true;
+                          }
+                        }
+                      }}
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    >
+                      <option value="corrente">Conta Corrente</option>
+                      <option value="poupanca">Conta Poupança</option>
+                      <option value="carteira">Dinheiro em Carteira</option>
+                      <option value="credito">Cartão de Crédito</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      Cor Visual
+                    </label>
+                    <select
+                      name="cor"
+                      required
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    >
+                      <option value="bg-purple-600">Roxo</option>
+                      <option value="bg-orange-500">Laranja</option>
+                      <option value="bg-red-600">Vermelho</option>
+                      <option value="bg-emerald-600">Verde</option>
+                      <option value="bg-blue-600">Azul</option>
+                      <option value="bg-slate-700">Preto Slate</option>
+                      <option value="bg-pink-600">Rosa</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label id="initial-balance-label" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Saldo Inicial (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="saldoInicial"
+                    id="initial-balance-input"
+                    defaultValue="0"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  />
+                </div>
+
+                {/* CREDIT CARD FIELDS */}
+                <div id="credit-card-fields" style={{ display: 'none' }} className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      Limite de Crédito (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="50"
+                      name="limiteCredito"
+                      placeholder="Ex: 5000"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                        Dia Fechamento
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        name="diaFechamento"
+                        defaultValue="5"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                        Dia Vencimento
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        name="diaVencimento"
+                        defaultValue="12"
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <button
+                    type="button"
+                    onClick={() => setIsAddAccountModalOpen(false)}
+                    className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                  >
+                    Salvar
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
         {/* ROW 2: TRANSACTIONS ADDITION AND LEDGER HISTORIES */}
         <div className={mobileTabActive === 'transacoes' ? 'block' : 'hidden md:block'}>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -1193,6 +1704,8 @@ export default function App() {
               categoriasReceita={categoriasReceita}
               onAddTransaction={handleAddTransaction}
               onAddCategory={handleAddCategory}
+              accounts={accounts}
+              selectedAccountId={selectedAccountId}
             />
             <div className="lg:col-span-2">
               <TransactionTable
@@ -1204,6 +1717,8 @@ export default function App() {
                 categoriasReceita={categoriasReceita}
                 currentMonth={currentMonth}
                 currentYear={currentYear}
+                accounts={accounts}
+                selectedAccountId={selectedAccountId}
               />
             </div>
           </div>
@@ -1216,9 +1731,280 @@ export default function App() {
             categorias={categoriasDespesa}
             currentMonth={currentMonth}
             currentYear={currentYear}
+            selectedAccountId={selectedAccountId}
           />
         </div>
+
+          </div> {/* end of flex-1 w-full space-y-6 */}
+        </div> {/* end of flex flex-col lg:flex-row gap-6 items-start */}
       </main>
+
+      {/* MOBILE DRAWER SIDEBAR */}
+      {isMobileSidebarOpen && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-start animate-in fade-in duration-200">
+          <motion.div
+            initial={{ x: '-100%' }}
+            animate={{ x: 0 }}
+            exit={{ x: '-100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="w-80 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full p-5 shadow-2xl flex flex-col justify-between"
+          >
+            <div className="flex-1 overflow-y-auto pr-1">
+              <div className="flex justify-between items-center mb-4">
+                <span className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                  🏦 Menu de Contas
+                </span>
+                <button
+                  onClick={() => setIsMobileSidebarOpen(false)}
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 active:scale-95 transition-all text-xs font-black"
+                >
+                  X
+                </button>
+              </div>
+              {renderSidebarContent()}
+            </div>
+
+            {/* Mobile Actions and Config Drawer Section */}
+            <div className="space-y-3.5 border-t border-slate-150 dark:border-slate-800 pt-4 mt-auto">
+              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+                Ações & Ajustes
+              </p>
+              
+              {currentUser && (
+                <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/25 rounded-xl text-xs font-black text-purple-600 dark:text-purple-400">
+                  <User className="w-3.5 h-3.5 shrink-0" />
+                  <span className="truncate">{currentUser.name}</span>
+                </div>
+              )}
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Theme Switch */}
+                <button
+                  onClick={toggleTheme}
+                  className="flex items-center justify-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-850 rounded-xl cursor-pointer text-slate-700 dark:text-slate-300 transition-all text-xs font-black active:scale-95"
+                >
+                  {isDarkMode ? (
+                    <>
+                      <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span>Claro</span>
+                    </>
+                  ) : (
+                    <>
+                      <Moon className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                      <span>Escuro</span>
+                    </>
+                  )}
+                </button>
+
+                {/* Sair do Cofre */}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center justify-center gap-1.5 p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all text-xs font-black active:scale-95"
+                  title="Sair do Cofre"
+                >
+                  <LogOut className="w-3.5 h-3.5 shrink-0" />
+                  <span>Sair</span>
+                </button>
+              </div>
+
+              {/* Install PWA Option */}
+              {deferredPrompt && (
+                <button
+                  onClick={triggerInstallApp}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 border border-emerald-400/20"
+                >
+                  <Download className="w-3.5 h-3.5 shrink-0" />
+                  <span>Instalar Aplicativo</span>
+                </button>
+              )}
+
+              <div className="text-[9px] text-slate-400 text-center pt-1.5">
+                Toque fora ou no X para fechar
+              </div>
+            </div>
+          </motion.div>
+          {/* Backdrop click closer */}
+          <div className="flex-1" onClick={() => setIsMobileSidebarOpen(false)} />
+        </div>
+      )}
+
+      {/* ACCOUNT EDITING MODAL */}
+      {editingAccount && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
+              <Wallet className="w-4.5 h-4.5 text-purple-600" />
+              Editar Conta / Cartão
+            </h3>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const target = e.target as HTMLFormElement;
+              const nome = (target.elements.namedItem('nome') as HTMLInputElement).value;
+              const tipo = (target.elements.namedItem('tipo') as HTMLSelectElement).value as any;
+              const saldoInicial = parseFloat((target.elements.namedItem('saldoInicial') as HTMLInputElement)?.value) || 0;
+              const cor = (target.elements.namedItem('cor') as HTMLSelectElement).value;
+              const limiteCredito = parseFloat((target.elements.namedItem('limiteCredito') as HTMLInputElement)?.value) || 0;
+              const diaFechamento = parseInt((target.elements.namedItem('diaFechamento') as HTMLInputElement)?.value) || 5;
+              const diaVencimento = parseInt((target.elements.namedItem('diaVencimento') as HTMLInputElement)?.value) || 12;
+
+              if (!nome.trim()) return;
+
+              const updatedAccounts = accounts.map((acc) => {
+                if (acc.id === editingAccount.id) {
+                  return {
+                    ...acc,
+                    nome: nome.trim(),
+                    tipo,
+                    saldoInicial: tipo === 'credito' ? 0 : saldoInicial,
+                    cor,
+                    limiteCredito: tipo === 'credito' ? limiteCredito : undefined,
+                    diaFechamento: tipo === 'credito' ? diaFechamento : undefined,
+                    diaVencimento: tipo === 'credito' ? diaVencimento : undefined,
+                  };
+                }
+                return acc;
+              });
+
+              setAccounts(updatedAccounts);
+              setEditingAccount(null);
+              showToast(`Conta "${nome}" atualizada com sucesso!`, 'sucesso');
+            }} className="space-y-3.5">
+              <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  Nome da Conta / Cartão
+                </label>
+                <input
+                  type="text"
+                  name="nome"
+                  required
+                  defaultValue={editingAccount.nome}
+                  placeholder="Ex: Inter, Santander, Caixa..."
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Tipo de Conta
+                  </label>
+                  <select
+                    name="tipo"
+                    required
+                    defaultValue={editingAccount.tipo}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  >
+                    <option value="corrente">Conta Corrente</option>
+                    <option value="poupanca">Conta Poupança</option>
+                    <option value="carteira">Dinheiro em Carteira</option>
+                    <option value="credito">Cartão de Crédito</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Cor Visual
+                  </label>
+                  <select
+                    name="cor"
+                    required
+                    defaultValue={editingAccount.cor}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  >
+                    <option value="bg-purple-600">Roxo</option>
+                    <option value="bg-orange-500">Laranja</option>
+                    <option value="bg-red-600">Vermelho</option>
+                    <option value="bg-red-750">Vermelho Escuro</option>
+                    <option value="bg-emerald-600">Verde</option>
+                    <option value="bg-blue-600">Azul</option>
+                    <option value="bg-slate-700">Preto Slate</option>
+                    <option value="bg-pink-600">Rosa</option>
+                  </select>
+                </div>
+              </div>
+
+              {editingAccount.tipo !== 'credito' && (
+                <div>
+                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    Saldo Inicial (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    name="saldoInicial"
+                    defaultValue={editingAccount.saldoInicial}
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  />
+                </div>
+              )}
+
+              {/* CREDIT CARD FIELDS */}
+              {editingAccount.tipo === 'credito' && (
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      Limite de Crédito (R$)
+                    </label>
+                    <input
+                      type="number"
+                      step="50"
+                      name="limiteCredito"
+                      defaultValue={editingAccount.limiteCredito || 5000}
+                      placeholder="Ex: 5000"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                        Dia Fechamento
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        name="diaFechamento"
+                        defaultValue={editingAccount.diaFechamento || 5}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                        Dia Vencimento
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="31"
+                        name="diaVencimento"
+                        defaultValue={editingAccount.diaVencimento || 12}
+                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setEditingAccount(null)}
+                  className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* FLOATING ADVISORY AI SERVICES CHATBOT */}
       <PersonalAIAdvisor

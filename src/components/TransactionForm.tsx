@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { PlusCircle, ListTodo } from 'lucide-react';
-import { Category, Transaction } from '../types';
+import { Category, Transaction, BankAccount, getBillMonthForDate } from '../types';
 
 interface TransactionFormProps {
   categoriasDespesa: string[];
@@ -10,16 +10,22 @@ interface TransactionFormProps {
     valor: number,
     data: string,
     categoria: string,
-    tipoItem: 'despesa' | 'receita'
+    tipoItem: 'despesa' | 'receita',
+    accountId: string,
+    faturaMes?: string
   ) => Promise<void>;
   onAddCategory: (nome: string, tipoItem: 'despesa' | 'receita') => Promise<void>;
+  accounts: BankAccount[];
+  selectedAccountId?: string;
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({
   categoriasDespesa,
   categoriasReceita,
   onAddTransaction,
-  onAddCategory
+  onAddCategory,
+  accounts = [],
+  selectedAccountId
 }) => {
   const [modo, setModo] = useState<'despesa' | 'receita'>('despesa');
   const [descricao, setDescricao] = useState('');
@@ -28,6 +34,17 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     const d = new Date();
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   });
+
+  const [accountId, setAccountId] = useState(() => {
+    if (selectedAccountId && selectedAccountId !== 'consolidado') return selectedAccountId;
+    return accounts[0]?.id || 'geral';
+  });
+
+  React.useEffect(() => {
+    if (selectedAccountId && selectedAccountId !== 'consolidado') {
+      setAccountId(selectedAccountId);
+    }
+  }, [selectedAccountId]);
 
   const activeCategorias = modo === 'despesa' ? categoriasDespesa : categoriasReceita;
   const [categoria, setCategoria] = useState('');
@@ -49,8 +66,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     e.preventDefault();
     if (!descricao || !valor || !data) return;
 
+    const account = accounts.find(a => a.id === accountId);
+    let faturaMes: string | undefined = undefined;
+    if (account && account.tipo === 'credito') {
+      faturaMes = getBillMonthForDate(data, account.diaFechamento);
+    }
+
     const catToUse = categoria;
-    await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo);
+    await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
 
     // Reset fields
     setDescricao('');
@@ -101,6 +124,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
+        <div>
+          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+            Conta Bancária / Cartão
+          </label>
+          <select
+            value={accountId}
+            onChange={(e) => setAccountId(e.target.value)}
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-semibold"
+          >
+            {accounts.map((acc) => (
+              <option key={acc.id} value={acc.id}>
+                {acc.nome} ({acc.tipo === 'credito' ? 'Crédito' : `Saldo: R$ ${acc.saldoInicial.toFixed(0)}`})
+              </option>
+            ))}
+          </select>
+        </div>
+
         <div>
           <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
             Descrição

@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   ListChecks, History, Trash2, Info, AlertTriangle, Search, Filter, Pencil, X
 } from 'lucide-react';
-import { Transaction, ExtratoFilter } from '../types';
+import { Transaction, ExtratoFilter, BankAccount, getBillMonthForDate } from '../types';
 
 interface TransactionTableProps {
   transactions: Transaction[];
@@ -10,13 +10,15 @@ interface TransactionTableProps {
   onUpdateTransaction: (
     id: string,
     tipoItem: 'despesa' | 'receita',
-    updatedData: { descricao: string; valor: number; data: string; categoria: string }
+    updatedData: { descricao: string; valor: number; data: string; categoria: string; accountId?: string }
   ) => Promise<void>;
   categorias: string[];
   categoriasDespesa: string[];
   categoriasReceita: string[];
   currentMonth: number;
   currentYear: number;
+  accounts: BankAccount[];
+  selectedAccountId?: string;
 }
 
 export const TransactionTable: React.FC<TransactionTableProps> = ({
@@ -27,7 +29,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   categoriasDespesa,
   categoriasReceita,
   currentMonth,
-  currentYear
+  currentYear,
+  accounts = [],
+  selectedAccountId = 'consolidado'
 }) => {
   const [filtroExtrato, setFiltroExtrato] = useState<ExtratoFilter>('todos');
 
@@ -41,6 +45,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   const [editValor, setEditValor] = useState<number>(0);
   const [editData, setEditData] = useState('');
   const [editCategoria, setEditCategoria] = useState('');
+  const [editAccountId, setEditAccountId] = useState('geral');
 
   const startEdit = (transaction: Transaction) => {
     setEditingTransaction(transaction);
@@ -48,6 +53,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     setEditValor(transaction.valor);
     setEditData(transaction.data);
     setEditCategoria(transaction.categoria);
+    setEditAccountId(transaction.accountId || 'geral');
   };
 
   const saveEdit = async (e: React.FormEvent) => {
@@ -55,11 +61,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     if (!editingTransaction) return;
     if (!editDescricao.trim() || editValor <= 0 || !editData || !editCategoria) return;
 
+    const account = accounts.find(a => a.id === editAccountId);
+    let faturaMes: string | undefined = undefined;
+    if (account && account.tipo === 'credito') {
+      faturaMes = getBillMonthForDate(editData, account.diaFechamento);
+    }
+
     await onUpdateTransaction(editingTransaction.id, editingTransaction.tipoItem, {
       descricao: editDescricao.trim(),
       valor: editValor,
       data: editData,
-      categoria: editCategoria
+      categoria: editCategoria,
+      accountId: editAccountId,
+      faturaMes
     });
 
     setEditingTransaction(null);
@@ -79,10 +93,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     return 0;
   };
 
-  // Compute cumulative running balance chronologically across ALL transactions
+  // Filter based on selected bank account
+  const filteredByAccount = selectedAccountId && selectedAccountId !== 'consolidado'
+    ? transactions.filter(t => t.accountId === selectedAccountId)
+    : transactions;
+
+  // Compute cumulative running balance chronologically across filtered transactions
   const transactionBalances: { [id: string]: number } = {};
   let accumulatedBalance = 0;
-  const chronologicalAll = [...transactions].sort((a, b) => {
+  const chronologicalAll = [...filteredByAccount].sort((a, b) => {
     const timeA = new Date(a.data).getTime();
     const timeB = new Date(b.data).getTime();
     if (timeA !== timeB) return timeA - timeB;
@@ -100,7 +119,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   });
 
   // Filter current month transactions for period ledger
-  const currentMonthTransactions = transactions.filter((t) => {
+  const currentMonthTransactions = filteredByAccount.filter((t) => {
     if (!t.data) return false;
     const parts = t.data.split('-');
     if (parts.length < 3) return false;
@@ -130,7 +149,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   });
 
   // Global search filtering (All history)
-  let searchedTransactions = [...transactions];
+  let searchedTransactions = [...filteredByAccount];
   if (buscaHistorico.trim()) {
     const term = buscaHistorico.toLowerCase();
     searchedTransactions = searchedTransactions.filter((t) =>
@@ -257,19 +276,30 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
           ) : (
             ledgerTransactions.map((item) => {
               const isDesp = item.tipoItem === 'despesa';
+              const account = accounts.find((a) => a.id === item.accountId);
               return (
                 <div
                   key={item.id}
                   className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-850/60 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
+                    <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
                       <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold whitespace-nowrap">
                         {formatDate(item.data)}
                       </span>
                       <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[8px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider truncate max-w-[100px]">
                         {item.categoria}
                       </span>
+                      {account && (
+                        <span className={`px-1.5 py-0.5 rounded text-[8px] text-white font-extrabold uppercase tracking-wider ${account.cor}`}>
+                          {account.nome}
+                        </span>
+                      )}
+                      {item.faturaMes && (
+                        <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold">
+                          💳 {item.faturaMes}
+                        </span>
+                      )}
                     </div>
                     <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">
                       {item.descricao}
@@ -327,6 +357,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               ) : (
                 ledgerTransactions.map((item) => {
                   const isDesp = item.tipoItem === 'despesa';
+                  const account = accounts.find((a) => a.id === item.accountId);
                   return (
                     <tr
                       key={item.id}
@@ -336,7 +367,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         {formatDate(item.data)}
                       </td>
                       <td className="p-3 font-bold text-slate-700 dark:text-slate-300">
-                        {item.descricao}
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{item.descricao}</span>
+                          {account && (
+                            <span className={`px-1.5 py-0.5 rounded text-[8px] text-white font-extrabold uppercase tracking-wide shrink-0 ${account.cor}`}>
+                              {account.nome}
+                            </span>
+                          )}
+                          {item.faturaMes && (
+                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold border border-slate-205 dark:border-slate-705 shrink-0">
+                              💳 Fatura {item.faturaMes}
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td className="p-3">
                         <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 font-black tracking-wide">
@@ -582,6 +625,23 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
                   />
                 </div>
+              </div>
+
+               <div>
+                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  Conta Bancária / Cartão
+                </label>
+                <select
+                  value={editAccountId}
+                  onChange={(e) => setEditAccountId(e.target.value)}
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium mb-3.5"
+                >
+                  {accounts.map((acc) => (
+                    <option key={acc.id} value={acc.id}>
+                      {acc.nome} ({acc.tipo === 'credito' ? 'Crédito' : 'Saldo'})
+                    </option>
+                  ))}
+                </select>
               </div>
 
               <div>

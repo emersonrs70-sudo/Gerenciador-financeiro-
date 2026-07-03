@@ -12,6 +12,7 @@ interface FinancialChartsProps {
   categorias: string[];
   currentMonth: number;
   currentYear: number;
+  selectedAccountId?: string;
 }
 
 const COLORS = ['#a855f7', '#3b82f6', '#10b981', '#f43f5e', '#f59e0b', '#64748b'];
@@ -20,9 +21,15 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   transactions,
   categorias,
   currentMonth,
-  currentYear
+  currentYear,
+  selectedAccountId = 'consolidado'
 }) => {
   const [periodoFiltro, setPeriodoFiltro] = useState<'7dias' | '15dias' | 'mes' | '3meses' | 'ano'>('mes');
+
+  // Filter based on selected bank account
+  const filteredByAccount = selectedAccountId && selectedAccountId !== 'consolidado'
+    ? transactions.filter(t => t.accountId === selectedAccountId)
+    : transactions;
 
   // Determinar data de referência baseada na navegação de meses do usuário
   const hoje = new Date();
@@ -35,7 +42,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
   // Filtragem unificada de transações de acordo com o período selecionado
   const getFilteredTransactions = () => {
-    return transactions.filter((t) => {
+    return filteredByAccount.filter((t) => {
       if (!t.data) return false;
       const parts = t.data.split('-');
       if (parts.length < 3) return false;
@@ -107,11 +114,11 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       const dStr = String(d.getDate()).padStart(2, '0');
       const dateKey = `${yStr}-${mStr}-${dStr}`;
       
-      const dayDespesas = transactions
+      const dayDespesas = filteredByAccount
         .filter(t => t.tipoItem === 'despesa' && t.data === dateKey)
         .reduce((s, t) => s + t.valor, 0);
         
-      const dayReceitas = transactions
+      const dayReceitas = filteredByAccount
         .filter(t => t.tipoItem === 'receita' && t.data === dateKey)
         .reduce((s, t) => s + t.valor, 0);
         
@@ -131,7 +138,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       const mIdx = targetDate.getMonth();
       const yVal = targetDate.getFullYear();
       
-      const mDespesas = transactions
+      const mDespesas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -139,7 +146,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
         
-      const mReceitas = transactions
+      const mReceitas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -159,7 +166,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   } else if (periodoFiltro === 'ano') {
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     for (let m = 0; m < 12; m++) {
-      const mDespesas = transactions
+      const mDespesas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -167,7 +174,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
         
-      const mReceitas = transactions
+      const mReceitas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -190,7 +197,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     const endDay = isCurrentMonthYear ? hoje.getDate() : daysInMonth;
     
     for (let d = 1; d <= endDay; d++) {
-      const dDespesas = transactions
+      const dDespesas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -198,7 +205,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
         
-      const dReceitas = transactions
+      const dReceitas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
@@ -409,7 +416,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
       {/* COMPACT INTERACTIVE PERIOD THERMOMETER */}
       <ExpenseCalendar
-        transactions={transactions}
+        transactions={filteredByAccount}
         currentMonth={currentMonth}
         currentYear={currentYear}
         periodoFiltro={periodoFiltro}

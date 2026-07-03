@@ -26,16 +26,28 @@ export const MetricCard: React.FC<MetricCardProps> = ({
   isActive,
   onClick,
   id,
-  activeRingColor
 }) => {
+  // Extract base color class (e.g. 'emerald-500') from activeBorderColor
+  const baseColorClass = activeBorderColor.replace('border-l-', '');
+
+  // Define color hex for CSS variable pulse animation
+  let colorVar = '#a855f7';
+  if (baseColorClass.includes('emerald')) colorVar = '#10b981';
+  else if (baseColorClass.includes('red')) colorVar = '#ef4444';
+  else if (baseColorClass.includes('blue')) colorVar = '#3b82f6';
+  else if (baseColorClass.includes('rose')) colorVar = '#f43f5e';
+  else if (baseColorClass.includes('indigo')) colorVar = '#6366f1';
+  else if (baseColorClass.includes('purple')) colorVar = '#a855f7';
+
   return (
     <button
       id={id}
       onClick={onClick}
-      className={`w-full text-left p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs transition-all duration-300 active:scale-98 hover:shadow-md cursor-pointer ${borderColor} ${
+      style={{ '--card-color': colorVar } as React.CSSProperties}
+      className={`w-full text-left p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-xs transition-all duration-300 active:scale-98 hover:shadow-md cursor-pointer relative ${
         isActive
-          ? `${activeRingColor} ${activeBorderColor} transform translate-y-[-2px]`
-          : 'hover:translate-y-[-1px]'
+          ? `border-l-[8px] ${activeBorderColor} transform translate-y-[-2px] shadow-sm`
+          : `border-l-4 ${activeBorderColor} hover:translate-y-[-1px] hover:animate-pulse-border`
       }`}
     >
       <div className="flex justify-between items-start gap-2">

@@ -1,3 +1,29 @@
 @import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
+
+@keyframes borderPulse {
+  0%, 100% {
+    border-left-color: var(--card-color);
+  }
+  50% {
+    border-left-color: #cbd5e1; /* slate-300 (light gray) */
+  }
+}
+
+@keyframes borderPulseDark {
+  0%, 100% {
+    border-left-color: var(--card-color);
+  }
+  50% {
+    border-left-color: #475569; /* slate-600 (dark gray) */
+  }
+}
+
+.hover\:animate-pulse-border:hover {
+  animation: borderPulse 1.4s infinite ease-in-out;
+}
+
+.dark .hover\:animate-pulse-border:hover {
+  animation: borderPulseDark 1.4s infinite ease-in-out;
+}
