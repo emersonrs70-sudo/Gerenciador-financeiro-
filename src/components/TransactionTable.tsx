@@ -100,7 +100,26 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
   // Compute cumulative running balance chronologically across filtered transactions
   const transactionBalances: { [id: string]: number } = {};
+  
+  // Find current active account and if it is card
+  const activeAccountObj = accounts.find(a => a.id === selectedAccountId);
+  const isActiveCard = activeAccountObj && activeAccountObj.tipo === 'credito';
+  
+  // Calculate the proper initial/starting balance
   let accumulatedBalance = 0;
+  if (selectedAccountId === 'consolidado') {
+    // Starting balance of all non-credit accounts
+    accumulatedBalance = accounts
+      .filter(acc => acc.tipo !== 'credito')
+      .reduce((sum, acc) => sum + acc.saldoInicial, 0);
+  } else if (activeAccountObj) {
+    if (isActiveCard) {
+      accumulatedBalance = 0; // Card spent amount starts at 0
+    } else {
+      accumulatedBalance = activeAccountObj.saldoInicial;
+    }
+  }
+
   const chronologicalAll = [...filteredByAccount].sort((a, b) => {
     const timeA = new Date(a.data).getTime();
     const timeB = new Date(b.data).getTime();
@@ -112,10 +131,30 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
 
     return (a.id || '').localeCompare(b.id || '');
   });
+
   chronologicalAll.forEach((item) => {
-    const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
-    accumulatedBalance += value;
-    transactionBalances[item.id] = accumulatedBalance;
+    const itemAccount = accounts.find(a => a.id === item.accountId);
+    const isItemCard = itemAccount && itemAccount.tipo === 'credito';
+
+    if (selectedAccountId === 'consolidado') {
+      // In consolidated view, credit card transactions must NOT influence the cash balance
+      if (!isItemCard) {
+        const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
+        accumulatedBalance += value;
+      }
+      transactionBalances[item.id] = accumulatedBalance;
+    } else {
+      // For specific account view
+      if (isActiveCard) {
+        // Spent amount goes UP with despesa, DOWN with receitas (payments)
+        const value = item.tipoItem === 'despesa' ? item.valor : -item.valor;
+        accumulatedBalance += value;
+      } else {
+        const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
+        accumulatedBalance += value;
+      }
+      transactionBalances[item.id] = accumulatedBalance;
+    }
   });
 
   // Filter current month transactions for period ledger

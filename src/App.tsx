@@ -826,10 +826,19 @@ export default function App() {
     return month === currentMonth && year === currentYear;
   });
 
-  const despesasMes = currentMonthTransactions.filter((t) => t.tipoItem === 'despesa');
+  // For consolidated views, we ignore credit card transactions when computing monthly cash flow metrics (revenues, expenses, and end-of-month projection)
+  const periodTransactionsForCashFlow = currentMonthTransactions.filter((t) => {
+    if (selectedAccountId === 'consolidado') {
+      const acc = accounts.find((a) => a.id === t.accountId);
+      return !acc || acc.tipo !== 'credito';
+    }
+    return true;
+  });
+
+  const despesasMes = periodTransactionsForCashFlow.filter((t) => t.tipoItem === 'despesa');
   const totalDespesasMes = despesasMes.reduce((acc, t) => acc + t.valor, 0);
 
-  const receitasMes = currentMonthTransactions.filter((t) => t.tipoItem === 'receita');
+  const receitasMes = periodTransactionsForCashFlow.filter((t) => t.tipoItem === 'receita');
   const totalReceitasMes = receitasMes.reduce((acc, t) => acc + t.valor, 0);
 
   // Expected cash surplus at the end of the month
