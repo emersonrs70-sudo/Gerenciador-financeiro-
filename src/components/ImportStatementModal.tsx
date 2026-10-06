@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Transaction, BankAccount, safeRandomUUID, getBillMonthForDate } from '../types';
 import {
-  ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement
+  ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement, checkDuplicate
 } from '../lib/statementParser';
 import { extractTextFromPdf, isPdfBuffer } from '../lib/pdfTextExtractor';
 
@@ -111,10 +111,54 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       const fileName = (file.name || '').toLowerCase();
       const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
 
+      // Attempt 1: Server-side parser (avoids mobile browser memory and sandbox restrictions)
+      let serverSuccess = false;
+      try {
+        setProcessingStatus('Enviando para leitor de alta precisão...');
+        let binary = '';
+        const bytes = new Uint8Array(arrayBuffer);
+        const len = bytes.byteLength;
+        for (let i = 0; i < len; i++) {
+          binary += String.fromCharCode(bytes[i]);
+        }
+        const base64 = btoa(binary);
+
+        const res = await fetch('/api/parse-statement', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ base64, filename: file.name })
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
+            const itemsWithDup = data.items.map((it: any) => {
+              const dup = checkDuplicate(it, existingTransactions);
+              return {
+                ...it,
+                isDuplicate: dup.isDuplicate,
+                duplicateReason: dup.reason,
+                selected: !dup.isDuplicate
+              };
+            });
+            setParsedItems(itemsWithDup);
+            setHasParsed(true);
+            serverSuccess = true;
+          }
+        }
+      } catch (srvErr) {
+        console.warn('Server parser fallback to client:', srvErr);
+      }
+
+      if (serverSuccess) {
+        return;
+      }
+
+      // Attempt 2: Client-side local parsing fallback
       if (isPdf) {
-        setProcessingStatus('Extraindo páginas e movimentações do PDF...');
+        setProcessingStatus('Extraindo páginas do PDF no dispositivo...');
         const extractedText = await extractTextFromPdf(arrayBuffer);
-        setProcessingStatus('Analisando transações e cruzando dados...');
+        setProcessingStatus('Analisando transações...');
         processRawText(extractedText, 'pdf');
       } else if (fileName.endsWith('.ofx')) {
         setProcessingStatus('Processando arquivo bancário OFX...');
