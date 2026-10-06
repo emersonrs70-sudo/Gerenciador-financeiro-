@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-  ListChecks, History, Trash2, Info, AlertTriangle, Search, Filter, Pencil, X
+  ListChecks, History, Trash2, Info, AlertTriangle, Search, Filter, Pencil, X, Sparkles
 } from 'lucide-react';
 import { Transaction, ExtratoFilter, BankAccount, getBillMonthForDate } from '../types';
 
@@ -19,6 +19,7 @@ interface TransactionTableProps {
   currentYear: number;
   accounts: BankAccount[];
   selectedAccountId?: string;
+  onOpenImportModal?: () => void;
 }
 
 export const TransactionTable: React.FC<TransactionTableProps> = ({
@@ -31,7 +32,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   currentMonth,
   currentYear,
   accounts = [],
-  selectedAccountId = 'consolidado'
+  selectedAccountId = 'consolidado',
+  onOpenImportModal
 }) => {
   const [filtroExtrato, setFiltroExtrato] = useState<ExtratoFilter>('todos');
 
@@ -250,10 +252,22 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       {/* SECTION 1: EXTRATO DO PERÍODO */}
       <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-150 dark:border-slate-800 pb-3">
-          <h2 className="text-sm font-black flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <ListChecks className="w-4 h-4 text-purple-600" />
-            Extrato do Período
-          </h2>
+          <div className="flex items-center gap-2.5 flex-wrap">
+            <h2 className="text-sm font-black flex items-center gap-2 text-slate-800 dark:text-slate-100">
+              <ListChecks className="w-4 h-4 text-purple-600" />
+              Extrato do Período
+            </h2>
+            {onOpenImportModal && (
+              <button
+                onClick={onOpenImportModal}
+                className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-black bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-xs transition-all cursor-pointer active:scale-95"
+                title="Ler extrato real (PDF Santander, OFX, CSV)"
+              >
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Importar Extrato</span>
+              </button>
+            )}
+          </div>
           <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-[10px] font-black border dark:border-slate-850 w-full sm:w-auto justify-around">
             <button
               onClick={() => setFiltroExtrato('todos')}

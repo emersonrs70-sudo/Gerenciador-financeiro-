@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
-  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User
+  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User, Sparkles
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
@@ -22,6 +22,7 @@ import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { AuthScreen } from './components/AuthScreen';
 import { CreditCardBills } from './components/CreditCardBills';
+import { ImportStatementModal } from './components/ImportStatementModal';
 
 interface Toast {
   id: string;
@@ -105,6 +106,7 @@ export default function App() {
 
   const [selectedAccountId, setSelectedAccountId] = useState<string>('consolidado');
   const [isAddAccountModalOpen, setIsAddAccountModalOpen] = useState<boolean>(false);
+  const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
 
@@ -643,6 +645,89 @@ export default function App() {
     );
   };
 
+  // Batch add transactions from statement import
+  const handleBatchAddTransactions = async (
+    newItems: Array<{
+      descricao: string;
+      valor: number;
+      data: string;
+      categoria: string;
+      tipoItem: 'despesa' | 'receita';
+      accountId: string;
+      faturaMes?: string;
+    }>
+  ) => {
+    if (newItems.length === 0) return;
+
+    const baseTime = Date.now();
+    const createdTransactions: Transaction[] = newItems.map((item, index) => {
+      const transactionId = safeRandomUUID();
+      const createdAt = new Date(baseTime + index * 50).toISOString();
+      return {
+        id: transactionId,
+        descricao: item.descricao,
+        valor: item.valor,
+        data: item.data,
+        categoria: item.categoria,
+        tipoItem: item.tipoItem,
+        accountId: item.accountId || 'santander',
+        faturaMes: item.faturaMes,
+        created_at: createdAt
+      };
+    });
+
+    if (isOnline) {
+      try {
+        const despesasToInsert = createdTransactions
+          .filter(t => t.tipoItem === 'despesa')
+          .map(t => {
+            const serializedDesc = `${t.descricao} [acc:${t.accountId}]${t.faturaMes ? ` [bill:${t.faturaMes}]` : ''} [created:${t.created_at}]`;
+            return {
+              id: t.id,
+              descricao: `${serializedDesc} | user:${currentUser!.email}`,
+              valor: t.valor,
+              data: t.data,
+              categoria: t.categoria
+            };
+          });
+
+        const receitasToInsert = createdTransactions
+          .filter(t => t.tipoItem === 'receita')
+          .map(t => {
+            const serializedDesc = `${t.descricao} [acc:${t.accountId}]${t.faturaMes ? ` [bill:${t.faturaMes}]` : ''} [created:${t.created_at}]`;
+            return {
+              id: t.id,
+              descricao: `${serializedDesc} | user:${currentUser!.email}`,
+              valor: t.valor,
+              data: t.data,
+              categoria: t.categoria
+            };
+          });
+
+        await Promise.all([
+          despesasToInsert.length > 0 ? supabase.from('fin_despesas').insert(despesasToInsert) : Promise.resolve(),
+          receitasToInsert.length > 0 ? supabase.from('fin_receitas').insert(receitasToInsert) : Promise.resolve()
+        ]);
+      } catch (err) {
+        console.warn('Batch insert Supabase error, fallback local:', err);
+      }
+    }
+
+    setTransactions(prev => {
+      const updated = [...prev, ...createdTransactions];
+      saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
+      saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
+      return updated;
+    });
+
+    showToast(`${createdTransactions.length} movimentações do extrato importadas com sucesso! 🎉`, 'sucesso');
+    sendSystemNotification(
+      'Extrato Importado',
+      `Foram lançadas ${createdTransactions.length} movimentações no seu controle financeiro.`,
+      'sucesso'
+    );
+  };
+
   // Delete transaction handler
   const handleDeleteTransaction = async (id: string, tipoItem: 'despesa' | 'receita') => {
     if (!window.confirm('Deseja remover este lançamento permanentemente?')) return;
@@ -1165,6 +1250,18 @@ export default function App() {
           );
         })}
       </div>
+
+      {/* Button to import bank statement */}
+      <button
+        onClick={() => {
+          setIsImportModalOpen(true);
+          setIsMobileSidebarOpen(false);
+        }}
+        className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-700 dark:text-purple-300 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-xs"
+      >
+        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+        <span>Importar Extrato Bancário</span>
+      </button>
     </div>
   );
 
@@ -1701,6 +1798,7 @@ export default function App() {
                 currentYear={currentYear}
                 accounts={accounts}
                 selectedAccountId={selectedAccountId}
+                onOpenImportModal={() => setIsImportModalOpen(true)}
               />
             </div>
           </div>
@@ -2038,6 +2136,18 @@ export default function App() {
         onClose={() => setIsStreakModalOpen(false)}
         streak={streak}
         transactions={transactions}
+      />
+
+      {/* BANK STATEMENT IMPORTER MODAL */}
+      <ImportStatementModal
+        isOpen={isImportModalOpen}
+        onClose={() => setIsImportModalOpen(false)}
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        existingTransactions={transactions}
+        categoriasDespesa={categoriasDespesa}
+        categoriasReceita={categoriasReceita}
+        onImportBatch={handleBatchAddTransactions}
       />
     </div>
   );
