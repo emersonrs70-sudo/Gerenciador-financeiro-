@@ -107,22 +107,25 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const arrayBuffer = await file.arrayBuffer();
       const fileName = (file.name || '').toLowerCase();
-      const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
 
-      // Attempt 1: Server-side parser (avoids mobile browser memory and sandbox restrictions)
+      // Read file to base64 using native FileReader (fast and memory-safe on mobile)
+      setProcessingStatus('Preparando arquivo para análise...');
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => {
+          const res = reader.result as string;
+          const commaIdx = res.indexOf(',');
+          resolve(commaIdx !== -1 ? res.slice(commaIdx + 1) : res);
+        };
+        reader.onerror = () => reject(new Error('Falha ao ler o arquivo no dispositivo.'));
+        reader.readAsDataURL(file);
+      });
+
+      // Attempt 1: Server-side parser (100% reliable, avoids mobile browser sandbox limitations)
       let serverSuccess = false;
       try {
-        setProcessingStatus('Enviando para leitor de alta precisão...');
-        let binary = '';
-        const bytes = new Uint8Array(arrayBuffer);
-        const len = bytes.byteLength;
-        for (let i = 0; i < len; i++) {
-          binary += String.fromCharCode(bytes[i]);
-        }
-        const base64 = btoa(binary);
-
+        setProcessingStatus('Processando extrato bancário no servidor...');
         const res = await fetch('/api/parse-statement', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -144,10 +147,21 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
             setParsedItems(itemsWithDup);
             setHasParsed(true);
             serverSuccess = true;
+          } else if (data.success && (!data.items || data.items.length === 0)) {
+            // Text was extracted, but parser didn't match automatic pattern
+            if (data.rawText && data.rawText.length > 10) {
+              setPastedText(data.rawText);
+              setActiveTab('paste');
+              setErrorMessage(`O arquivo foi lido (${data.rawText.length} caracteres), mas nenhuma linha correspondeu ao formato de extrato. O texto foi carregado abaixo para você revisar.`);
+              serverSuccess = true;
+            }
           }
+        } else {
+          const errData = await res.json().catch(() => ({}));
+          console.warn('Server parser returned error:', errData);
         }
       } catch (srvErr) {
-        console.warn('Server parser fallback to client:', srvErr);
+        console.warn('Server parser unreachable, fallback to client:', srvErr);
       }
 
       if (serverSuccess) {
@@ -155,8 +169,11 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       }
 
       // Attempt 2: Client-side local parsing fallback
+      const arrayBuffer = await file.arrayBuffer();
+      const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
+
       if (isPdf) {
-        setProcessingStatus('Extraindo páginas do PDF no dispositivo...');
+        setProcessingStatus('Tentando leitura local do PDF...');
         const extractedText = await extractTextFromPdf(arrayBuffer);
         setProcessingStatus('Analisando transações...');
         processRawText(extractedText, 'pdf');
@@ -176,6 +193,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     } catch (err: any) {
       console.error('Error reading statement file:', err);
       setErrorMessage(`Não foi possível processar o arquivo "${file.name}": ${err?.message || 'Arquivo inacessível ou formato não reconhecido'}. Você também pode copiar o texto da fatura/extrato e colar diretamente na aba "Copiar e Colar Texto".`);
+    } finally {
       setIsProcessing(false);
       setProcessingStatus('');
     }

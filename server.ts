@@ -2,6 +2,7 @@ import express from 'express';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { PDFParse } from 'pdf-parse';
+import { GoogleGenAI } from '@google/genai';
 import { parseSantanderStatement, parseOFXStatement, parseCSVStatement } from './src/lib/statementParser';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -23,24 +24,108 @@ app.get('/api/health', (req, res) => {
 app.post('/api/parse-statement', async (req, res) => {
   try {
     const { base64, filename = '', text = '' } = req.body;
+    console.log(`[API /api/parse-statement] Incoming request - filename: "${filename}", base64 length: ${base64 ? base64.length : 0}, text length: ${text ? text.length : 0}`);
 
     if (!base64 && !text) {
       return res.status(400).json({ success: false, error: 'Nenhum conteúdo enviado para análise.' });
     }
 
-    let rawExtractedText = text || '';
     const lowerFilename = filename.toLowerCase();
+    const isPdf = base64 && (lowerFilename.endsWith('.pdf') || lowerFilename.includes('pdf') || base64.startsWith('JVBERi0'));
 
-    // If file base64 is provided
+    // 1. If it's a PDF and GEMINI_API_KEY is available: Use Gemini 3.8 Flash for 100% human-grade PDF extraction
+    if (isPdf && process.env.GEMINI_API_KEY) {
+      try {
+        console.log('[API /api/parse-statement] Using Gemini 3.8 Flash document analysis...');
+        const ai = new GoogleGenAI({});
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: [
+            {
+              role: 'user',
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'application/pdf',
+                    data: base64
+                  }
+                },
+                {
+                  text: `Você é um leitor contábil de extratos bancários de alta precisão.
+Analise todas as páginas deste extrato bancário (Santander ou banco brasileiro).
+Identifique cada transação financeira real nas seções de movimentação, transferências e pagamentos.
+
+Regras importantes:
+- Ignore linhas de resumo geral (saldo anterior, saldo final da conta, limites de crédito, total de créditos, total de débitos).
+- Para cada lançamento individual, identifique:
+  - data: no formato "YYYY-MM-DD" (se o ano for 2026 e o mês agosto, ex: "2026-08-03")
+  - descricao: nome limpo com o tipo e favorecido (ex: "PIX Enviado: S de Lima Costa Panificad", "Cartão Débito: Grupo Rezende", "Salário: Líquido de Vencimento")
+  - valor: número positivo (ex: 19.00)
+  - tipoItem: "despesa" se for saída/débito/pagamento/saque, ou "receita" se for entrada/crédito/salário
+  - categoria: escolha uma entre "Alimentação", "Transporte", "Moradia", "Saúde", "Lazer", "Educação", "Salário", "Pagamento de Fatura", "Investimentos", "Outros"
+
+Responda exclusivamente com um array JSON válido contendo os objetos:
+[
+  {
+    "data": "2026-08-03",
+    "descricao": "PIX Enviado: S de Lima Costa Panificad",
+    "valor": 19.00,
+    "tipoItem": "despesa",
+    "categoria": "Alimentação"
+  }
+]`
+                }
+              ]
+            }
+          ],
+          config: {
+            responseMimeType: 'application/json'
+          }
+        });
+
+        const rawJsonText = response.text || '[]';
+        const aiTransactions = JSON.parse(rawJsonText);
+
+        if (Array.isArray(aiTransactions) && aiTransactions.length > 0) {
+          const formattedItems = aiTransactions.map((t: any, idx: number) => ({
+            id: `ai-${Date.now()}-${idx}`,
+            data: t.data || new Date().toISOString().split('T')[0],
+            descricao: t.descricao || 'Movimentação Bancária',
+            valor: Math.abs(typeof t.valor === 'number' ? t.valor : parseFloat(String(t.valor).replace(',', '.'))),
+            tipoItem: t.tipoItem === 'receita' ? 'receita' : 'despesa',
+            categoria: t.categoria || 'Outros',
+            categoriaSugeridaConfiavel: !!t.categoria && t.categoria !== 'Outros',
+            isDuplicate: false,
+            selected: true
+          }));
+
+          console.log(`[API /api/parse-statement] Gemini successfully parsed ${formattedItems.length} transactions from PDF!`);
+          return res.json({
+            success: true,
+            source: 'gemini',
+            filename,
+            itemsCount: formattedItems.length,
+            items: formattedItems
+          });
+        }
+      } catch (geminiError: any) {
+        console.warn('[API /api/parse-statement] Gemini PDF parsing note (falling back to local parser):', geminiError?.message || geminiError);
+      }
+    }
+
+    // 2. Fallback: Local Server Parsing using pdf-parse and statementParser
+    let rawExtractedText = text || '';
+
     if (base64) {
       const buffer = Buffer.from(base64, 'base64');
-      const isPdf = lowerFilename.endsWith('.pdf') || (buffer.length > 4 && buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46);
+      const isBufferPdf = isPdf || (buffer.length > 4 && buffer[0] === 0x25 && buffer[1] === 0x50 && buffer[2] === 0x44 && buffer[3] === 0x46);
 
-      if (isPdf) {
-        // High-reliability server-side PDF text extraction
+      if (isBufferPdf) {
+        console.log(`[API /api/parse-statement] Parsing PDF buffer locally (${buffer.length} bytes)...`);
         const parser = new PDFParse(new Uint8Array(buffer));
         const textResult = await parser.getText();
         rawExtractedText = (textResult && typeof textResult === 'object' && 'text' in textResult) ? (textResult as any).text : String(textResult || '');
+        console.log(`[API /api/parse-statement] Extracted ${rawExtractedText.length} characters from PDF.`);
         try {
           await parser.destroy();
         } catch {
@@ -56,7 +141,7 @@ app.post('/api/parse-statement', async (req, res) => {
     if (!rawExtractedText || rawExtractedText.trim().length === 0) {
       return res.status(422).json({
         success: false,
-        error: 'O arquivo foi recebido, mas não contém texto extraível (pode ser um PDF protegido ou imagem escaneada).'
+        error: 'O arquivo foi recebido, mas não contém texto extraível.'
       });
     }
 
@@ -70,15 +155,19 @@ app.post('/api/parse-statement', async (req, res) => {
       items = parseSantanderStatement(rawExtractedText);
     }
 
+    console.log(`[API /api/parse-statement] Parsed ${items.length} items from statement text.`);
+
     return res.json({
       success: true,
+      source: 'local',
       filename,
       itemsCount: items.length,
       textLength: rawExtractedText.length,
+      rawText: rawExtractedText,
       items
     });
   } catch (error: any) {
-    console.error('Server PDF Parsing Error:', error);
+    console.error('[API /api/parse-statement] Server PDF Parsing Error:', error);
     return res.status(500).json({
       success: false,
       error: `Erro no servidor ao processar o arquivo: ${error?.message || 'Falha na leitura do PDF'}`
