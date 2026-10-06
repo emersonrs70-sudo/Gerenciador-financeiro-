@@ -1114,16 +1114,16 @@ export default function App() {
 
   const renderSidebarContent = () => (
     <div className="space-y-4">
-      <div className="flex justify-between items-center border-b border-slate-150 dark:border-slate-800 pb-2.5">
-        <div className="flex items-center gap-1.5">
-          <Wallet className="w-4.5 h-4.5 text-purple-600 shrink-0" />
-          <h3 className="text-xs font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+      <div className="flex justify-between items-center border-b border-zinc-100 dark:border-[#27272A] pb-3">
+        <div className="flex items-center gap-2">
+          <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
+          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
             Contas & Cartões
           </h3>
         </div>
         <button
           onClick={() => setIsAddAccountModalOpen(true)}
-          className="text-[9px] bg-purple-600 hover:bg-purple-700 text-white font-extrabold px-2.5 py-1.5 rounded-lg transition-all shadow-xs cursor-pointer hover:scale-[1.02]"
+          className="text-[10px] bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95"
         >
           + Cadastrar
         </button>
@@ -1138,20 +1138,20 @@ export default function App() {
           }}
           className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex justify-between items-center group relative ${
             selectedAccountId === 'consolidado'
-              ? 'bg-slate-800 dark:bg-slate-100 dark:text-slate-900 text-white border-transparent shadow-md'
-              : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-100'
+              ? 'bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 text-white border-transparent shadow-xs'
+              : 'bg-zinc-50/70 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-100/70 dark:hover:bg-[#1E1E22] text-zinc-900 dark:text-zinc-100'
           }`}
         >
           <div className="truncate pr-2">
-            <p className={`text-[8px] font-extrabold uppercase tracking-wider ${selectedAccountId === 'consolidado' ? 'text-white/80 dark:text-slate-600' : 'text-slate-400'}`}>
-              Geral
+            <p className={`text-[9px] font-bold uppercase tracking-wider ${selectedAccountId === 'consolidado' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'}`}>
+              Visão Geral
             </p>
-            <p className="text-xs font-black truncate mt-0.5">Consolidado</p>
-            <p className="text-[10px] font-semibold mt-1 opacity-90 truncate">
+            <p className="text-xs font-bold truncate mt-0.5">Consolidado</p>
+            <p className="text-[11px] font-medium font-mono tabular-nums mt-0.5 opacity-90 truncate">
               Disp: {formatCurrency(totalCashConsolidated)}
             </p>
           </div>
-          <div className={`p-1.5 rounded-lg shrink-0 ${selectedAccountId === 'consolidado' ? 'bg-white/10 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
+          <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center font-mono text-xs font-bold ${selectedAccountId === 'consolidado' ? 'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-950' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'}`}>
             Σ
           </div>
         </button>
@@ -1179,8 +1179,8 @@ export default function App() {
               key={acc.id}
               className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col gap-2 group relative ${
                 isSelected
-                  ? `${acc.cor} text-white border-transparent shadow-md`
-                  : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-850 text-slate-800 dark:text-slate-100'
+                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-transparent shadow-xs'
+                  : 'bg-white dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-50/70 dark:hover:bg-[#1E1E22] text-zinc-900 dark:text-zinc-100'
               }`}
             >
               <div 
@@ -1191,22 +1191,25 @@ export default function App() {
                 }}
               >
                 <div className="truncate pr-2 flex-1">
-                  <p className={`text-[8px] font-extrabold uppercase tracking-wider ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
-                    {isCard ? 'Cartão de Crédito' : 'Deb/Corrente'}
-                  </p>
-                  <p className="text-xs font-black truncate mt-0.5">{acc.nome}</p>
-                  <p className="text-[10px] font-semibold mt-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${acc.cor || 'bg-zinc-500'}`} />
+                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      {isCard ? 'Cartão de Crédito' : 'Conta Corrente'}
+                    </p>
+                  </div>
+                  <p className="text-xs font-bold truncate mt-1">{acc.nome}</p>
+                  <p className="text-[11px] font-medium font-mono tabular-nums mt-0.5">
                     {isCard ? 'Fatura: ' : 'Saldo: '}
                     {formatCurrency(isCard ? displayBalance : balance)}
                   </p>
                   {isCard && acc.limiteCredito && (
-                    <p className={`text-[8px] font-semibold opacity-80 mt-0.5`}>
+                    <p className={`text-[9px] font-medium opacity-80 mt-0.5`}>
                       Disponível: {formatCurrency(Math.max(acc.limiteCredito - balance, 0))}
                     </p>
                   )}
                 </div>
 
-                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/15' : 'bg-slate-100 dark:bg-slate-800'}`}>
+                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/10 dark:bg-zinc-900/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
                   {isCard ? (
                     <span className="text-[10px]">💳</span>
                   ) : (
@@ -1216,34 +1219,34 @@ export default function App() {
               </div>
 
               {/* Edit and Delete operations */}
-              <div className="flex justify-end gap-1.5 border-t border-dotted border-slate-200/40 pt-1.5 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
+              <div className="flex justify-end gap-1.5 border-t border-zinc-200/40 dark:border-[#27272A] pt-1.5 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     setEditingAccount(acc);
                   }}
-                  className={`p-1 rounded-md text-[9px] font-black cursor-pointer flex items-center gap-1 hover:scale-[1.03] active:scale-95 transition-all ${
+                  className={`px-2 py-0.5 rounded-md text-[9px] font-semibold cursor-pointer flex items-center gap-1 transition-all ${
                     isSelected 
-                      ? 'bg-white/10 text-white hover:bg-white/20' 
-                      : 'bg-slate-100 hover:bg-slate-200 text-slate-600 dark:bg-slate-850 dark:text-slate-300 dark:hover:bg-slate-750'
+                      ? 'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-950 hover:bg-white/25' 
+                      : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
                   }`}
                   title="Editar Conta"
                 >
-                  ⚙️ Editar
+                  Editar
                 </button>
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
                     handleDeleteAccount(acc.id);
                   }}
-                  className={`p-1 rounded-md text-[9px] font-black cursor-pointer flex items-center gap-1 hover:scale-[1.03] active:scale-95 transition-all ${
+                  className={`px-2 py-0.5 rounded-md text-[9px] font-semibold cursor-pointer flex items-center gap-1 transition-all ${
                     isSelected 
-                      ? 'bg-red-500/20 text-red-100 hover:bg-red-500/30' 
-                      : 'bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40'
+                      ? 'bg-rose-500/20 text-rose-100 dark:text-rose-700 hover:bg-rose-500/30' 
+                      : 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400'
                   }`}
                   title="Excluir Conta"
                 >
-                  🗑️ Excluir
+                  Excluir
                 </button>
               </div>
             </div>
@@ -1257,9 +1260,9 @@ export default function App() {
           setIsImportModalOpen(true);
           setIsMobileSidebarOpen(false);
         }}
-        className="w-full p-2.5 rounded-xl border border-purple-200 dark:border-purple-800/60 bg-gradient-to-r from-purple-500/10 to-indigo-500/10 hover:from-purple-500/20 hover:to-indigo-500/20 text-purple-700 dark:text-purple-300 font-black text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95 shadow-xs"
+        className="w-full p-2.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50 hover:bg-zinc-100 dark:bg-[#141416] dark:hover:bg-[#1E1E22] text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shadow-xs"
       >
-        <Sparkles className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+        <Sparkles className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
         <span>Importar Extrato Bancário</span>
       </button>
     </div>
@@ -1302,33 +1305,32 @@ export default function App() {
       </div>
 
       {/* HEADER BAR */}
-      <header className="w-full bg-white border-b border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-4 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
+      <header className="w-full bg-white/95 border-b border-zinc-200/80 dark:bg-[#121214]/95 dark:border-[#27272A] backdrop-blur-md p-3.5 sticky top-0 z-40 shadow-xs">
+        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
           <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2.5">
               <button
                 onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 hover:scale-[1.02] active:scale-95 transition-all flex items-center justify-center"
+                className="lg:hidden p-2 hover:bg-zinc-100 dark:hover:bg-[#1E1E22] border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-600 dark:text-zinc-300 active:scale-95 transition-all flex items-center justify-center"
                 title="Ver Contas e Cartões"
               >
-                <Wallet className="w-4.5 h-4.5 text-purple-600" />
+                <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
               </button>
-              <div className="w-9 h-9 rounded-xl bg-purple-600 flex items-center justify-center text-white font-black text-base shadow-md shadow-purple-500/20 uppercase tracking-tight">
-                F
+              <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 flex items-center justify-center font-black text-xs shadow-xs tracking-tight">
+                FC
               </div>
               <div>
-                <h1 className="text-base font-black tracking-tight flex items-center gap-1 text-slate-800 dark:text-white">
-                  Fintech<span className="text-purple-600">Core</span>
-                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-400 dark:text-slate-500 rounded-md font-bold uppercase ml-1">
-                    v5.0 – React
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                  Fintech<span className="text-zinc-500 dark:text-zinc-400 font-medium">Core</span>
+                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-md font-semibold tracking-wide ml-1">
+                    PRO
                   </span>
                 </h1>
               </div>
-              {isOnline ? (
-                <span className="inline-block w-2 h-2 rounded-full bg-emerald-500 ml-1.5" title="Supabase Conectado" />
-              ) : (
-                <span className="inline-block w-2 h-2 rounded-full bg-amber-500 ml-1.5" title="Modo Local Ativo" />
-              )}
+              <span
+                className={`inline-block w-2 h-2 rounded-full ml-0.5 ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}
+                title={isOnline ? 'Supabase Conectado' : 'Modo Local Ativo'}
+              />
             </div>
 
             {/* Streak & Notification for mobile header */}
@@ -1343,23 +1345,23 @@ export default function App() {
               />
               <button
                 onClick={() => setIsStreakModalOpen(true)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer ${
+                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer ${
                   streak > 0
-                    ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400'
-                    : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-200 dark:border-slate-800/80'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A]'
                 }`}
               >
-                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
+                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
                 <span>{streak}</span>
               </button>
             </div>
           </div>
 
           <div className="flex flex-col sm:flex-row items-center justify-between w-full sm:w-auto gap-3">
-            <div className="flex items-center gap-1 bg-slate-100 dark:bg-slate-950 p-1 rounded-xl border border-slate-200 dark:border-slate-800 w-full sm:w-auto justify-between sm:justify-start">
+            <div className="flex items-center gap-1 bg-zinc-100/90 dark:bg-[#1A1A1E] p-1 rounded-xl border border-zinc-200/80 dark:border-[#27272A] w-full sm:w-auto justify-between sm:justify-start">
               <button
                 onClick={prevMonth}
-                className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all flex-shrink-0"
+                className="p-1.5 hover:bg-white dark:hover:bg-[#27272A] rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer transition-all flex-shrink-0"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
@@ -1373,16 +1375,16 @@ export default function App() {
                     <button
                       key={m}
                       onClick={() => selectMonth(idx)}
-                      className={`relative px-2 py-1 text-[11px] font-black rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
+                      className={`relative px-2 py-1 text-[11px] font-semibold rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
                         isSelected
-                          ? 'text-white font-extrabold'
-                          : 'text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white'
+                          ? 'text-white dark:text-zinc-950 font-bold'
+                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                       }`}
                     >
                       {isSelected && (
                         <motion.div
                           layoutId="activeMonthIndicator"
-                          className="absolute inset-0 bg-purple-600 rounded-md -z-10 shadow-xs"
+                          className="absolute inset-0 bg-zinc-900 dark:bg-zinc-100 rounded-md -z-10 shadow-xs"
                           transition={{ type: 'spring', stiffness: 380, damping: 30 }}
                         />
                       )}
@@ -1394,30 +1396,30 @@ export default function App() {
 
               <button
                 onClick={nextMonth}
-                className="p-1 hover:bg-white dark:hover:bg-slate-800 rounded-lg text-slate-500 dark:text-slate-400 cursor-pointer hover:shadow-2xs transition-all flex-shrink-0"
+                className="p-1.5 hover:bg-white dark:hover:bg-[#27272A] rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer transition-all flex-shrink-0"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
 
-              <div className="h-4 w-[1px] bg-slate-200 dark:bg-slate-800 mx-1 flex-shrink-0" />
+              <div className="h-4 w-[1px] bg-zinc-200 dark:bg-[#27272A] mx-1 flex-shrink-0" />
 
               <button
                 onClick={resetToToday}
-                className="text-[10px] bg-white dark:bg-slate-800 px-2 py-1.5 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold transition-all hover:shadow-3xs cursor-pointer flex-shrink-0"
+                className="text-[10px] bg-white dark:bg-[#27272A] px-2 py-1 rounded-lg hover:bg-zinc-50 text-zinc-700 dark:text-zinc-300 font-bold transition-all cursor-pointer flex-shrink-0 shadow-xs border border-zinc-200/50 dark:border-transparent"
               >
                 Hoje
               </button>
 
-              <span className="text-[10px] font-black text-purple-600 dark:text-purple-400 px-1.5 flex-shrink-0">
+              <span className="text-[11px] font-bold font-mono text-zinc-700 dark:text-zinc-300 px-1.5 flex-shrink-0">
                 {currentYear}
               </span>
             </div>
 
             {/* Desktop Actions Only */}
-            <div className="hidden sm:flex items-center gap-3">
+            <div className="hidden sm:flex items-center gap-2.5">
               {currentUser && (
-                <div className="flex items-center gap-2 px-3 py-1.5 bg-purple-500/10 border border-purple-500/25 rounded-xl text-xs font-black text-purple-600 dark:text-purple-400">
-                  <User className="w-3.5 h-3.5" />
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-100 dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+                  <User className="w-3.5 h-3.5 text-zinc-500" />
                   <span>{currentUser.name}</span>
                 </div>
               )}
@@ -1426,13 +1428,13 @@ export default function App() {
               <button
                 onClick={() => setIsStreakModalOpen(true)}
                 title="Clique para ver níveis, medalhas e resumo"
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-black border transition-all duration-300 cursor-pointer active:scale-95 ${
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
                   streak > 0
-                    ? 'bg-amber-50/70 border-amber-200 text-amber-600 dark:bg-amber-950/20 dark:border-amber-900/40 dark:text-amber-400 hover:bg-amber-100/80 dark:hover:bg-amber-950/30 hover:border-amber-300 dark:hover:border-amber-800 hover:scale-[1.03] shadow-3xs'
-                    : 'bg-slate-100 dark:bg-slate-950 text-slate-400 dark:text-slate-600 border-slate-250 dark:border-slate-800/80 hover:bg-slate-200/50 dark:hover:bg-slate-800/50 hover:border-slate-300 dark:hover:border-slate-700 shadow-inner'
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15'
+                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-200/70 dark:hover:bg-[#27272A]'
                 }`}
               >
-                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500 animate-pulse' : ''}`} />
+                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
                 <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
               </button>
 
@@ -1440,7 +1442,7 @@ export default function App() {
               {deferredPrompt && (
                 <button
                   onClick={triggerInstallApp}
-                  className="flex items-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-sm hover:scale-[1.02] active:scale-95 border border-emerald-400/20"
+                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
                   title="Instalar FintechCore como aplicativo"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -1460,15 +1462,16 @@ export default function App() {
               {/* LIGHT/DARK MODE TOGGLE */}
               <button
                 onClick={toggleTheme}
-                className="p-2.5 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl hover:shadow-2xs cursor-pointer text-slate-500 dark:text-slate-400 transition-all font-bold"
+                className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#1A1A1E] dark:hover:bg-[#27272A] border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-600 dark:text-zinc-300 transition-colors"
+                title="Alternar tema"
               >
-                {isDarkMode ? <Sun className="w-4 h-4 text-amber-500" /> : <Moon className="w-4 h-4 text-slate-600" />}
+                {isDarkMode ? <Sun className="w-4 h-4 text-zinc-200" /> : <Moon className="w-4 h-4 text-zinc-700" />}
               </button>
 
               {/* LOGOUT BUTTON */}
               <button
                 onClick={handleLogout}
-                className="p-2.5 bg-rose-500/10 border border-rose-500/20 hover:bg-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all hover:shadow-2xs active:scale-95"
+                className="p-2 bg-zinc-100 hover:bg-rose-50 text-zinc-500 hover:text-rose-600 dark:bg-[#1A1A1E] dark:hover:bg-rose-950/30 dark:text-zinc-400 dark:hover:text-rose-400 border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer transition-colors"
                 title="Sair do Cofre"
               >
                 <LogOut className="w-4 h-4" />
@@ -1483,7 +1486,7 @@ export default function App() {
         <div className="flex flex-col lg:flex-row gap-6 items-start">
           
           {/* DESKTOP SIDEBAR MENU LATERAL */}
-          <aside className="hidden lg:block w-72 flex-shrink-0 bg-white border border-slate-200 dark:bg-slate-900 dark:border-slate-800 p-5 rounded-2xl shadow-2xs self-start sticky top-24 space-y-4">
+          <aside className="hidden lg:block w-72 flex-shrink-0 bg-white border border-zinc-200/80 dark:bg-[#1A1A1E] dark:border-[#27272A] p-5 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.03)] self-start sticky top-24 space-y-4">
             {renderSidebarContent()}
           </aside>
 
@@ -1498,72 +1501,66 @@ export default function App() {
 
                 {/* PREMIUM METRIC CARDS GRID */}
                 <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-              <MetricCard
-                id="card-saldo-real"
-                title="Disponível Hoje"
-                value={formatCurrency(saldoRealAcumulado)}
-                subValue="Clique para o limite diário"
-                icon={Wallet}
-                borderColor="border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-emerald-500"
-                activeBorderColor="border-l-emerald-500"
-                iconColor="text-emerald-500"
-                isActive={subpainelAberto === 'saldo-real'}
-                onClick={() => handleSubPanelToggle('saldo-real')}
-                activeRingColor="ring-2 ring-emerald-500/40 dark:ring-emerald-500/30 border-emerald-400/40 dark:border-emerald-800"
-              />
-              <MetricCard
-                id="card-saldo"
-                title="Projeção Fim do Mês"
-                value={formatCurrency(saldoProjetadoFimDoMes)}
-                subValue="Clique para regramento"
-                icon={TrendingUp}
-                borderColor={saldoProjetadoFimDoMes < 0 ? 'border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-red-500' : 'border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-purple-500'}
-                activeBorderColor={saldoProjetadoFimDoMes < 0 ? 'border-l-red-500' : 'border-l-purple-500'}
-                iconColor="text-purple-500"
-                isActive={subpainelAberto === 'saldo'}
-                onClick={() => handleSubPanelToggle('saldo')}
-                activeRingColor={saldoProjetadoFimDoMes < 0 ? 'ring-2 ring-red-500/40 dark:ring-red-500/30 border-red-400/40 dark:border-red-800' : 'ring-2 ring-purple-500/40 dark:ring-purple-500/30 border-purple-400/40 dark:border-purple-800'}
-              />
-              <MetricCard
-                id="card-receitas"
-                title="Receitas do Período"
-                value={`+ R$ ${totalReceitasMes.toFixed(2)}`}
-                subValue="Clique para investir"
-                icon={ArrowUpCircle}
-                borderColor="border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-blue-500"
-                activeBorderColor="border-l-blue-500"
-                iconColor="text-blue-500"
-                isActive={subpainelAberto === 'receitas'}
-                onClick={() => handleSubPanelToggle('receitas')}
-                activeRingColor="ring-2 ring-blue-500/40 dark:ring-blue-500/30 border-blue-400/40 dark:border-blue-800"
-              />
-              <MetricCard
-                id="card-despesas"
-                title="Despesas do Período"
-                value={`- R$ ${totalDespesasMes.toFixed(2)}`}
-                subValue="Clique para simular cortes"
-                icon={ArrowDownCircle}
-                borderColor="border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-rose-500"
-                activeBorderColor="border-l-rose-500"
-                iconColor="text-rose-500"
-                isActive={subpainelAberto === 'despesas'}
-                onClick={() => handleSubPanelToggle('despesas')}
-                activeRingColor="ring-2 ring-rose-500/40 dark:ring-rose-500/30 border-rose-400/40 dark:border-rose-800"
-              />
-              <MetricCard
-                id="card-metas"
-                title="Consolidação Metas"
-                value={`${dreamsProgressRatio.toFixed(0)}%`}
-                subValue="Planejador de Sonhos"
-                icon={Rocket}
-                borderColor="border-l-[4.5px] border-l-slate-200 dark:border-l-slate-800 hover:border-l-indigo-500"
-                activeBorderColor="border-l-indigo-500"
-                iconColor="text-indigo-500"
-                isActive={subpainelAberto === 'metas'}
-                onClick={() => handleSubPanelToggle('metas')}
-                activeRingColor="ring-2 ring-indigo-500/40 dark:ring-indigo-500/30 border-indigo-400/40 dark:border-indigo-800"
-              />
-            </section>
+                  <MetricCard
+                    id="card-saldo-real"
+                    title="Disponível Hoje"
+                    value={formatCurrency(saldoRealAcumulado)}
+                    subValue="Limite diário de gastos"
+                    icon={Wallet}
+                    isActive={subpainelAberto === 'saldo-real'}
+                    onClick={() => handleSubPanelToggle('saldo-real')}
+                    sparklineType="wave"
+                    trend={{ value: 'Em conta', neutral: true }}
+                  />
+                  <MetricCard
+                    id="card-saldo"
+                    title="Projeção Mês"
+                    value={formatCurrency(saldoProjetadoFimDoMes)}
+                    subValue="Regra orçamentária 50-30-20"
+                    icon={TrendingUp}
+                    isActive={subpainelAberto === 'saldo'}
+                    onClick={() => handleSubPanelToggle('saldo')}
+                    sparklineType={saldoProjetadoFimDoMes >= 0 ? 'up' : 'down'}
+                    trend={{
+                      value: saldoProjetadoFimDoMes >= 0 ? 'Positivo' : 'Negativo',
+                      isPositive: saldoProjetadoFimDoMes >= 0
+                    }}
+                  />
+                  <MetricCard
+                    id="card-receitas"
+                    title="Receitas"
+                    value={`+ ${formatCurrency(totalReceitasMes)}`}
+                    subValue="Entradas do período"
+                    icon={ArrowUpCircle}
+                    isActive={subpainelAberto === 'receitas'}
+                    onClick={() => handleSubPanelToggle('receitas')}
+                    sparklineType="up"
+                    trend={{ value: 'Entradas', isPositive: true }}
+                  />
+                  <MetricCard
+                    id="card-despesas"
+                    title="Despesas"
+                    value={`- ${formatCurrency(totalDespesasMes)}`}
+                    subValue="Saídas do período"
+                    icon={ArrowDownCircle}
+                    isActive={subpainelAberto === 'despesas'}
+                    onClick={() => handleSubPanelToggle('despesas')}
+                    sparklineType="down"
+                    trend={{ value: 'Saídas', isPositive: false }}
+                  />
+                  <MetricCard
+                    id="card-metas"
+                    title="Metas de Sonhos"
+                    value={`${dreamsProgressRatio.toFixed(0)}%`}
+                    subValue="Progresso acumulado"
+                    icon={Rocket}
+                    isActive={subpainelAberto === 'metas'}
+                    onClick={() => handleSubPanelToggle('metas')}
+                    sparklineType="progress"
+                    progressPercent={dreamsProgressRatio}
+                    trend={{ value: `${projects.length} ativas`, neutral: true }}
+                  />
+                </section>
 
             {/* CREDIT CARD BILLING STATEMENTS EXPANSION */}
             {activeAccount && activeAccount.tipo === 'credito' && (
@@ -1594,10 +1591,10 @@ export default function App() {
 
         {/* ACCOUNT REGISTRATION MODAL */}
         {isAddAccountModalOpen && (
-          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
-                <Wallet className="w-4 h-4 text-purple-600" />
+          <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+            <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-3">
+                <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
                 Cadastrar Nova Conta / Cartão
               </h3>
 
@@ -1630,21 +1627,21 @@ export default function App() {
                 showToast(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
               }} className="space-y-3.5">
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Nome da Conta / Cartão
                   </label>
                   <input
                     type="text"
                     name="nome"
                     required
-                    placeholder="Ex: Inter, Santander, Caixa..."
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    placeholder="Ex: Inter, Santander, Itaú..."
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                       Tipo de Conta
                     </label>
                     <select
@@ -1668,7 +1665,7 @@ export default function App() {
                           }
                         }
                       }}
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                     >
                       <option value="corrente">Conta Corrente</option>
                       <option value="poupanca">Conta Poupança</option>
@@ -1678,27 +1675,26 @@ export default function App() {
                   </div>
 
                   <div>
-                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                       Cor Visual
                     </label>
                     <select
                       name="cor"
                       required
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                     >
-                      <option value="bg-purple-600">Roxo</option>
-                      <option value="bg-orange-500">Laranja</option>
-                      <option value="bg-red-600">Vermelho</option>
-                      <option value="bg-emerald-600">Verde</option>
-                      <option value="bg-blue-600">Azul</option>
-                      <option value="bg-slate-700">Preto Slate</option>
-                      <option value="bg-pink-600">Rosa</option>
+                      <option value="bg-zinc-700">Preto Grafite</option>
+                      <option value="bg-red-600">Vermelho Santander</option>
+                      <option value="bg-emerald-600">Verde Esmeralda</option>
+                      <option value="bg-blue-600">Azul Royal</option>
+                      <option value="bg-orange-500">Laranja Inter</option>
+                      <option value="bg-purple-600">Roxo Nubank</option>
                     </select>
                   </div>
                 </div>
 
                 <div>
-                  <label id="initial-balance-label" className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label id="initial-balance-label" className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Saldo Inicial (R$)
                   </label>
                   <input
@@ -1707,14 +1703,14 @@ export default function App() {
                     name="saldoInicial"
                     id="initial-balance-input"
                     defaultValue="0"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
                   />
                 </div>
 
                 {/* CREDIT CARD FIELDS */}
                 <div id="credit-card-fields" style={{ display: 'none' }} className="space-y-3">
                   <div>
-                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                       Limite de Crédito (R$)
                     </label>
                     <input
@@ -1722,12 +1718,12 @@ export default function App() {
                       step="50"
                       name="limiteCredito"
                       placeholder="Ex: 5000"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                         Dia Fechamento
                       </label>
                       <input
@@ -1736,11 +1732,11 @@ export default function App() {
                         max="31"
                         name="diaFechamento"
                         defaultValue="5"
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                         Dia Vencimento
                       </label>
                       <input
@@ -1749,23 +1745,23 @@ export default function App() {
                         max="31"
                         name="diaVencimento"
                         defaultValue="12"
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                       />
                     </div>
                   </div>
                 </div>
 
-                <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
                   <button
                     type="button"
                     onClick={() => setIsAddAccountModalOpen(false)}
-                    className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                    className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#323238] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                   >
                     Cancelar
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                    className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
                   >
                     Salvar
                   </button>
@@ -1821,22 +1817,22 @@ export default function App() {
 
       {/* MOBILE DRAWER SIDEBAR */}
       {isMobileSidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex justify-start animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs z-50 flex justify-start animate-in fade-in duration-200">
           <motion.div
             initial={{ x: '-100%' }}
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-80 max-w-[85vw] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 h-full p-5 shadow-2xl flex flex-col justify-between"
+            className="w-80 max-w-[85vw] bg-white dark:bg-[#1A1A1E] border-r border-zinc-200 dark:border-[#27272A] h-full p-5 shadow-2xl flex flex-col justify-between"
           >
             <div className="flex-1 overflow-y-auto pr-1">
               <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5">
+                <span className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
                   🏦 Menu de Contas
                 </span>
                 <button
                   onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-800 rounded-xl cursor-pointer text-slate-500 active:scale-95 transition-all text-xs font-black"
+                  className="p-1.5 hover:bg-zinc-100 dark:hover:bg-[#27272A] border border-zinc-200 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-500 active:scale-95 transition-all text-xs font-bold"
                 >
                   X
                 </button>
@@ -1845,14 +1841,14 @@ export default function App() {
             </div>
 
             {/* Mobile Actions and Config Drawer Section */}
-            <div className="space-y-3.5 border-t border-slate-150 dark:border-slate-800 pt-4 mt-auto">
-              <p className="text-[10px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-500">
+            <div className="space-y-3.5 border-t border-zinc-100 dark:border-[#27272A] pt-4 mt-auto">
+              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
                 Ações & Ajustes
               </p>
               
               {currentUser && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-purple-500/10 border border-purple-500/25 rounded-xl text-xs font-black text-purple-600 dark:text-purple-400">
-                  <User className="w-3.5 h-3.5 shrink-0" />
+                <div className="flex items-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-[#27272A] border border-zinc-200/80 dark:border-[#323238] rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200">
+                  <User className="w-3.5 h-3.5 shrink-0 text-zinc-500" />
                   <span className="truncate">{currentUser.name}</span>
                 </div>
               )}
@@ -1861,16 +1857,16 @@ export default function App() {
                 {/* Theme Switch */}
                 <button
                   onClick={toggleTheme}
-                  className="flex items-center justify-center gap-1.5 p-2 bg-slate-50 dark:bg-slate-850 hover:bg-slate-100 dark:hover:bg-slate-800 border border-slate-200 dark:border-slate-850 rounded-xl cursor-pointer text-slate-700 dark:text-slate-300 transition-all text-xs font-black active:scale-95"
+                  className="flex items-center justify-center gap-1.5 p-2 bg-zinc-50 dark:bg-[#27272A] hover:bg-zinc-100 dark:hover:bg-[#323238] border border-zinc-200 dark:border-[#323238] rounded-xl cursor-pointer text-zinc-700 dark:text-zinc-300 transition-all text-xs font-bold active:scale-95"
                 >
                   {isDarkMode ? (
                     <>
-                      <Sun className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <Sun className="w-3.5 h-3.5 text-zinc-200 shrink-0" />
                       <span>Claro</span>
                     </>
                   ) : (
                     <>
-                      <Moon className="w-3.5 h-3.5 text-slate-600 shrink-0" />
+                      <Moon className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
                       <span>Escuro</span>
                     </>
                   )}
@@ -1879,7 +1875,7 @@ export default function App() {
                 {/* Sair do Cofre */}
                 <button
                   onClick={handleLogout}
-                  className="flex items-center justify-center gap-1.5 p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all text-xs font-black active:scale-95"
+                  className="flex items-center justify-center gap-1.5 p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all text-xs font-bold active:scale-95"
                   title="Sair do Cofre"
                 >
                   <LogOut className="w-3.5 h-3.5 shrink-0" />
@@ -1891,14 +1887,14 @@ export default function App() {
               {deferredPrompt && (
                 <button
                   onClick={triggerInstallApp}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer shadow-xs active:scale-95 border border-emerald-400/20"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 border border-zinc-700/20"
                 >
                   <Download className="w-3.5 h-3.5 shrink-0" />
                   <span>Instalar Aplicativo</span>
                 </button>
               )}
 
-              <div className="text-[9px] text-slate-400 text-center pt-1.5">
+              <div className="text-[9px] text-zinc-400 text-center pt-1.5">
                 Toque fora ou no X para fechar
               </div>
             </div>
@@ -1910,10 +1906,10 @@ export default function App() {
 
       {/* ACCOUNT EDITING MODAL */}
       {editingAccount && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2">
-              <Wallet className="w-4.5 h-4.5 text-purple-600" />
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-3">
+              <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
               Editar Conta / Cartão
             </h3>
 
@@ -1951,7 +1947,7 @@ export default function App() {
               showToast(`Conta "${nome}" atualizada com sucesso!`, 'sucesso');
             }} className="space-y-3.5">
               <div>
-                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                   Nome da Conta / Cartão
                 </label>
                 <input
@@ -1959,21 +1955,21 @@ export default function App() {
                   name="nome"
                   required
                   defaultValue={editingAccount.nome}
-                  placeholder="Ex: Inter, Santander, Caixa..."
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                  placeholder="Ex: Inter, Santander, Itaú..."
+                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Tipo de Conta
                   </label>
                   <select
                     name="tipo"
                     required
                     defaultValue={editingAccount.tipo}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                   >
                     <option value="corrente">Conta Corrente</option>
                     <option value="poupanca">Conta Poupança</option>
@@ -1983,30 +1979,28 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Cor Visual
                   </label>
                   <select
                     name="cor"
                     required
                     defaultValue={editingAccount.cor}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                   >
-                    <option value="bg-purple-600">Roxo</option>
-                    <option value="bg-orange-500">Laranja</option>
-                    <option value="bg-red-600">Vermelho</option>
-                    <option value="bg-red-750">Vermelho Escuro</option>
-                    <option value="bg-emerald-600">Verde</option>
-                    <option value="bg-blue-600">Azul</option>
-                    <option value="bg-slate-700">Preto Slate</option>
-                    <option value="bg-pink-600">Rosa</option>
+                    <option value="bg-zinc-700">Preto Grafite</option>
+                    <option value="bg-red-600">Vermelho Santander</option>
+                    <option value="bg-emerald-600">Verde Esmeralda</option>
+                    <option value="bg-blue-600">Azul Royal</option>
+                    <option value="bg-orange-500">Laranja Inter</option>
+                    <option value="bg-purple-600">Roxo Nubank</option>
                   </select>
                 </div>
               </div>
 
               {editingAccount.tipo !== 'credito' && (
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Saldo Inicial (R$)
                   </label>
                   <input
@@ -2014,7 +2008,7 @@ export default function App() {
                     step="0.01"
                     name="saldoInicial"
                     defaultValue={editingAccount.saldoInicial}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
                   />
                 </div>
               )}
@@ -2023,7 +2017,7 @@ export default function App() {
               {editingAccount.tipo === 'credito' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                       Limite de Crédito (R$)
                     </label>
                     <input
@@ -2032,12 +2026,12 @@ export default function App() {
                       name="limiteCredito"
                       defaultValue={editingAccount.limiteCredito || 5000}
                       placeholder="Ex: 5000"
-                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                         Dia Fechamento
                       </label>
                       <input
@@ -2046,11 +2040,11 @@ export default function App() {
                         max="31"
                         name="diaFechamento"
                         defaultValue={editingAccount.diaFechamento || 5}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                         Dia Vencimento
                       </label>
                       <input
@@ -2059,24 +2053,24 @@ export default function App() {
                         max="31"
                         name="diaVencimento"
                         defaultValue={editingAccount.diaVencimento || 12}
-                        className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-semibold"
+                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
                 <button
                   type="button"
                   onClick={() => setEditingAccount(null)}
-                  className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#323238] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                  className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
                 >
                   Salvar
                 </button>
@@ -2094,38 +2088,38 @@ export default function App() {
       />
 
       {/* SYSTEM METERS BOTTOM NAVIGATION BAR (Exclusively mobile tab bar) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-40 flex justify-around py-2.5 md:hidden shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#121214]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#27272A] z-40 flex justify-around py-2 md:hidden shadow-lg">
         <button
           onClick={() => setMobileTabActive('dashboard')}
-          className={`flex flex-col items-center gap-0.5 transition-all cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
             mobileTabActive === 'dashboard'
-              ? 'text-sky-600 dark:text-sky-405 font-extrabold scale-105 animate-pulse'
-              : 'text-slate-400 dark:text-slate-600 hover:text-sky-500'
+              ? 'text-zinc-900 dark:text-white font-bold'
+              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
           }`}
         >
-          <Wallet className="w-5 h-5" />
+          <Wallet className="w-4.5 h-4.5" />
           <span className="text-[10px]">Dashboard</span>
         </button>
         <button
           onClick={() => setMobileTabActive('transacoes')}
-          className={`flex flex-col items-center gap-0.5 transition-all cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
             mobileTabActive === 'transacoes'
-              ? 'text-emerald-600 dark:text-emerald-405 font-extrabold scale-105 animate-pulse'
-              : 'text-slate-400 dark:text-slate-600 hover:text-emerald-500'
+              ? 'text-zinc-900 dark:text-white font-bold'
+              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
           }`}
         >
-          <ArrowUpCircle className="w-5 h-5" />
+          <ArrowUpCircle className="w-4.5 h-4.5" />
           <span className="text-[10px]">Lançamentos</span>
         </button>
         <button
           onClick={() => setMobileTabActive('planejador')}
-          className={`flex flex-col items-center gap-0.5 transition-all cursor-pointer ${
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
             mobileTabActive === 'planejador'
-              ? 'text-violet-600 dark:text-violet-405 font-extrabold scale-105 animate-pulse'
-              : 'text-slate-400 dark:text-slate-600 hover:text-violet-500'
+              ? 'text-zinc-900 dark:text-white font-bold'
+              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
           }`}
         >
-          <TrendingUp className="w-5 h-5" />
+          <TrendingUp className="w-4.5 h-4.5" />
           <span className="text-[10px]">Gráficos</span>
         </button>
       </nav>

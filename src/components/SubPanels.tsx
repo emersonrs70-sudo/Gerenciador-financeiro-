@@ -99,19 +99,19 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
     <div className="w-full transition-all duration-300">
       {/* 1. MODO HARDCORE */}
       {activeType === 'saldo-real' && (
-        <div className="p-5 bg-gradient-to-br from-emerald-50 to-teal-50 dark:from-emerald-950/20 dark:to-teal-950/10 rounded-2xl border border-emerald-100 dark:border-emerald-900/30 space-y-3.5 shadow-xs">
-          <div className="flex justify-between items-center border-b border-emerald-100 dark:border-emerald-900/20 pb-2">
-            <h4 className="text-xs font-black text-emerald-800 dark:text-emerald-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <ShieldCheck className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-3.5 shadow-xs">
+          <div className="flex justify-between items-center border-b border-zinc-150 dark:border-[#27272A] pb-2">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+              <ShieldCheck className="w-4 h-4 text-emerald-500" />
               Modo Hardcore: Gasto Diário Seguro
             </h4>
-            <span className="text-[9px] font-bold px-2 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-950/55 dark:text-emerald-350 rounded-full">
-              Sua Saúde Financeira
+            <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-[#222226] text-zinc-700 dark:text-zinc-300 rounded-full">
+              Saúde Financeira
             </span>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
             <div className="space-y-1">
-              <p className="text-[10px] uppercase font-bold text-slate-400 dark:text-slate-500">
+              <p className="text-[10px] uppercase font-bold text-zinc-400 dark:text-zinc-500">
                 Seu limite diário recomendado:
               </p>
               <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
@@ -119,21 +119,21 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </p>
             </div>
             <div className="md:col-span-2 space-y-1.5">
-              <div className="flex justify-between text-[10px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+              <div className="flex justify-between text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                 <span>Energia do Caixa Atual</span>
                 <span>{Math.max(0, powerMeter).toFixed(0)}%</span>
               </div>
-              <div className="w-full bg-slate-200 dark:bg-slate-800 h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-zinc-100 dark:bg-[#222226] h-2.5 rounded-full overflow-hidden">
                 <div
-                  className="bg-gradient-to-r from-emerald-500 to-teal-400 h-full transition-all duration-500"
+                  className="bg-emerald-500 h-full transition-all duration-500"
                   style={{ width: `${Math.max(0, powerMeter)}%` }}
                 ></div>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 pt-2 border-t border-slate-200/50 dark:border-slate-800/50">
+          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-[#27272A]">
             Fórmula inteligente baseada em sua liquidez acumulada real dividida pelos{' '}
-            <strong className="text-slate-700 dark:text-slate-300">{diasRestantes} dias restantes</strong> do mês. Gastar abaixo de {formatValue(limiteDiario)} hoje melhora a sua projeção amanhã!
+            <strong className="text-zinc-700 dark:text-zinc-300">{diasRestantes} dias restantes</strong> do mês. Gastar abaixo de {formatValue(limiteDiario)} hoje melhora a sua projeção amanhã!
           </p>
         </div>
       )}
@@ -169,30 +169,30 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
         const savingsPct = idealSavings > 0 ? (actualSaved / idealSavings) * 100 : 0;
 
         return (
-          <div className="p-5 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/15 dark:to-indigo-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-purple-100 dark:border-purple-900/20 pb-3 gap-2">
+          <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-[#27272A] pb-3 gap-2">
               <div>
-                <h4 className="text-xs font-black text-purple-800 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
-                  <PieChart className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+                <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+                  <PieChart className="w-4 h-4 text-zinc-500" />
                   Direcionador Orçamentário Estratégico (Regra 50-30-20)
                 </h4>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 mt-0.5">
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                   Mapeamento de despesas reais versus alocação ideal baseada em sua receita
                 </p>
               </div>
-              <span className={`text-[9px] font-black px-2.5 py-1 rounded-full self-start sm:self-center uppercase tracking-wider ${
+              <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full self-start sm:self-center uppercase tracking-wider ${
                 isSimulation 
-                  ? 'bg-amber-100 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 border border-amber-250 dark:border-amber-900/30' 
-                  : 'bg-emerald-100 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-400 border border-emerald-250 dark:border-emerald-900/30'
+                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
+                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
               }`}>
                 {isSimulation ? 'Simulação (Renda R$ 5.000)' : 'Orçamento Real Ativo'}
               </span>
             </div>
 
             {isSimulation && (
-              <div className="bg-amber-50/50 dark:bg-amber-950/10 border border-amber-150 dark:border-amber-900/25 p-3 rounded-xl flex items-start gap-2">
+              <div className="bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] p-3 rounded-xl flex items-start gap-2">
                 <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-amber-850 dark:text-amber-300 leading-tight">
+                <p className="text-[10px] text-zinc-600 dark:text-zinc-300 leading-tight">
                   <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
                 </p>
               </div>
@@ -200,34 +200,34 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* ESSENCIAIS - 50% */}
-              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Necessidades (50%)</span>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Essenciais</span>
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades (50%)</span>
+                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Essenciais</span>
                   </div>
-                  <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                     {formatValue(idealNeeds)}
                   </span>
                 </div>
-                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
-                  <span className="text-slate-500 dark:text-slate-400">Gasto Real:</span>
-                  <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-red-500' : 'text-slate-700 dark:text-slate-350'}`}>
+                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                  <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
+                  <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
                     {formatValue(actualNeeds)}
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full transition-all duration-500 ${actualNeeds > idealNeeds ? 'bg-red-500' : 'bg-purple-500'}`} 
+                      className={`h-full transition-all duration-500 ${actualNeeds > idealNeeds ? 'bg-rose-500' : 'bg-zinc-800 dark:bg-zinc-300'}`} 
                       style={{ width: `${needsPct}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
-                    <span className={actualNeeds > idealNeeds ? 'text-red-500' : 'text-purple-500'}>
+                    <span className={actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
                       {needsPct.toFixed(0)}% Consumido
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-zinc-400">
                       {actualNeeds > idealNeeds ? 'Excedeu!' : 'No limite'}
                     </span>
                   </div>
@@ -235,34 +235,34 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
 
               {/* DESEJOS - 30% */}
-              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Estilo de Vida (30%)</span>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Lazer & Desejos</span>
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida (30%)</span>
+                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Lazer & Desejos</span>
                   </div>
-                  <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                     {formatValue(idealWants)}
                   </span>
                 </div>
-                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
-                  <span className="text-slate-500 dark:text-slate-400">Gasto Real:</span>
-                  <span className={`font-bold ${actualWants > idealWants ? 'text-red-500' : 'text-slate-700 dark:text-slate-350'}`}>
+                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                  <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
+                  <span className={`font-bold ${actualWants > idealWants ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
                     {formatValue(actualWants)}
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                     <div 
-                      className={`h-full transition-all duration-500 ${actualWants > idealWants ? 'bg-red-500' : 'bg-blue-500'}`} 
+                      className={`h-full transition-all duration-500 ${actualWants > idealWants ? 'bg-rose-500' : 'bg-zinc-600 dark:bg-zinc-400'}`} 
                       style={{ width: `${wantsPct}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
-                    <span className={actualWants > idealWants ? 'text-red-500' : 'text-blue-500'}>
+                    <span className={actualWants > idealWants ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
                       {wantsPct.toFixed(0)}% Consumido
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-zinc-400">
                       {actualWants > idealWants ? 'Excedeu!' : 'Sob controle'}
                     </span>
                   </div>
@@ -270,24 +270,24 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
 
               {/* POUPANÇA / RESERVA - 20% */}
-              <div className="bg-white/90 dark:bg-slate-950/50 p-4 rounded-xl border border-purple-100/30 dark:border-slate-800/60 shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
-                    <span className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase block">Futuro / Reserva (20%)</span>
-                    <span className="text-[10px] font-bold text-slate-700 dark:text-slate-350">Poupança & Projetos</span>
+                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
+                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Poupança & Projetos</span>
                   </div>
-                  <span className="text-xs font-black text-slate-850 dark:text-slate-200">
+                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                     {formatValue(idealSavings)}
                   </span>
                 </div>
-                <div className="border-t border-slate-100 dark:border-slate-800/40 pt-2 flex justify-between text-[10px]">
-                  <span className="text-slate-500 dark:text-slate-400">Sobra Poupar:</span>
+                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                  <span className="text-zinc-500 dark:text-zinc-400">Sobra Poupar:</span>
                   <span className="font-bold text-emerald-500">
                     {formatValue(actualSaved)}
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <div className="w-full bg-slate-100 dark:bg-slate-800 h-2 rounded-full overflow-hidden">
+                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-500 h-full transition-all duration-500" 
                       style={{ width: `${savingsPct}%` }}
@@ -297,7 +297,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                     <span className="text-emerald-500">
                       {savingsPct.toFixed(0)}% Meta Atingida
                     </span>
-                    <span className="text-slate-400">
+                    <span className="text-zinc-400">
                       {actualSaved >= idealSavings ? 'Meta batida! 🎉' : 'Abaixo da meta'}
                     </span>
                   </div>
@@ -305,7 +305,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 p-3 bg-white/50 dark:bg-slate-900/40 rounded-xl border border-purple-100/20 dark:border-slate-800 text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+            <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#141416] rounded-xl border border-zinc-200/80 dark:border-[#27272A] text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
               <span>💡</span>
               <span>
                 <strong>Como funciona o mapeamento automático:</strong> Despesas categorizadas como <em>Moradia</em>, <em>Alimentação</em>, e <em>Transporte</em> são somadas automaticamente em <strong>Necessidades</strong>. Todas as outras categorias (como <em>Lazer</em> e <em>Outros</em>) são direcionadas para <strong>Estilo de Vida</strong>. A diferença restante é o que você consegue efetivamente <strong>Poupar</strong>!
@@ -317,68 +317,68 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
       {/* 3. B-A-BA DE INVESTIMENTO */}
       {activeType === 'receitas' && (
-        <div className="p-5 bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/10 rounded-2xl border border-blue-100 dark:border-blue-900/30 space-y-3.5 shadow-xs">
-          <div className="border-b border-blue-100 dark:border-blue-900/20 pb-2">
-            <h4 className="text-xs font-black text-blue-900 dark:text-blue-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <GraduationCap className="w-4.5 h-4.5 text-blue-600 dark:text-blue-400" />
+        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-3.5 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+              <GraduationCap className="w-4.5 h-4.5 text-zinc-500" />
               Proporção de Investimentos: Projeção Anual
             </h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-white dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-2 text-[11px]">
+            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
               <div>
-                <h5 className="font-bold text-slate-400 dark:text-slate-500 uppercase tracking-tight">Poupança Clássica</h5>
-                <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[10px] leading-tight">Retorno nominal fixo (retorno real exposto à inflação).</p>
+                <h5 className="font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-tight">Poupança Clássica</h5>
+                <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Retorno nominal fixo (retorno real exposto à inflação).</p>
               </div>
-              <div className="border-t border-slate-100 dark:border-slate-900 pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
-                <span className="text-red-500 font-extrabold">{formatValue(Math.max(0, saldoReal) * 0.0617)}</span>
+                <span className="text-rose-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.0617)}</span>
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-950 p-3.5 rounded-xl border border-blue-200 dark:border-blue-900/40 flex flex-col justify-between gap-2 text-[11px] border-t-4 border-t-blue-500 shadow-xs">
+            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
               <div>
-                <h5 className="font-black text-blue-650 dark:text-blue-450 uppercase tracking-tight">CDB 100% CDI</h5>
-                <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[10px] leading-tight">Liquidez imediata e proteção via FGC. Ótimo para sua reserva.</p>
+                <h5 className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">CDB 100% CDI</h5>
+                <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Liquidez imediata e proteção via FGC. Ótimo para sua reserva.</p>
               </div>
-              <div className="border-t border-blue-50 dark:border-slate-900 pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
-                <span className="text-emerald-500 font-extrabold">{formatValue(Math.max(0, saldoReal) * 0.105)}</span>
+                <span className="text-emerald-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.105)}</span>
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-950 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex flex-col justify-between gap-2 text-[11px]">
+            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
               <div>
-                <h5 className="font-bold text-indigo-650 dark:text-indigo-400 uppercase tracking-tight">Tesouro Selic</h5>
-                <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-[10px] leading-tight">Máxima segurança soberana nacional, com rendimento indexado.</p>
+                <h5 className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">Tesouro Selic</h5>
+                <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Máxima segurança soberana nacional, com rendimento indexado.</p>
               </div>
-              <div className="border-t border-slate-100 dark:border-slate-900 pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
-                <span className="text-emerald-500 font-extrabold">{formatValue(Math.max(0, saldoReal) * 0.1075)}</span>
+                <span className="text-emerald-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.1075)}</span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 leading-normal">
-            Calculado com base em seu patrimônio total de <strong className="text-slate-500">{formatValue(saldoReal)}</strong>. Rentabilidades simuladas com base nas taxas vigentes aproximadas (CDI e Selic atual).
+          <p className="text-[10px] text-zinc-400 leading-normal">
+            Calculado com base em seu patrimônio total de <strong className="text-zinc-600 dark:text-zinc-300">{formatValue(saldoReal)}</strong>. Rentabilidades simuladas com base nas taxas vigentes aproximadas (CDI e Selic atual).
           </p>
         </div>
       )}
 
       {/* 4. CORTADOR DE GORDURA */}
       {activeType === 'despesas' && (
-        <div className="p-5 bg-gradient-to-br from-red-50 to-amber-50 dark:from-red-950/25 dark:to-slate-900 rounded-2xl border border-red-100 dark:border-red-900/30 space-y-4 shadow-xs">
-          <div className="border-b border-red-100 dark:border-red-900/20 pb-2 flex justify-between items-center">
-            <h4 className="text-xs font-black text-red-800 dark:text-red-450 flex items-center gap-1.5 uppercase tracking-wide">
-              <Scissors className="w-4 h-4 text-red-600 dark:text-red-400" />
+        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2 flex justify-between items-center">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+              <Scissors className="w-4 h-4 text-zinc-500" />
               Cortador de Gordura Opcional
             </h4>
-            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-950/50 px-2 py-0.5 rounded-md">
+            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
               Economia Imediata: {formatValue(totalEconomia)}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850 space-y-2.5">
-              <div className="flex justify-between font-bold text-xs text-slate-700 dark:text-slate-300">
+            <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/80 dark:border-[#27272A] space-y-2.5">
+              <div className="flex justify-between font-bold text-xs text-zinc-700 dark:text-zinc-300">
                 <span>🍿 Economia Lazer (Total: {formatValue(lazerGastos)})</span>
-                <span className="text-red-500">{lazerCorte}%</span>
+                <span className="text-rose-500">{lazerCorte}%</span>
               </div>
               <input
                 type="range"
@@ -387,17 +387,17 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 step="5"
                 value={lazerCorte}
                 onChange={(e) => setLazerCorte(parseInt(e.target.value))}
-                className="w-full accent-red-500 h-2 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer transition-all"
+                className="w-full accent-zinc-900 dark:accent-zinc-100 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer transition-all"
               />
-              <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+              <div className="flex justify-between items-center text-[10px] text-zinc-400 font-medium">
                 <span>Economia estimada:</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatValue(economiaLazer)}</span>
               </div>
             </div>
-            <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border border-slate-200/50 dark:border-slate-850 space-y-2.5">
-              <div className="flex justify-between font-bold text-xs text-slate-700 dark:text-slate-300">
+            <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/80 dark:border-[#27272A] space-y-2.5">
+              <div className="flex justify-between font-bold text-xs text-zinc-700 dark:text-zinc-300">
                 <span>🛒 Compras Gerais (Total: {formatValue(comprasGastos)})</span>
-                <span className="text-red-500">{comprasCorte}%</span>
+                <span className="text-rose-500">{comprasCorte}%</span>
               </div>
               <input
                 type="range"
@@ -406,15 +406,15 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 step="5"
                 value={comprasCorte}
                 onChange={(e) => setComprasCorte(parseInt(e.target.value))}
-                className="w-full accent-red-500 h-2 bg-slate-200 dark:bg-slate-800 rounded-lg cursor-pointer transition-all"
+                className="w-full accent-zinc-900 dark:accent-zinc-100 h-2 bg-zinc-200 dark:bg-zinc-800 rounded-lg cursor-pointer transition-all"
               />
-              <div className="flex justify-between items-center text-[10px] text-slate-400 font-medium">
+              <div className="flex justify-between items-center text-[10px] text-zinc-400 font-medium">
                 <span>Economia estimada:</span>
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatValue(economiaCompras)}</span>
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-slate-400 leading-normal">
+          <p className="text-[10px] text-zinc-400 leading-normal">
             Arraste os sliders acima para ver quanto você economizaria cortando supérfluos e reequilibrando seu estilo de consumo.
           </p>
         </div>
@@ -422,17 +422,17 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
       {/* 5. PLANEJADOR DE SONHOS (DREAM PLANNER) */}
       {activeType === 'metas' && (
-        <div className="p-5 bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-950/15 dark:to-indigo-950/10 rounded-2xl border border-purple-100 dark:border-purple-900/30 space-y-4 shadow-xs">
-          <div className="border-b border-purple-100 dark:border-purple-900/20 pb-2">
-            <h4 className="text-xs font-black text-purple-800 dark:text-purple-400 flex items-center gap-1.5 uppercase tracking-wide">
-              <Rocket className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2">
+            <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+              <Rocket className="w-4 h-4 text-zinc-500" />
               Planejador de Sonhos Multimetas
             </h4>
           </div>
           
           <form onSubmit={handleProjectSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
             <div>
-              <label className="text-[9px] text-slate-400 dark:text-slate-550 font-black block uppercase tracking-wider mb-1">
+              <label className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold block uppercase tracking-wider mb-1">
                 Nome da Meta/Sonho
               </label>
               <input
@@ -441,11 +441,11 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projNome}
                 onChange={(e) => setProjNome(e.target.value)}
                 required
-                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <div>
-              <label className="text-[9px] text-slate-400 dark:text-slate-550 font-black block uppercase tracking-wider mb-1">
+              <label className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold block uppercase tracking-wider mb-1">
                 Custo Total (R$)
               </label>
               <input
@@ -454,11 +454,11 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projValor}
                 onChange={(e) => setProjValor(e.target.value)}
                 required
-                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <div>
-              <label className="text-[9px] text-slate-400 dark:text-slate-550 font-black block uppercase tracking-wider mb-1">
+              <label className="text-[9px] text-zinc-400 dark:text-zinc-500 font-bold block uppercase tracking-wider mb-1">
                 Prazo Alvo
               </label>
               <input
@@ -466,21 +466,21 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projData}
                 onChange={(e) => setProjData(e.target.value)}
                 required
-                className="w-full bg-white dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <button
               type="submit"
-              className="w-full bg-purple-600 text-white hover:bg-purple-700 text-xs font-black py-2.5 rounded-xl transition-all shadow-sm active:scale-98 h-[38px] flex items-center justify-center uppercase tracking-wide"
+              className="w-full bg-zinc-900 hover:bg-black dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 text-xs font-bold py-2.5 rounded-xl transition-all shadow-xs active:scale-98 flex items-center justify-center uppercase tracking-wide cursor-pointer"
             >
               Projetar Meta
             </button>
           </form>
 
-          <div className="overflow-x-auto rounded-xl border border-slate-200 dark:border-slate-850 bg-white dark:bg-slate-950">
+          <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/30 dark:bg-[#141416]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-850 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-bold bg-slate-50 dark:bg-slate-900/60 shadow-inner">
+                <tr className="border-b border-zinc-200/80 dark:border-[#27272A] text-zinc-400 dark:text-zinc-500 text-[10px] uppercase font-bold bg-zinc-50 dark:bg-[#141416]">
                   <th className="p-3">Projeto</th>
                   <th className="p-3">Custo Total</th>
                   <th className="p-3">Prazo Alvo</th>
@@ -488,10 +488,10 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                   <th className="p-3 text-center">Remover</th>
                 </tr>
               </thead>
-              <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-900">
+              <tbody className="text-xs divide-y divide-zinc-200/60 dark:divide-[#27272A]">
                 {projects.length === 0 ? (
                   <tr>
-                    <td colSpan={5} className="p-6 text-center text-slate-400 dark:text-slate-650 font-medium">
+                    <td colSpan={5} className="p-6 text-center text-zinc-400 dark:text-zinc-500 font-medium">
                       Nenhum projeto planejado. Crie suas metas no formulário acima!
                     </td>
                   </tr>
@@ -503,18 +503,18 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                       .toLocaleDateString('pt-BR', { timeZone: 'UTC' });
 
                     return (
-                      <tr key={p.id} className="hover:bg-slate-50 dark:hover:bg-slate-900/40 transition-colors">
-                        <td className="p-3 font-bold text-slate-700 dark:text-slate-350">{p.nome}</td>
-                        <td className="p-3 font-extrabold text-slate-600 dark:text-slate-400">{formatValue(p.valor)}</td>
-                        <td className="p-3 font-bold text-purple-600 dark:text-purple-400">{dateFormatted}</td>
-                        <td className="p-3 font-black text-slate-800 dark:text-white bg-purple-50/20 dark:bg-purple-950/5">
+                      <tr key={p.id} className="hover:bg-zinc-100/50 dark:hover:bg-[#1F1F24] transition-colors">
+                        <td className="p-3 font-semibold text-zinc-800 dark:text-zinc-200">{p.nome}</td>
+                        <td className="p-3 font-bold text-zinc-700 dark:text-zinc-300">{formatValue(p.valor)}</td>
+                        <td className="p-3 font-medium text-zinc-600 dark:text-zinc-400">{dateFormatted}</td>
+                        <td className="p-3 font-bold text-zinc-900 dark:text-white">
                           {formatValue(aporte)} /mês
                         </td>
                         <td className="p-3 text-center">
                           <button
                             type="button"
                             onClick={() => onDeleteProject(p.id)}
-                            className="p-1.5 text-slate-400 hover:text-red-500 dark:hover:text-red-400 transition-colors rounded-lg hover:bg-red-50 dark:hover:bg-red-950/25 cursor-pointer"
+                            className="p-1.5 text-zinc-400 hover:text-rose-500 dark:hover:text-rose-400 transition-colors rounded-lg hover:bg-zinc-100 dark:hover:bg-[#222226] cursor-pointer"
                           >
                             <Trash2 className="w-4 h-4" />
                           </button>

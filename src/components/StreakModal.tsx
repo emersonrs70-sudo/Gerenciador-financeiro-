@@ -189,13 +189,13 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 dark:bg-slate-950/80 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800/80 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-scale-up">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
+      <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-scale-up">
         
         {/* CLOSE BUTTON */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+          className="absolute top-4 right-4 p-2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-xl hover:bg-zinc-100 dark:hover:bg-[#222226] transition-colors cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -203,16 +203,16 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
         <div className="p-6 md:p-8 space-y-6">
           
           {/* HEADER HERO ACCENT */}
-          <div className="bg-gradient-to-tr from-amber-500/10 via-orange-500/10 to-rose-500/10 dark:from-amber-950/30 dark:via-orange-950/20 dark:to-rose-950/20 border border-amber-200/50 dark:border-amber-900/30 p-5 rounded-2xl flex items-center gap-4">
-            <div className="p-3.5 bg-amber-500 text-white rounded-2xl shadow-lg shadow-amber-500/20 animate-pulse">
+          <div className="bg-amber-500/10 dark:bg-amber-500/5 border border-amber-500/20 p-5 rounded-2xl flex items-center gap-4">
+            <div className="p-3.5 bg-amber-500 text-white rounded-2xl shadow-md shadow-amber-500/20 animate-pulse">
               <Flame className="w-8 h-8 fill-amber-100" />
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <span className="text-2xl font-black text-slate-800 dark:text-slate-100 tracking-tight">{streak} {streak === 1 ? 'Dia' : 'Dias'}</span>
-                <span className="px-2 py-0.5 text-[10px] uppercase font-extrabold bg-amber-500 text-white rounded-md tracking-wider">Ativo</span>
+                <span className="text-2xl font-black text-zinc-900 dark:text-zinc-100 tracking-tight">{streak} {streak === 1 ? 'Dia' : 'Dias'}</span>
+                <span className="px-2 py-0.5 text-[10px] uppercase font-bold bg-amber-500 text-white rounded-md tracking-wider">Ativo</span>
               </div>
-              <p className="text-xs text-slate-500 dark:text-slate-400 font-medium">
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 font-medium">
                 Sua sequência de registros e rotina de controle ativo!
               </p>
             </div>
@@ -220,24 +220,24 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
 
           {/* LEVEL BAR AND STATUS CARD */}
           <div className="space-y-4">
-            <h4 className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+            <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
               Nível e Medalha Atual
             </h4>
             <div className={`p-5 rounded-2xl border ${currentLevel.badgeColor} flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all duration-300`}>
               <div className="flex items-center gap-4">
                 <span className="text-4xl select-none">{currentLevel.emoji}</span>
                 <div>
-                  <h5 className="font-extrabold text-slate-800 dark:text-white text-base tracking-tight">
+                  <h5 className="font-bold text-zinc-900 dark:text-white text-base tracking-tight">
                     {currentLevel.name}
                   </h5>
-                  <p className="text-xs mt-1 text-slate-650 dark:text-slate-350 leading-relaxed font-medium">
+                  <p className="text-xs mt-1 text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
                     {currentLevel.description}
                   </p>
                 </div>
               </div>
-              <div className="md:border-l md:border-slate-300/40 dark:md:border-slate-800/40 md:pl-5 flex-shrink-0">
-                <span className="text-[10px] font-black uppercase text-amber-600 dark:text-amber-400 tracking-wider">Benefício Liberado:</span>
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-300 mt-0.5">
+              <div className="md:border-l md:border-zinc-200 dark:md:border-[#27272A] md:pl-5 flex-shrink-0">
+                <span className="text-[10px] font-bold uppercase text-amber-600 dark:text-amber-400 tracking-wider">Benefício Liberado:</span>
+                <p className="text-xs font-bold text-zinc-700 dark:text-zinc-300 mt-0.5">
                   {currentLevel.perk}
                 </p>
               </div>
@@ -247,11 +247,11 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
           {/* ROADMAP TIMELINE (RÉGUA DE OFENSIVA) */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest font-sans">
+              <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest font-sans">
                 Régua de Metas Orçamentárias
               </h4>
               {nextMilestone && (
-                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-black">
+                <span className="text-[10px] text-amber-600 dark:text-amber-400 font-bold">
                   Faltam {daysRemaining} {daysRemaining === 1 ? 'dia' : 'dias'} para {nextMilestone.reward}
                 </span>
               )}
@@ -266,8 +266,8 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
                     key={milestone.days} 
                     className={`p-3 rounded-xl border text-center transition-all ${
                       isCompleted 
-                        ? 'bg-amber-50/40 dark:bg-amber-950/10 border-amber-250 dark:border-amber-900/65 shadow-2xs hover:-translate-y-0.5' 
-                        : 'bg-slate-50/50 dark:bg-slate-950/20 border-slate-200 dark:border-slate-800/50 opacity-60'
+                        ? 'bg-amber-500/10 border-amber-500/30 shadow-2xs hover:-translate-y-0.5' 
+                        : 'bg-zinc-50 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] opacity-60'
                     }`}
                   >
                     <div className="flex justify-center mb-1">
@@ -276,15 +276,15 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
                           <Check className="w-3 h-3 stroke-[3]" />
                         </div>
                       ) : (
-                        <div className="p-1 bg-slate-250 dark:bg-slate-800 text-slate-400 dark:text-slate-650 rounded-full">
+                        <div className="p-1 bg-zinc-200 dark:bg-zinc-800 text-zinc-400 dark:text-zinc-500 rounded-full">
                           <Lock className="w-3 h-3" />
                         </div>
                       )}
                     </div>
-                    <span className="block text-[10px] font-black tracking-tight text-slate-750 dark:text-slate-200">
+                    <span className="block text-[10px] font-bold tracking-tight text-zinc-800 dark:text-zinc-200">
                       {milestone.days} Dias
                     </span>
-                    <span className="block text-[9px] mt-0.5 text-slate-500 dark:text-slate-400 truncate">
+                    <span className="block text-[9px] mt-0.5 text-zinc-500 dark:text-zinc-400 truncate">
                       {milestone.reward.split(' ').pop()} {milestone.level.split(' ')[0]}
                     </span>
                   </div>
@@ -295,43 +295,43 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
 
           {/* REAL DAY SUMMARY (INFORMATIVO DOS DIAS DE OFENSIVA CLICADO) */}
           <div className="space-y-4 pt-2">
-            <h4 className="text-xs font-extrabold text-slate-400 dark:text-slate-500 uppercase tracking-widest">
+            <h4 className="text-xs font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-widest">
               Resumo do que foi feito na Sequência
             </h4>
             
             {streakHistory.length === 0 ? (
-              <div className="text-center p-6 bg-slate-50 dark:bg-slate-950/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400">
-                <HelpCircle className="w-8 h-8 text-slate-400 dark:text-slate-650 mx-auto mb-2" />
+              <div className="text-center p-6 bg-zinc-50 dark:bg-[#141416] rounded-2xl border border-dashed border-zinc-200 dark:border-[#27272A] text-zinc-500 dark:text-zinc-400">
+                <HelpCircle className="w-8 h-8 text-zinc-400 dark:text-zinc-600 mx-auto mb-2" />
                 <p className="text-xs font-bold">Nenhuma atividade registrada na ofensiva ainda.</p>
-                <p className="text-[11px] mt-1 text-slate-400">Adicione uma receita ou despesa hoje para iniciar!</p>
+                <p className="text-[11px] mt-1 text-zinc-400">Adicione uma receita ou despesa hoje para iniciar!</p>
               </div>
             ) : (
               <div className="space-y-3 max-h-[220px] overflow-y-auto pr-1">
-                {streakHistory.map((day, ix) => (
+                {streakHistory.map((day) => (
                   <div
                     key={day.dateStr}
-                    className="p-3.5 bg-slate-50 dark:bg-slate-950/20 border border-slate-200/60 dark:border-slate-800/60 rounded-xl hover:border-slate-300 dark:hover:border-slate-700 transition-all flex flex-col gap-2"
+                    className="p-3.5 bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col gap-2"
                   >
                     {/* Date and mini-badge */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
                         <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                        <span className="text-xs font-black text-slate-800 dark:text-slate-200">
+                        <span className="text-xs font-bold text-zinc-800 dark:text-zinc-200">
                           {formatDateLabel(day.dateStr)}
                         </span>
-                        <span className="text-[10px] font-mono text-slate-450 dark:text-slate-500">
+                        <span className="text-[10px] font-mono text-zinc-400 dark:text-zinc-500">
                           ({day.dateStr})
                         </span>
                       </div>
                       <div className="flex items-center gap-1.5 text-[11px]">
                         {day.receitas > 0 && (
-                          <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                          <span className="flex items-center gap-0.5 text-emerald-600 dark:text-emerald-400 font-bold">
                             <ArrowUpCircle className="w-3 h-3" />
                             +R$ {day.receitas.toFixed(2)}
                           </span>
                         )}
                         {day.despesas > 0 && (
-                          <span className="flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-extrabold">
+                          <span className="flex items-center gap-0.5 text-rose-600 dark:text-rose-400 font-bold">
                             <ArrowDownCircle className="w-3 h-3" />
                             -R$ {day.despesas.toFixed(2)}
                           </span>
@@ -340,20 +340,20 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
                     </div>
 
                     {/* Day insight summary */}
-                    <p className="text-[11px] text-slate-600 dark:text-slate-350 italic font-medium leading-relaxed">
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-300 italic font-medium leading-relaxed">
                       {getDayInsight(day.receitas, day.despesas, day.balance)}
                     </p>
 
                     {/* Transactions list */}
                     {day.transactions.length > 0 && (
-                      <div className="border-t border-slate-200/40 dark:border-slate-850 pt-2 flex flex-wrap gap-1.5">
+                      <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex flex-wrap gap-1.5">
                         {day.transactions.map((t) => (
                           <span
                             key={t.id}
                             className={`text-[10px] px-2 py-0.5 rounded-md font-bold truncate max-w-[170px] ${
                               t.tipoItem === 'receita'
-                                ? 'bg-emerald-50 dark:bg-emerald-950/20 text-emerald-700 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-950/40'
-                                : 'bg-rose-50 dark:bg-rose-950/20 text-rose-700 dark:text-rose-400 border border-rose-100 dark:border-rose-950/40'
+                                ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                : 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-500/20'
                             }`}
                             title={t.descricao}
                           >
@@ -369,8 +369,8 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
           </div>
 
           {/* MOTIVATIONAL QUOTE FOOTER */}
-          <div className="text-center pt-2 text-[11px] text-slate-400 dark:text-slate-500 font-bold leading-relaxed border-t border-slate-100 dark:border-slate-850">
-            "A constância nos pequenos hábitos diários constrói impérios financeiros duradouros." 🚀
+          <div className="text-center pt-2 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium leading-relaxed border-t border-zinc-100 dark:border-[#27272A]">
+            "A constância nos pequenos hábitos diários constrói impérios financeiros duradouros."
           </div>
 
         </div>

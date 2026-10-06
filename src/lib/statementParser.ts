@@ -281,8 +281,11 @@ export function parseSantanderStatement(
 
       // Check if following line has details (e.g. "CLARO MOVEL" or "BARATAO TECNOLOGIA")
       if (i + 1 < lines.length) {
-        const next = lines[i + 1];
+        const next = lines[i + 1].trim();
+        const isNextStartOfNewTransaction = /^(PIX|DEBITO|DÉBITO|CREDITO|CRÉDITO|SAQUE|TRANSFERENCIA|TRANSFERÊNCIA|PAGAMENTO|LIQUIDO|LÍQUIDO|REMUNERACAO|REMUNERAÇÃO|IOF|SALDO)/i.test(next);
+
         if (
+          !isNextStartOfNewTransaction &&
           !isSummaryLine(next) &&
           !next.match(/[\d\.]+,\d{2}/) &&
           !next.match(/^\d{2}\/\d{2}/) &&
@@ -319,16 +322,6 @@ export function parseSantanderStatement(
       const lower = cleanDesc.toLowerCase();
 
       if (
-        lower.includes('pix enviado') ||
-        lower.includes('debito') ||
-        lower.includes('saque') ||
-        lower.includes('boleto') ||
-        lower.includes('iof') ||
-        lower.includes('tarifa') ||
-        lower.includes('fatura')
-      ) {
-        tipoItem = 'despesa';
-      } else if (
         lower.includes('pix recebido') ||
         lower.includes('liquido de vencimento') ||
         lower.includes('salario') ||
@@ -338,6 +331,18 @@ export function parseSantanderStatement(
         lower.includes('remuneração aplicação')
       ) {
         tipoItem = 'receita';
+      } else if (
+        parsedVal.isNegative ||
+        lower.includes('pix enviado') ||
+        lower.includes('debito') ||
+        lower.includes('d\u00e9bito') ||
+        lower.includes('saque') ||
+        lower.includes('boleto') ||
+        lower.includes('iof') ||
+        lower.includes('tarifa') ||
+        lower.includes('fatura')
+      ) {
+        tipoItem = 'despesa';
       }
 
       const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;

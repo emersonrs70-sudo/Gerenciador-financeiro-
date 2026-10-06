@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import {
-  BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell, Legend
+  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
+  ResponsiveContainer, BarChart, Bar, Cell
 } from 'recharts';
-import { BarChart3 } from 'lucide-react';
+import { TrendingUp, BarChart2 } from 'lucide-react';
 import { Transaction } from '../types';
 import { ExpenseCalendar } from './ExpenseCalendar';
 
@@ -14,8 +14,6 @@ interface FinancialChartsProps {
   currentYear: number;
   selectedAccountId?: string;
 }
-
-const COLORS = ['#a855f7', '#3b82f6', '#10b981', '#f43f5e', '#f59e0b', '#64748b'];
 
 export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   transactions,
@@ -31,16 +29,12 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     ? transactions.filter(t => t.accountId === selectedAccountId)
     : transactions;
 
-  // Determinar data de referência baseada na navegação de meses do usuário
+  // Reference date
   const hoje = new Date();
   const isCurrentMonthYear = hoje.getMonth() === currentMonth && hoje.getFullYear() === currentYear;
-  
-  // Se for o mês atual, a referência é o dia de hoje. Se for outro mês, é o último dia daquele mês.
-  const refDate = isCurrentMonthYear
-    ? hoje
-    : new Date(currentYear, currentMonth + 1, 0);
+  const refDate = isCurrentMonthYear ? hoje : new Date(currentYear, currentMonth + 1, 0);
 
-  // Filtragem unificada de transações de acordo com o período selecionado
+  // Filter transactions for active period
   const getFilteredTransactions = () => {
     return filteredByAccount.filter((t) => {
       if (!t.data) return false;
@@ -68,7 +62,6 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         return tDate >= minDate && tDate <= maxDate;
       }
       if (periodoFiltro === '3meses') {
-        // Primeiro dia de 2 meses atrás até o último dia do mês atual selecionado
         const minDate = new Date(currentYear, currentMonth - 2, 1);
         minDate.setHours(0, 0, 0, 0);
         const maxDate = new Date(currentYear, currentMonth + 1, 0);
@@ -78,92 +71,36 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       if (periodoFiltro === 'ano') {
         return y === currentYear;
       }
-      // Padrão: 'mes' (Mês Selecionado Completo)
       return m === currentMonth && y === currentYear;
     });
   };
 
   const filteredTrans = getFilteredTransactions();
 
-  // 1. CHART: PIE / CATEGORY (Despesas por categoria no período)
+  // 1. Category Bar Data (Matching "Project Progress by Dept." in screenshot)
   const despesasPeriodo = filteredTrans.filter((t) => t.tipoItem === 'despesa');
-  const pieData = categorias
+  const totalDespesas = despesasPeriodo.reduce((acc, t) => acc + t.valor, 0);
+
+  const categoryBarData = categorias
     .map((cat) => {
-      const value = despesasPeriodo
+      const val = despesasPeriodo
         .filter((d) => d.categoria === cat)
         .reduce((sum, d) => sum + d.valor, 0);
-      return { name: cat, value };
+      const percent = totalDespesas > 0 ? (val / totalDespesas) * 100 : 0;
+      return {
+        name: cat,
+        valor: val,
+        percent: Math.round(percent)
+      };
     })
-    .filter((v) => v.value > 0);
+    .filter((c) => c.valor > 0)
+    .sort((a, b) => b.valor - a.valor)
+    .slice(0, 5);
 
-  // 2. CHART: AREA / CUMULATIVE DUAL PROGRESSION (Receitas vs Despesas acumuladas no período)
-  const lineData = [];
-  let cumGasto = 0;
-  let cumReceita = 0;
+  // 2. Line Chart Data (Matching "Monthly Revenue | Last 12 Months" in screenshot)
+  const lineData: Array<{ lbl: string; Receita: number; Gasto: number }> = [];
 
-  if (periodoFiltro === '7dias' || periodoFiltro === '15dias') {
-    const numDays = periodoFiltro === '7dias' ? 7 : 15;
-    const start = new Date(refDate);
-    start.setDate(refDate.getDate() - (numDays - 1));
-    
-    for (let i = 0; i < numDays; i++) {
-      const d = new Date(start);
-      d.setDate(start.getDate() + i);
-      const yStr = d.getFullYear();
-      const mStr = String(d.getMonth() + 1).padStart(2, '0');
-      const dStr = String(d.getDate()).padStart(2, '0');
-      const dateKey = `${yStr}-${mStr}-${dStr}`;
-      
-      const dayDespesas = filteredByAccount
-        .filter(t => t.tipoItem === 'despesa' && t.data === dateKey)
-        .reduce((s, t) => s + t.valor, 0);
-        
-      const dayReceitas = filteredByAccount
-        .filter(t => t.tipoItem === 'receita' && t.data === dateKey)
-        .reduce((s, t) => s + t.valor, 0);
-        
-      cumGasto += dayDespesas;
-      cumReceita += dayReceitas;
-      
-      lineData.push({
-        lbl: `${d.getDate()}/${d.getMonth() + 1}`,
-        Gasto: parseFloat(cumGasto.toFixed(2)),
-        Receita: parseFloat(cumReceita.toFixed(2))
-      });
-    }
-  } else if (periodoFiltro === '3meses') {
-    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-    for (let i = -2; i <= 0; i++) {
-      const targetDate = new Date(currentYear, currentMonth + i, 1);
-      const mIdx = targetDate.getMonth();
-      const yVal = targetDate.getFullYear();
-      
-      const mDespesas = filteredByAccount
-        .filter(t => {
-          if (!t.data) return false;
-          const p = t.data.split('-');
-          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'despesa';
-        })
-        .reduce((s, t) => s + t.valor, 0);
-        
-      const mReceitas = filteredByAccount
-        .filter(t => {
-          if (!t.data) return false;
-          const p = t.data.split('-');
-          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'receita';
-        })
-        .reduce((s, t) => s + t.valor, 0);
-        
-      cumGasto += mDespesas;
-      cumReceita += mReceitas;
-      
-      lineData.push({
-        lbl: monthNames[mIdx],
-        Gasto: parseFloat(cumGasto.toFixed(2)),
-        Receita: parseFloat(cumReceita.toFixed(2))
-      });
-    }
-  } else if (periodoFiltro === 'ano') {
+  if (periodoFiltro === 'ano') {
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
     for (let m = 0; m < 12; m++) {
       const mDespesas = filteredByAccount
@@ -173,7 +110,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m && t.tipoItem === 'despesa';
         })
         .reduce((s, t) => s + t.valor, 0);
-        
+
       const mReceitas = filteredByAccount
         .filter(t => {
           if (!t.data) return false;
@@ -181,240 +118,253 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m && t.tipoItem === 'receita';
         })
         .reduce((s, t) => s + t.valor, 0);
-        
-      cumGasto += mDespesas;
-      cumReceita += mReceitas;
-      
+
       lineData.push({
         lbl: monthNames[m],
-        Gasto: parseFloat(cumGasto.toFixed(2)),
-        Receita: parseFloat(cumReceita.toFixed(2))
+        Gasto: parseFloat(mDespesas.toFixed(2)),
+        Receita: parseFloat(mReceitas.toFixed(2))
+      });
+    }
+  } else if (periodoFiltro === '3meses') {
+    const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    for (let i = -2; i <= 0; i++) {
+      const targetDate = new Date(currentYear, currentMonth + i, 1);
+      const mIdx = targetDate.getMonth();
+      const yVal = targetDate.getFullYear();
+
+      const mDespesas = filteredByAccount
+        .filter(t => {
+          if (!t.data) return false;
+          const p = t.data.split('-');
+          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'despesa';
+        })
+        .reduce((s, t) => s + t.valor, 0);
+
+      const mReceitas = filteredByAccount
+        .filter(t => {
+          if (!t.data) return false;
+          const p = t.data.split('-');
+          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'receita';
+        })
+        .reduce((s, t) => s + t.valor, 0);
+
+      lineData.push({
+        lbl: monthNames[mIdx],
+        Gasto: parseFloat(mDespesas.toFixed(2)),
+        Receita: parseFloat(mReceitas.toFixed(2))
       });
     }
   } else {
-    // 'mes' (Mês Selecionado Completo)
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const endDay = isCurrentMonthYear ? hoje.getDate() : daysInMonth;
-    
-    for (let d = 1; d <= endDay; d++) {
-      const dDespesas = filteredByAccount
-        .filter(t => {
-          if (!t.data) return false;
-          const p = t.data.split('-');
-          return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === currentMonth && parseInt(p[2], 10) === d && t.tipoItem === 'despesa';
-        })
+    // Days in Month / 7 / 15 days
+    const numDays = periodoFiltro === '7dias' ? 7 : periodoFiltro === '15dias' ? 15 : new Date(currentYear, currentMonth + 1, 0).getDate();
+    const startDate = periodoFiltro === '7dias' || periodoFiltro === '15dias'
+      ? new Date(refDate.getTime() - (numDays - 1) * 24 * 60 * 60 * 1000)
+      : new Date(currentYear, currentMonth, 1);
+
+    for (let i = 0; i < numDays; i++) {
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() + i);
+      const yStr = d.getFullYear();
+      const mStr = String(d.getMonth() + 1).padStart(2, '0');
+      const dStr = String(d.getDate()).padStart(2, '0');
+      const dateKey = `${yStr}-${mStr}-${dStr}`;
+
+      const dayDespesas = filteredByAccount
+        .filter(t => t.tipoItem === 'despesa' && t.data === dateKey)
         .reduce((s, t) => s + t.valor, 0);
-        
-      const dReceitas = filteredByAccount
-        .filter(t => {
-          if (!t.data) return false;
-          const p = t.data.split('-');
-          return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === currentMonth && parseInt(p[2], 10) === d && t.tipoItem === 'receita';
-        })
+
+      const dayReceitas = filteredByAccount
+        .filter(t => t.tipoItem === 'receita' && t.data === dateKey)
         .reduce((s, t) => s + t.valor, 0);
-        
-      cumGasto += dDespesas;
-      cumReceita += dReceitas;
-      
+
       lineData.push({
-        lbl: `Dia ${d}`,
-        Gasto: parseFloat(cumGasto.toFixed(2)),
-        Receita: parseFloat(cumReceita.toFixed(2))
+        lbl: `${d.getDate()} ${periodoFiltro === 'mes' ? '' : `/${d.getMonth() + 1}`}`,
+        Gasto: parseFloat(dayDespesas.toFixed(2)),
+        Receita: parseFloat(dayReceitas.toFixed(2))
       });
     }
   }
 
-  // 3. CHART: BAR / COMPARATIVE (Total de Entradas vs Saídas no período)
-  const totalDespesasPeriodo = filteredTrans.filter((t) => t.tipoItem === 'despesa').reduce((s, t) => s + t.valor, 0);
-  const totalReceitasPeriodo = filteredTrans.filter((t) => t.tipoItem === 'receita').reduce((s, t) => s + t.valor, 0);
-  
-  const barData = [
-    {
-      name: periodoFiltro === '7dias' ? '7 Dias' :
-            periodoFiltro === '15dias' ? '15 Dias' :
-            periodoFiltro === '3meses' ? 'Trimestre' :
-            periodoFiltro === 'ano' ? 'Ano' : 'Este Mês',
-      Receitas: totalReceitasPeriodo,
-      Despesas: totalDespesasPeriodo
-    }
-  ];
-
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 bg-white dark:bg-slate-900 border border-slate-250/50 dark:border-slate-800 p-4 rounded-2xl shadow-2xs">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-100 dark:bg-purple-950/40 flex items-center justify-center text-purple-600 dark:text-purple-400">
-            <BarChart3 className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
-              Estatísticas e Distribuições Visuais
-            </h3>
-            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Análise estratégica e projeção gráfica unificada
-            </p>
-          </div>
-        </div>
-        <div className="flex items-center gap-1.5 self-start sm:self-center">
-          <span className="text-[9px] uppercase font-bold text-slate-400 dark:text-slate-550 hidden md:inline">Período Ativo:</span>
-          <select
-            value={periodoFiltro}
-            onChange={(e) => setPeriodoFiltro(e.target.value as any)}
-            className="text-[10px] font-black bg-slate-50 hover:bg-slate-100 dark:bg-slate-950 dark:hover:bg-slate-900 border border-slate-200 dark:border-slate-800 p-2 rounded-xl focus:outline-none focus:ring-2 focus:ring-purple-500 cursor-pointer transition-colors"
-          >
-            <option value="7dias">Últimos 7 dias</option>
-            <option value="15dias">Últimos 15 dias</option>
-            <option value="mes">Este Mês (Completo)</option>
-            <option value="3meses">Últimos 3 Meses</option>
-            <option value="ano">Ano Inteiro ({currentYear})</option>
-          </select>
-        </div>
-      </div>
+    <div className="space-y-6">
+      {/* SECTION: TWO-COLUMN EXECUTIVE DASHBOARD CHARTS (Matching reference image) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
+        {/* LEFT CHART: MONTHLY REVENUE / FLUXO FINANCEIRO (Wider col - 2/3) */}
+        <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
+            <div>
+              <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+                <TrendingUp className="w-4 h-4 text-emerald-500" />
+                Fluxo Financeiro
+                <span className="text-xs font-normal text-zinc-400 dark:text-zinc-500">
+                  | {periodoFiltro === 'ano' ? `Ano de ${currentYear}` : 'Evolução Temporal'}
+                </span>
+              </h3>
+            </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* CHART 1: PIE / CATEGORY */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl h-80 shadow-xs flex flex-col justify-between border-t-4 border-t-purple-500 transition-all">
-          <div>
-            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-550">
-              Expêndito por Categoria
-            </h4>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Onde você está gastando no período selecionado
-            </p>
+            {/* Segmented Period Tabs */}
+            <div className="flex bg-zinc-100/90 dark:bg-[#141416] p-1 rounded-xl text-xs font-semibold border border-zinc-200/80 dark:border-[#27272A] self-stretch sm:self-auto justify-between">
+              {(['7dias', '15dias', 'mes', '3meses', 'ano'] as const).map((mode) => (
+                <button
+                  key={mode}
+                  onClick={() => setPeriodoFiltro(mode)}
+                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] ${
+                    periodoFiltro === mode
+                      ? 'bg-white dark:bg-[#27272A] text-zinc-900 dark:text-white shadow-xs font-bold'
+                      : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
+                  }`}
+                >
+                  {mode === '7dias' ? '7D' : mode === '15dias' ? '15D' : mode === 'mes' ? 'Mês' : mode === '3meses' ? '3M' : 'Ano'}
+                </button>
+              ))}
+            </div>
           </div>
-          <div className="h-52 w-full mt-2 relative">
-            {pieData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-xs font-semibold">
-                Nenhum gasto lançado para análise.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={pieData}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={55}
-                    outerRadius={75}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
-                    {pieData.map((_entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip
-                    formatter={(val: number) => [
-                      `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                      'Gasto'
-                    ]}
-                    contentStyle={{ borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}
-                  />
-                  <Legend
-                    verticalAlign="bottom"
-                    height={36}
-                    iconSize={8}
-                    iconType="circle"
-                    formatter={(value) => <span className="text-[9px] font-bold text-slate-500 uppercase">{value}</span>}
-                  />
-                </PieChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
 
-        {/* CHART 2: AREA / DUAL ACCUMULATION PROGRESSION */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl h-80 shadow-xs flex flex-col justify-between border-t-4 border-t-blue-500 transition-all lg:col-span-1">
-          <div>
-            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-550">
-              Progressão do Fluxo de Caixa
-            </h4>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Comparativo de Receita vs Gasto Acumulado
-            </p>
-          </div>
-          <div className="h-52 w-full mt-2">
-            {lineData.length === 0 ? (
-              <div className="flex items-center justify-center h-full text-slate-400 text-xs font-semibold">
-                Nenhum dado de movimentação.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={lineData} margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorGasto" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0.01}/>
-                    </linearGradient>
-                    <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0.01}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-40 dark:hidden" />
-                  <XAxis dataKey="lbl" tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
-                  <YAxis tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
-                  <Tooltip
-                    formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
-                    contentStyle={{ borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}
-                  />
-                  <Legend verticalAlign="top" height={24} iconSize={8} iconType="circle" formatter={(v) => <span className="text-[9px] font-bold text-slate-500 uppercase">{v}</span>} />
-                  <Area
-                    type="monotone"
-                    dataKey="Receita"
-                    stroke="#10b981"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorReceita)"
-                    name="Entradas Acumuladas"
-                    activeDot={{ r: 5 }}
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Gasto"
-                    stroke="#3b82f6"
-                    strokeWidth={3}
-                    fillOpacity={1}
-                    fill="url(#colorGasto)"
-                    name="Saídas Acumuladas"
-                    activeDot={{ r: 5 }}
-                  />
-                </AreaChart>
-              </ResponsiveContainer>
-            )}
-          </div>
-        </div>
-
-        {/* CHART 3: BAR / INCOME VS DESPESAS COMPARISON */}
-        <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 rounded-2xl h-80 shadow-xs flex flex-col justify-between border-t-4 border-t-emerald-500 transition-all">
-          <div>
-            <h4 className="text-[11px] font-black uppercase tracking-wider text-slate-400 dark:text-slate-550">
-              Proporção de Caixa no Período
-            </h4>
-            <p className="text-[9px] text-slate-400 dark:text-slate-500 mt-0.5">
-              Relação direta de volume entre entradas e saídas
-            </p>
-          </div>
-          <div className="h-52 w-full mt-2">
+          <div className="h-64 sm:h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={barData} barGap={12} barCategoryGap="20%" margin={{ top: 10, right: 5, left: -25, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" className="opacity-40 dark:hidden" />
-                <XAxis dataKey="name" tick={{ fontSize: 10, fontWeight: 'bold' }} stroke="#94a3b8" />
-                <YAxis tick={{ fontSize: 9, fontWeight: 'bold' }} stroke="#94a3b8" />
+              <LineChart data={lineData} margin={{ top: 15, right: 15, left: -20, bottom: 5 }}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272A" opacity={0.6} />
+                <XAxis
+                  dataKey="lbl"
+                  tick={{ fontSize: 10, fill: '#71717A' }}
+                  stroke="#27272A"
+                  axisLine={{ stroke: '#27272A' }}
+                  tickLine={false}
+                />
+                <YAxis
+                  tick={{ fontSize: 10, fill: '#71717A' }}
+                  stroke="#27272A"
+                  axisLine={false}
+                  tickLine={false}
+                  tickFormatter={(v) => `R$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
+                />
                 <Tooltip
                   formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
-                  contentStyle={{ borderRadius: '12px', fontSize: '11px', fontWeight: 'bold' }}
+                  contentStyle={{
+                    backgroundColor: '#1A1A1E',
+                    borderColor: '#27272A',
+                    borderRadius: '12px',
+                    color: '#FFFFFF',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    boxShadow: '0 10px 25px -5px rgba(0,0,0,0.5)'
+                  }}
                 />
-                <Legend verticalAlign="bottom" height={24} iconSize={8} iconType="circle" formatter={(v) => <span className="text-[9px] font-bold text-slate-500 uppercase">{v}</span>} />
-                <Bar dataKey="Receitas" fill="#10b981" radius={[8, 8, 0, 0]} name="Total Entradas" />
-                <Bar dataKey="Despesas" fill="#f43f5e" radius={[8, 8, 0, 0]} name="Total Saídas" />
-              </BarChart>
+                <Line
+                  type="monotone"
+                  dataKey="Receita"
+                  stroke="#10B981"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#10B981', strokeWidth: 0 }}
+                  activeDot={{ r: 6, fill: '#FFFFFF', stroke: '#10B981', strokeWidth: 2 }}
+                  name="Receitas"
+                />
+                <Line
+                  type="monotone"
+                  dataKey="Gasto"
+                  stroke="#71717A"
+                  strokeWidth={2}
+                  strokeDasharray="4 4"
+                  dot={{ r: 3, fill: '#71717A', strokeWidth: 0 }}
+                  activeDot={{ r: 5, fill: '#F43F5E', stroke: '#FFFFFF', strokeWidth: 2 }}
+                  name="Despesas"
+                />
+              </LineChart>
             </ResponsiveContainer>
+          </div>
+
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-[#27272A] pt-3 mt-2">
+            <div className="flex items-center gap-4">
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
+                Receitas Realizadas
+              </span>
+              <span className="flex items-center gap-1.5">
+                <span className="w-2.5 h-2.5 rounded-full bg-zinc-500 inline-block" />
+                Despesas no Período
+              </span>
+            </div>
+            <span className="font-mono text-zinc-400">
+              {filteredTrans.length} transações
+            </span>
+          </div>
+        </div>
+
+        {/* RIGHT CHART: PROJECT PROGRESS BY DEPT. / GASTOS POR CATEGORIA (Matching reference image) */}
+        <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+          <div>
+            <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
+              <BarChart2 className="w-4 h-4 text-zinc-400" />
+              Gastos por Categoria
+            </h3>
+            <p className="text-xs text-zinc-400 dark:text-zinc-500 mt-0.5">
+              Distribuição proporcional das despesas
+            </p>
+          </div>
+
+          <div className="h-64 sm:h-72 w-full mt-2">
+            {categoryBarData.length === 0 ? (
+              <div className="flex items-center justify-center h-full text-zinc-400 text-xs">
+                Nenhum gasto registrado neste período.
+              </div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart
+                  data={categoryBarData}
+                  margin={{ top: 15, right: 10, left: -25, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272A" opacity={0.6} />
+                  <XAxis
+                    dataKey="name"
+                    tick={{ fontSize: 9, fill: '#71717A' }}
+                    stroke="#27272A"
+                    axisLine={{ stroke: '#27272A' }}
+                    tickLine={false}
+                    interval={0}
+                    tickFormatter={(name) => name.length > 7 ? `${name.substring(0, 7)}.` : name}
+                  />
+                  <YAxis
+                    tick={{ fontSize: 10, fill: '#71717A' }}
+                    stroke="#27272A"
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v) => `${v}%`}
+                  />
+                  <Tooltip
+                    formatter={(val: number, _name: string, entry: any) => [
+                      `R$ ${entry.payload.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} (${val}%)`,
+                      'Percentual'
+                    ]}
+                    contentStyle={{
+                      backgroundColor: '#1A1A1E',
+                      borderColor: '#27272A',
+                      borderRadius: '12px',
+                      color: '#FFFFFF',
+                      fontSize: '11px',
+                      fontWeight: 600
+                    }}
+                  />
+                  <Bar dataKey="percent" radius={[6, 6, 0, 0]} fill="#71717A">
+                    {categoryBarData.map((_entry, index) => (
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={index === 0 ? '#E4E4E7' : index === 1 ? '#A1A1AA' : index === 2 ? '#71717A' : '#52525B'}
+                      />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 border-t border-zinc-100 dark:border-[#27272A] pt-3 mt-2 flex justify-between">
+            <span>Total: R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+            <span>Top 5 Categorias</span>
           </div>
         </div>
       </div>
 
-      {/* COMPACT INTERACTIVE PERIOD THERMOMETER */}
+      {/* COMPACT INTERACTIVE EXPENSE CALENDAR */}
       <ExpenseCalendar
         transactions={filteredByAccount}
         currentMonth={currentMonth}

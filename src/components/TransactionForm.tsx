@@ -153,44 +153,46 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4 self-start">
-      <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl">
+    <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4 self-start">
+      <div className="flex bg-zinc-100/90 dark:bg-[#141416] p-1 rounded-xl border border-zinc-200/80 dark:border-[#27272A]">
         <button
+          type="button"
           onClick={() => setModo('despesa')}
-          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             modo === 'despesa'
-              ? 'bg-red-600 text-white shadow-xs'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-250 dark:hover:bg-slate-900'
+              ? 'bg-white dark:bg-[#27272A] text-rose-600 dark:text-rose-400 shadow-xs'
+              : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
           }`}
         >
-          📉 Registrar Gasto
+          Despesa
         </button>
         <button
+          type="button"
           onClick={() => setModo('receita')}
-          className={`flex-1 py-2.5 text-xs font-black rounded-lg transition-all cursor-pointer ${
+          className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             modo === 'receita'
-              ? 'bg-emerald-500 text-white shadow-xs'
-              : 'text-slate-500 dark:text-slate-400 hover:bg-slate-250 dark:hover:bg-slate-900'
+              ? 'bg-white dark:bg-[#27272A] text-emerald-600 dark:text-emerald-400 shadow-xs'
+              : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
           }`}
         >
-          📈 Injetar Receita
+          Receita
         </button>
       </div>
 
-      <h2 className="text-sm font-black text-slate-800 dark:text-slate-200 flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-850 pb-2">
-        <ListTodo className={`w-4 h-4 ${modo === 'despesa' ? 'text-red-500' : 'text-emerald-500'}`} />
+      <h2 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-2.5">
+        <ListTodo className={`w-4 h-4 ${modo === 'despesa' ? 'text-rose-500' : 'text-emerald-500'}`} />
         {modo === 'despesa' ? 'Nova Despesa' : 'Nova Receita'}
       </h2>
 
       <form onSubmit={handleSubmit} className="space-y-3.5">
         <div>
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
-            Conta Bancária / Cartão
+          <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+            Conta / Cartão
           </label>
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-semibold"
+            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
           >
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
@@ -201,7 +203,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+          <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
             Descrição
           </label>
           <input
@@ -210,12 +212,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Ex: Supermercado, Aluguel, Freelance"
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium placeholder:text-zinc-400"
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+          <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
             Valor (R$)
           </label>
           <input
@@ -225,35 +227,35 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={valor}
             onChange={(e) => setValor(e.target.value)}
             placeholder="0.00"
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-bold"
+            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-mono font-bold"
           />
         </div>
 
         <div>
-          <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
-            Data de Competência
+          <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+            Data
           </label>
           <input
             type="date"
             required
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-bold"
+            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
           />
         </div>
 
-        {/* Categoria is now displayed for both expenses and incomes */}
+        {/* Categoria */}
         <div>
           <div className="flex justify-between items-center mb-1">
-            <label className="text-[10px] font-black text-slate-400 dark:text-slate-550 uppercase tracking-wider">
+            <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
               Categoria
             </label>
             <button
               type="button"
               onClick={() => setCriandoCategoria(!criandoCategoria)}
-              className="text-[10px] text-purple-600 hover:underline font-bold cursor-pointer"
+              className="text-[10px] text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200 font-semibold cursor-pointer"
             >
-              {criandoCategoria ? 'Selecionar Existente' : '+ Criar Nova'}
+              {criandoCategoria ? 'Selecionar Existente' : '+ Nova Categoria'}
             </button>
           </div>
 
@@ -261,7 +263,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 transition-all font-medium"
+              className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
             >
               {activeCategorias.map((cat) => (
                 <option key={cat} value={cat}>
@@ -276,12 +278,12 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 placeholder="Ex: Viagens, Pets"
                 value={novaCategoriaNome}
                 onChange={(e) => setNovaCategoriaNome(e.target.value)}
-                className="flex-1 bg-slate-50 dark:bg-slate-950 border border-purple-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="flex-1 bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
               />
               <button
                 type="button"
                 onClick={handleCriarCategoria}
-                className="bg-purple-600 text-white text-xs px-3 rounded-xl font-bold hover:bg-purple-700 active:scale-95 transition-all cursor-pointer"
+                className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 text-xs px-3 rounded-xl font-bold transition-all cursor-pointer shadow-xs"
               >
                 Criar
               </button>
@@ -292,13 +294,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {modo === 'despesa' && (
           <>
             <div>
-              <label className="text-[10px] font-black text-slate-400 dark:text-slate-455 uppercase tracking-wider">
+              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                 Tipo de Gasto
               </label>
               <select
                 value={tipoGasto}
                 onChange={(e) => setTipoGasto(e.target.value as 'variavel' | 'fixo')}
-                className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
               >
                 <option value="variavel">Lançamento Único (Variável)</option>
                 <option value="fixo">Lançamento Fixo (Recorrente Mensal)</option>
@@ -307,14 +309,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
             {tipoGasto === 'fixo' && (
               <div>
-                <label className="text-[10px] font-black text-purple-600 uppercase tracking-wider">
+                <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
                   Mês Limite Recorrência
                 </label>
                 <input
                   type="month"
                   value={validadeFixo}
                   onChange={(e) => setValidadeFixo(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-purple-200 dark:border-purple-900 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-bold"
+                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 />
               </div>
             )}
@@ -323,12 +325,14 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         <button
           type="submit"
-          className={`w-full text-white text-xs font-black py-3 rounded-xl transition-all shadow-xs active:scale-98 flex items-center justify-center gap-1.5 uppercase tracking-wider cursor-pointer ${
-            modo === 'despesa' ? 'bg-red-600 hover:bg-red-700' : 'bg-emerald-500 hover:bg-emerald-600'
+          className={`w-full text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer ${
+            modo === 'despesa'
+              ? 'bg-rose-600 hover:bg-rose-700'
+              : 'bg-emerald-600 hover:bg-emerald-700'
           }`}
         >
           <PlusCircle className="w-4 h-4" />
-          {modo === 'despesa' ? 'Adicionar Lançamento' : 'Injetar Receita'}
+          {modo === 'despesa' ? 'Adicionar Despesa' : 'Adicionar Receita'}
         </button>
       </form>
     </div>

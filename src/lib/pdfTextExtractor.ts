@@ -158,7 +158,6 @@ export async function extractTextFromPdf(file: File | ArrayBuffer): Promise<stri
     if (fallbackText && fallbackText.trim().length > 20) {
       return fallbackText;
     }
-    // If fallback is also too short, rethrow original error
     throw new Error(err?.message || 'Não foi possível extrair o texto do arquivo PDF.');
   }
 }

@@ -250,51 +250,51 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 transition-all">
       {/* SECTION 1: EXTRATO DO PERÍODO */}
-      <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-150 dark:border-slate-800 pb-3">
+      <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 dark:border-[#27272A] pb-3">
           <div className="flex items-center gap-2.5 flex-wrap">
-            <h2 className="text-sm font-black flex items-center gap-2 text-slate-800 dark:text-slate-100">
-              <ListChecks className="w-4 h-4 text-purple-600" />
+            <h2 className="text-sm font-bold flex items-center gap-2 text-zinc-900 dark:text-white">
+              <ListChecks className="w-4 h-4 text-zinc-500" />
               Extrato do Período
             </h2>
             {onOpenImportModal && (
               <button
                 onClick={onOpenImportModal}
-                className="flex items-center gap-1.5 px-3 py-1 rounded-xl text-[11px] font-black bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white shadow-xs transition-all cursor-pointer active:scale-95"
-                title="Ler extrato real (PDF Santander, OFX, CSV)"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 shadow-xs transition-all cursor-pointer active:scale-95"
+                title="Importar extrato bancário (PDF Santander, OFX, CSV)"
               >
-                <Sparkles className="w-3.5 h-3.5" />
+                <Sparkles className="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-600" />
                 <span>Importar Extrato</span>
               </button>
             )}
           </div>
-          <div className="flex bg-slate-100 dark:bg-slate-950 p-1 rounded-xl text-[10px] font-black border dark:border-slate-850 w-full sm:w-auto justify-around">
+          <div className="flex bg-zinc-100/90 dark:bg-[#141416] p-1 rounded-xl text-[11px] font-semibold border border-zinc-200/80 dark:border-[#27272A] w-full sm:w-auto justify-around">
             <button
               onClick={() => setFiltroExtrato('todos')}
-              className={`px-3 py-1.5 rounded-lg font-black transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filtroExtrato === 'todos'
-                  ? 'bg-white dark:bg-slate-900 shadow-xs text-purple-600 dark:text-purple-400'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-[#27272A] shadow-xs text-zinc-900 dark:text-white font-bold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
               }`}
             >
               Todos
             </button>
             <button
               onClick={() => setFiltroExtrato('despesas')}
-              className={`px-3 py-1.5 rounded-lg font-black transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filtroExtrato === 'despesas'
-                  ? 'bg-white dark:bg-slate-900 shadow-xs text-red-600 dark:text-red-400'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-[#27272A] shadow-xs text-rose-600 dark:text-rose-400 font-bold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
               }`}
             >
               Despesas
             </button>
             <button
               onClick={() => setFiltroExtrato('receitas')}
-              className={`px-3 py-1.5 rounded-lg font-black transition-all cursor-pointer ${
+              className={`px-3 py-1 rounded-lg transition-all cursor-pointer ${
                 filtroExtrato === 'receitas'
-                  ? 'bg-white dark:bg-slate-900 shadow-xs text-emerald-600 dark:text-emerald-450'
-                  : 'text-slate-500 hover:text-slate-800 dark:hover:text-slate-200'
+                  ? 'bg-white dark:bg-[#27272A] shadow-xs text-emerald-600 dark:text-emerald-400 font-bold'
+                  : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
               }`}
             >
               Receitas
@@ -308,12 +308,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             {criticalCategories.map(([cat, val]) => (
               <div
                 key={cat}
-                className="p-3 bg-red-50 text-red-800 dark:bg-red-950/20 dark:text-red-300 text-[11px] rounded-xl border border-red-200 dark:border-red-900/30 flex items-center gap-2 font-bold shadow-xs"
+                className="p-3 bg-rose-50 text-rose-900 dark:bg-rose-950/20 dark:text-rose-300 text-[11px] rounded-xl border border-rose-200 dark:border-rose-900/30 flex items-center gap-2 font-medium shadow-xs"
               >
-                <AlertTriangle className="w-4 h-4 text-red-500 flex-shrink-0 animate-pulse" />
+                <AlertTriangle className="w-4 h-4 text-rose-500 flex-shrink-0" />
                 <span>
-                  Alerta de Limite Excedido: Seus gastos em &quot;{cat}&quot; atingiram o patamar crítico de{' '}
-                  <strong className="text-red-700 dark:text-red-400">{formatCurrency(val)}</strong> (limite sugerido: R$ 1.500,00).
+                  Alerta de Limite: Seus gastos em &quot;{cat}&quot; atingiram{' '}
+                  <strong className="text-rose-700 dark:text-rose-400 font-bold">{formatCurrency(val)}</strong> (limite sugerido: R$ 1.500,00).
                 </span>
               </div>
             ))}
@@ -321,9 +321,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         )}
 
         {/* Mobile-optimized List (Visible on Mobile only, hidden on SM+) */}
-        <div className="block sm:hidden space-y-2.5">
+        <div className="block sm:hidden space-y-2">
           {ledgerTransactions.length === 0 ? (
-            <div className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium text-xs">
+            <div className="p-8 text-center text-zinc-400 dark:text-zinc-600 font-medium text-xs">
               Nenhum lançamento registrado neste mês.
             </div>
           ) : (
@@ -333,50 +333,43 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-850/60 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
+                  className="p-3 bg-zinc-50/70 dark:bg-[#141416] border border-zinc-200/70 dark:border-[#27272A] rounded-xl flex items-center justify-between gap-3 shadow-xs"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center flex-wrap gap-1.5 mb-0.5">
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold whitespace-nowrap">
-                        {formatDate(item.data)}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[8px] text-slate-500 dark:text-slate-400 font-black uppercase tracking-wider truncate max-w-[100px]">
-                        {item.categoria}
-                      </span>
+                    <div className="flex items-center flex-wrap gap-1.5 mb-1 text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                      <span>{formatDate(item.data)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="truncate max-w-[110px]">{item.categoria}</span>
                       {account && (
-                        <span className={`px-1.5 py-0.5 rounded text-[8px] text-white font-extrabold uppercase tracking-wider ${account.cor}`}>
-                          {account.nome}
-                        </span>
-                      )}
-                      {item.faturaMes && (
-                        <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold">
-                          💳 {item.faturaMes}
-                        </span>
+                        <>
+                          <span aria-hidden="true">·</span>
+                          <span className="truncate max-w-[90px] font-semibold text-zinc-700 dark:text-zinc-300">{account.nome}</span>
+                        </>
                       )}
                     </div>
-                    <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">
+                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
                       {item.descricao}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-xs font-black ${isDesp ? 'text-red-500' : 'text-emerald-500'}`}>
-                      {isDesp ? '-' : '+'} R$ {item.valor.toFixed(2)}
+                    <p className={`text-xs font-bold font-mono tabular-nums ${isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                     </p>
-                    <p className="text-[9px] text-slate-400 dark:text-slate-500 font-bold">
-                      Saldo: {formatCurrency(transactionBalances[item.id] ?? 0)}
+                    <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">
+                      {formatCurrency(transactionBalances[item.id] ?? 0)}
                     </p>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0 border-l border-slate-200/80 dark:border-slate-800 pl-2">
+                  <div className="flex items-center gap-0.5 shrink-0 border-l border-zinc-200/80 dark:border-[#27272A] pl-1.5">
                     <button
                       onClick={() => startEdit(item)}
-                      className="p-1.5 hover:text-blue-500 dark:hover:text-blue-400 text-slate-400 dark:text-slate-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 cursor-pointer"
                       title="Editar"
                     >
                       <Pencil className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => onDeleteTransaction(item.id, item.tipoItem)}
-                      className="p-1.5 hover:text-red-500 dark:hover:text-red-400 text-slate-400 dark:text-slate-600 rounded-md hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                      className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-md hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer"
                       title="Remover"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -389,10 +382,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
 
         {/* Ledger items list */}
-        <div className="hidden sm:block overflow-x-auto rounded-xl">
+        <div className="hidden sm:block overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-[#27272A]">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-250 dark:border-slate-850 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black bg-slate-50 dark:bg-slate-950/40">
+              <tr className="border-b border-zinc-200/80 dark:border-[#27272A] text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold bg-zinc-50/80 dark:bg-[#141416]">
                 <th className="p-3">Data</th>
                 <th className="p-3">Descrição</th>
                 <th className="p-3">Categoria</th>
@@ -400,10 +393,10 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 <th className="p-3 text-center">Ações</th>
               </tr>
             </thead>
-            <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+            <tbody className="text-xs divide-y divide-zinc-100 dark:divide-[#27272A]/60">
               {ledgerTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={5} className="p-8 text-center text-slate-400 dark:text-slate-600 font-medium">
+                  <td colSpan={5} className="p-8 text-center text-zinc-400 dark:text-zinc-600 font-medium">
                     Nenhum lançamento registrado neste mês.
                   </td>
                 </tr>
@@ -414,40 +407,40 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   return (
                     <tr
                       key={item.id}
-                      className="hover:bg-slate-100/40 dark:hover:bg-slate-900/40 transition-colors"
+                      className="hover:bg-zinc-50/60 dark:hover:bg-[#222226]/60 transition-colors"
                     >
-                      <td className="p-3 whitespace-nowrap text-slate-400 dark:text-slate-500 font-bold">
+                      <td className="p-3 whitespace-nowrap text-zinc-500 dark:text-zinc-400 font-medium font-mono text-[11px]">
                         {formatDate(item.data)}
                       </td>
-                      <td className="p-3 font-bold text-slate-700 dark:text-slate-300">
+                      <td className="p-3 font-semibold text-zinc-800 dark:text-zinc-200">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span>{item.descricao}</span>
                           {account && (
-                            <span className={`px-1.5 py-0.5 rounded text-[8px] text-white font-extrabold uppercase tracking-wide shrink-0 ${account.cor}`}>
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 font-semibold tracking-wide shrink-0">
                               {account.nome}
                             </span>
                           )}
                           {item.faturaMes && (
-                            <span className="px-1.5 py-0.5 rounded text-[8px] bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold border border-slate-205 dark:border-slate-705 shrink-0">
+                            <span className="px-1.5 py-0.5 rounded text-[9px] bg-zinc-100 dark:bg-zinc-800 text-zinc-500 dark:text-zinc-400 font-medium shrink-0">
                               💳 Fatura {item.faturaMes}
                             </span>
                           )}
                         </div>
                       </td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 font-black tracking-wide">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">
                           {item.categoria}
                         </span>
                       </td>
-                      <td className="p-3 text-right">
+                      <td className="p-3 text-right font-mono tabular-nums">
                         <div
-                          className={`font-black ${
-                            isDesp ? 'text-red-500' : 'text-emerald-500'
+                          className={`font-bold ${
+                            isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                           }`}
                         >
-                          {isDesp ? '-' : '+'} R$ {item.valor.toFixed(2)}
+                          {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                         </div>
-                        <div className="text-[10px] text-slate-400 dark:text-slate-500 font-bold mt-0.5">
+                        <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">
                           Saldo: {formatCurrency(transactionBalances[item.id] ?? 0)}
                         </div>
                       </td>
@@ -455,14 +448,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => startEdit(item)}
-                            className="p-1.5 hover:text-blue-500 dark:hover:text-blue-400 text-slate-400 dark:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            className="p-1 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 rounded-lg hover:bg-zinc-100 dark:hover:bg-[#27272A] cursor-pointer transition-colors"
                             title="Editar lançamento"
                           >
                             <Pencil className="w-3.5 h-3.5" />
                           </button>
                           <button
                             onClick={() => onDeleteTransaction(item.id, item.tipoItem)}
-                            className="p-1.5 hover:text-red-500 dark:hover:text-red-400 text-slate-400 dark:text-slate-600 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer transition-colors"
+                            className="p-1 text-zinc-400 hover:text-rose-600 dark:hover:text-rose-400 rounded-lg hover:bg-rose-50 dark:hover:bg-rose-950/30 cursor-pointer transition-colors"
                             title="Remover lançamento"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -478,15 +471,15 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
 
         {/* Bottleneck evaluation helper footer */}
-        <div className="bg-slate-50 dark:bg-slate-950/40 p-3.5 rounded-xl border border-slate-200 dark:border-slate-800 flex items-center justify-between text-[11px]">
-          <p className="font-bold text-slate-600 dark:text-slate-400 flex items-center gap-1.5 leading-normal">
-            <Info className="w-4.5 h-4.5 text-purple-600" />
+        <div className="bg-zinc-50/70 dark:bg-[#141416] p-3 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex items-center justify-between text-xs">
+          <p className="font-medium text-zinc-600 dark:text-zinc-400 flex items-center gap-1.5 leading-normal">
+            <Info className="w-4 h-4 text-zinc-400 shrink-0" />
             <span>
               {highestExpenditureWeight > 0 ? (
                 <>
-                  Seu maior foco de consumo este mês está em &quot;
-                  <strong className="text-purple-600">{highestExpenditureCategory}</strong>&quot; com um total de{' '}
-                  <strong className="text-red-500">{formatCurrency(highestExpenditureWeight)}</strong>.
+                  Maior consumo no período em &quot;
+                  <strong className="text-zinc-900 dark:text-white font-bold">{highestExpenditureCategory}</strong>&quot;:{' '}
+                  <strong className="text-rose-600 dark:text-rose-400 font-bold">{formatCurrency(highestExpenditureWeight)}</strong>.
                 </>
               ) : (
                 'Sem despesas registradas nesta parcial do mês corrente.'
@@ -497,29 +490,29 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       </div>
 
       {/* SECTION 2: BUSCA GLOBAL FILTRO HISTÓRICO */}
-      <div className="lg:col-span-3 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 shadow-xs space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-slate-150 dark:border-slate-850 pb-3">
-          <h2 className="text-sm font-black flex items-center gap-2 text-slate-800 dark:text-slate-100">
-            <History className="w-4 h-4 text-blue-500" />
-            Histórico Geral (Busca Global)
+      <div className="lg:col-span-3 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 dark:border-[#27272A] pb-3">
+          <h2 className="text-sm font-bold flex items-center gap-2 text-zinc-900 dark:text-white">
+            <History className="w-4 h-4 text-zinc-400" />
+            Histórico Geral de Movimentações
           </h2>
           <div className="flex flex-col sm:flex-row gap-2.5 w-full sm:w-auto">
             <div className="relative">
-              <Search className="w-3.5 h-3.5 absolute left-3 top-3 text-slate-455" />
+              <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
               <input
                 type="text"
                 placeholder="Filtrar por nome..."
                 value={buscaHistorico}
                 onChange={(e) => setBuscaHistorico(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 w-full sm:w-48 font-medium"
+                className="bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] dark:text-white rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 w-full sm:w-48 font-medium"
               />
             </div>
             <div className="relative flex items-center">
-              <Filter className="w-3.5 h-3.5 absolute left-3 text-slate-455 pointer-events-none" />
+              <Filter className="w-3.5 h-3.5 absolute left-3 text-zinc-400 pointer-events-none" />
               <select
                 value={filtroCatHistorico}
                 onChange={(e) => setFiltroCatHistorico(e.target.value)}
-                className="bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl pl-8 pr-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 w-full hover:bg-slate-100 transition-all font-medium"
+                className="bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] dark:text-white rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 w-full font-medium"
               >
                 <option value="todas">Todas Categorias</option>
                 {categorias.map((cat) => (
@@ -533,9 +526,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
 
         {/* Mobile-optimized global history list */}
-        <div className="block sm:hidden space-y-2.5 max-h-72 overflow-y-auto pr-1">
+        <div className="block sm:hidden space-y-2 max-h-72 overflow-y-auto pr-1">
           {searchedTransactions.length === 0 ? (
-            <div className="p-6 text-center text-slate-400 dark:text-slate-655 font-medium text-xs">
+            <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 font-medium text-xs">
               Nenhum registro corresponde aos filtros de pesquisa informados.
             </div>
           ) : (
@@ -544,23 +537,20 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               return (
                 <div
                   key={item.id}
-                  className="p-3 bg-slate-50/50 dark:bg-slate-950/20 border border-slate-200/50 dark:border-slate-850/60 rounded-xl flex items-center justify-between gap-3 shadow-2xs"
+                  className="p-3 bg-zinc-50/70 dark:bg-[#141416] border border-zinc-200/70 dark:border-[#27272A] rounded-xl flex items-center justify-between gap-3 shadow-xs"
                 >
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 mb-0.5">
-                      <span className="text-[10px] text-slate-400 dark:text-slate-500 font-bold whitespace-nowrap">
-                        {formatDate(item.data)}
-                      </span>
-                      <span className="px-1.5 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[8px] text-slate-500 dark:text-slate-400 font-bold uppercase tracking-wider truncate max-w-[100px]">
-                        {item.categoria}
-                      </span>
+                    <div className="flex items-center gap-1.5 mb-1 text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                      <span>{formatDate(item.data)}</span>
+                      <span aria-hidden="true">·</span>
+                      <span className="truncate max-w-[120px]">{item.categoria}</span>
                     </div>
-                    <p className="text-xs font-black text-slate-800 dark:text-slate-200 truncate">
+                    <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
                       {item.descricao}
                     </p>
                   </div>
                   <div className="text-right shrink-0">
-                    <p className={`text-xs font-black ${isDesp ? 'text-red-500' : 'text-emerald-500'}`}>
+                    <p className={`text-xs font-bold font-mono tabular-nums ${isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                       {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                     </p>
                   </div>
@@ -571,20 +561,20 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
         </div>
 
         {/* Global history table list (Visible on SM+ screens, hidden on Mobile) */}
-        <div className="hidden sm:block overflow-x-auto max-h-72 overflow-y-auto rounded-xl shadow-inner border border-slate-150 dark:border-slate-800/80">
+        <div className="hidden sm:block overflow-x-auto max-h-72 overflow-y-auto rounded-xl border border-zinc-200/80 dark:border-[#27272A]">
           <table className="w-full text-left border-collapse">
             <thead>
-              <tr className="border-b border-slate-200 dark:border-slate-850 text-slate-400 dark:text-slate-500 text-[10px] uppercase font-black sticky top-0 bg-white dark:bg-slate-900 z-10 shadow-xs">
+              <tr className="border-b border-zinc-200/80 dark:border-[#27272A] text-zinc-500 dark:text-zinc-400 text-[10px] uppercase font-bold sticky top-0 bg-zinc-50 dark:bg-[#141416] z-10 shadow-xs">
                 <th className="p-3">Data</th>
                 <th className="p-3">Lançamento</th>
                 <th className="p-3">Categoria</th>
                 <th className="p-3 text-right">Valor</th>
               </tr>
             </thead>
-            <tbody className="text-xs divide-y divide-slate-100 dark:divide-slate-850">
+            <tbody className="text-xs divide-y divide-zinc-100 dark:divide-[#27272A]/60">
               {searchedTransactions.length === 0 ? (
                 <tr>
-                  <td colSpan={4} className="p-6 text-center text-slate-400 dark:text-slate-655 font-medium">
+                  <td colSpan={4} className="p-6 text-center text-zinc-400 dark:text-zinc-600 font-medium">
                     Nenhum registro corresponde aos filtros de pesquisa informados.
                   </td>
                 </tr>
@@ -594,22 +584,22 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   return (
                     <tr
                       key={item.id}
-                      className="border-b border-slate-100 dark:border-slate-850/40 hover:bg-slate-50 dark:hover:bg-slate-900/30 transition-colors"
+                      className="hover:bg-zinc-50/60 dark:hover:bg-[#222226]/60 transition-colors"
                     >
-                      <td className="p-3 text-slate-400 dark:text-slate-500 font-medium">
+                      <td className="p-3 text-zinc-500 dark:text-zinc-400 font-medium font-mono text-[11px]">
                         {formatDate(item.data)}
                       </td>
-                      <td className="p-3 font-bold text-slate-700 dark:text-slate-350">
+                      <td className="p-3 font-semibold text-zinc-800 dark:text-zinc-200">
                         {item.descricao}
                       </td>
                       <td className="p-3">
-                        <span className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-800 text-[10px] text-slate-500 dark:text-slate-400 font-bold">
+                        <span className="text-xs text-zinc-600 dark:text-zinc-300 font-medium">
                           {item.categoria}
                         </span>
                       </td>
                       <td
-                        className={`p-3 text-right font-black ${
-                          isDesp ? 'text-red-500' : 'text-emerald-500'
+                        className={`p-3 text-right font-mono tabular-nums font-bold ${
+                          isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                         }`}
                       >
                         {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
@@ -624,22 +614,22 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
       </div>
 
       {editingTransaction && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-4 pb-2 border-b border-slate-100 dark:border-slate-800">
-              <h3 className="text-sm font-black text-slate-800 dark:text-slate-100">
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-md shadow-xl animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4 pb-2 border-b border-zinc-100 dark:border-[#27272A]">
+              <h3 className="text-sm font-bold text-zinc-900 dark:text-white">
                 Editar Lançamento ({editingTransaction.tipoItem === 'despesa' ? 'Despesa' : 'Receita'})
               </h3>
               <button
                 onClick={() => setEditingTransaction(null)}
-                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 cursor-pointer"
+                className="text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
             </div>
             <form onSubmit={saveEdit} className="space-y-4">
               <div>
-                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                   Descrição
                 </label>
                 <input
@@ -647,13 +637,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   required
                   value={editDescricao}
                   onChange={(e) => setEditDescricao(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Valor (R$)
                   </label>
                   <input
@@ -663,11 +653,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     min="0.01"
                     value={editValor || ''}
                     onChange={(e) => setEditValor(parseFloat(e.target.value) || 0)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
                   />
                 </div>
                 <div>
-                  <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                     Data
                   </label>
                   <input
@@ -675,19 +665,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                     required
                     value={editData}
                     onChange={(e) => setEditData(e.target.value)}
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                   />
                 </div>
               </div>
 
-               <div>
-                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                   Conta Bancária / Cartão
                 </label>
                 <select
                   value={editAccountId}
                   onChange={(e) => setEditAccountId(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium mb-3.5"
+                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium mb-3.5"
                 >
                   {accounts.map((acc) => (
                     <option key={acc.id} value={acc.id}>
@@ -698,13 +688,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
               </div>
 
               <div>
-                <label className="block text-[10px] uppercase font-black text-slate-400 dark:text-slate-500 mb-1.5">
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
                   Categoria
                 </label>
                 <select
                   value={editCategoria}
                   onChange={(e) => setEditCategoria(e.target.value)}
-                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 dark:text-white rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:ring-2 focus:ring-purple-500 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 >
                   {(editingTransaction.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita).map((cat) => (
                     <option key={cat} value={cat}>
@@ -714,17 +704,17 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 </select>
               </div>
 
-              <div className="flex gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
                 <button
                   type="button"
                   onClick={() => setEditingTransaction(null)}
-                  className="flex-1 px-4 py-2 bg-slate-100 dark:bg-slate-850 hover:bg-slate-200 dark:hover:bg-slate-800 text-slate-600 dark:text-slate-350 rounded-xl text-xs font-black transition-all cursor-pointer text-center"
+                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#38383E] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-xl text-xs font-black transition-all cursor-pointer text-center shadow-md shadow-purple-500/10"
+                  className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
                 >
                   Salvar
                 </button>

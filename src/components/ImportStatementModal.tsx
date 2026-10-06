@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Transaction, BankAccount, safeRandomUUID, getBillMonthForDate } from '../types';
 import {
-  ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement, checkDuplicate
+  ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement
 } from '../lib/statementParser';
 import { extractTextFromPdf, isPdfBuffer } from '../lib/pdfTextExtractor';
 
@@ -107,75 +107,14 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     setErrorMessage(null);
 
     try {
-      const fileName = (file.name || '').toLowerCase();
-
-      // Read file to base64 using native FileReader (fast and memory-safe on mobile)
-      setProcessingStatus('Preparando arquivo para análise...');
-      const base64 = await new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = () => {
-          const res = reader.result as string;
-          const commaIdx = res.indexOf(',');
-          resolve(commaIdx !== -1 ? res.slice(commaIdx + 1) : res);
-        };
-        reader.onerror = () => reject(new Error('Falha ao ler o arquivo no dispositivo.'));
-        reader.readAsDataURL(file);
-      });
-
-      // Attempt 1: Server-side parser (100% reliable, avoids mobile browser sandbox limitations)
-      let serverSuccess = false;
-      try {
-        setProcessingStatus('Processando extrato bancário no servidor...');
-        const res = await fetch('/api/parse-statement', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ base64, filename: file.name })
-        });
-
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success && Array.isArray(data.items) && data.items.length > 0) {
-            const itemsWithDup = data.items.map((it: any) => {
-              const dup = checkDuplicate(it, existingTransactions);
-              return {
-                ...it,
-                isDuplicate: dup.isDuplicate,
-                duplicateReason: dup.reason,
-                selected: !dup.isDuplicate
-              };
-            });
-            setParsedItems(itemsWithDup);
-            setHasParsed(true);
-            serverSuccess = true;
-          } else if (data.success && (!data.items || data.items.length === 0)) {
-            // Text was extracted, but parser didn't match automatic pattern
-            if (data.rawText && data.rawText.length > 10) {
-              setPastedText(data.rawText);
-              setActiveTab('paste');
-              setErrorMessage(`O arquivo foi lido (${data.rawText.length} caracteres), mas nenhuma linha correspondeu ao formato de extrato. O texto foi carregado abaixo para você revisar.`);
-              serverSuccess = true;
-            }
-          }
-        } else {
-          const errData = await res.json().catch(() => ({}));
-          console.warn('Server parser returned error:', errData);
-        }
-      } catch (srvErr) {
-        console.warn('Server parser unreachable, fallback to client:', srvErr);
-      }
-
-      if (serverSuccess) {
-        return;
-      }
-
-      // Attempt 2: Client-side local parsing fallback
       const arrayBuffer = await file.arrayBuffer();
+      const fileName = (file.name || '').toLowerCase();
       const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
 
       if (isPdf) {
-        setProcessingStatus('Tentando leitura local do PDF...');
+        setProcessingStatus('Extraindo páginas e movimentações do PDF...');
         const extractedText = await extractTextFromPdf(arrayBuffer);
-        setProcessingStatus('Analisando transações...');
+        setProcessingStatus('Analisando transações e cruzando dados...');
         processRawText(extractedText, 'pdf');
       } else if (fileName.endsWith('.ofx')) {
         setProcessingStatus('Processando arquivo bancário OFX...');
@@ -193,7 +132,6 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     } catch (err: any) {
       console.error('Error reading statement file:', err);
       setErrorMessage(`Não foi possível processar o arquivo "${file.name}": ${err?.message || 'Arquivo inacessível ou formato não reconhecido'}. Você também pode copiar o texto da fatura/extrato e colar diretamente na aba "Copiar e Colar Texto".`);
-    } finally {
       setIsProcessing(false);
       setProcessingStatus('');
     }
@@ -320,56 +258,58 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-sm overflow-y-auto">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-5 bg-black/70 backdrop-blur-sm overflow-y-auto">
       <motion.div
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
-        className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden"
+        className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl sm:rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[92vh] overflow-hidden"
       >
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-2xl bg-purple-600/10 dark:bg-purple-500/20 text-purple-600 dark:text-purple-400 flex items-center justify-center">
-              <Sparkles className="w-5 h-5" />
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/60">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-zinc-900/10 dark:bg-white/10 text-zinc-900 dark:text-white flex items-center justify-center shrink-0">
+              <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-700 dark:text-zinc-300" />
             </div>
-            <div>
-              <h2 className="text-lg font-black text-slate-900 dark:text-white flex items-center gap-2">
-                Leitor Inteligente de Extratos
-                <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 flex-wrap">
+                <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white tracking-tight truncate">
+                  Importar Extrato Bancário
+                </h2>
+                <span className="text-[9px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 dark:bg-[#27272A] dark:text-zinc-300 whitespace-nowrap">
                   Santander • OFX • CSV • PDF
                 </span>
-              </h2>
-              <p className="text-xs text-slate-500 dark:text-slate-400">
-                Importe transações reais com detecção automática de duplicadas e sugestão de categorias
+              </div>
+              <p className="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 truncate">
+                Leitura inteligente com detecção de duplicadas e categorias
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-800 dark:hover:text-slate-200 transition-colors"
+            className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-[#27272A] dark:hover:text-zinc-200 transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* MODAL BODY */}
-        <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-3.5 sm:p-6 space-y-4 sm:space-y-5">
           {/* CONFIGURATION & SOURCE SELECTION */}
           {!hasParsed ? (
             <div className="space-y-5">
               {/* TARGET ACCOUNT SELECTOR */}
-              <div className="bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-zinc-50/80 dark:bg-[#141416] p-4 rounded-2xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
-                  <Layers className="w-4 h-4 text-purple-600" />
-                  <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                  <Layers className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
+                  <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                     Conta bancária de destino dos lançamentos:
                   </span>
                 </div>
                 <select
                   value={targetAccountId}
                   onChange={(e) => setTargetAccountId(e.target.value)}
-                  className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 dark:text-slate-100 focus:ring-2 focus:ring-purple-500 outline-none"
+                  className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none"
                 >
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
@@ -380,13 +320,13 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
               </div>
 
               {/* TABS: UPLOAD FILE vs PASTE TEXT */}
-              <div className="flex gap-2 border-b border-slate-200 dark:border-slate-800 pb-2">
+              <div className="flex gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-2">
                 <button
                   onClick={() => setActiveTab('upload')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'upload'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#222226]'
                   }`}
                 >
                   <Upload className="w-4 h-4" />
@@ -394,10 +334,10 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                 </button>
                 <button
                   onClick={() => setActiveTab('paste')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-black transition-all ${
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                     activeTab === 'paste'
-                      ? 'bg-purple-600 text-white shadow-md'
-                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'
+                      ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs'
+                      : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-[#222226]'
                   }`}
                 >
                   <FileText className="w-4 h-4" />
@@ -413,24 +353,24 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all ${
                     isDragging
-                      ? 'border-purple-500 bg-purple-50/50 dark:bg-purple-950/30'
-                      : 'border-slate-250 dark:border-slate-750 bg-slate-50/50 dark:bg-slate-950/30'
+                      ? 'border-zinc-900 dark:border-zinc-300 bg-zinc-50 dark:bg-[#141416]'
+                      : 'border-zinc-300 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/40'
                   }`}
                 >
-                  <div className="w-16 h-16 rounded-3xl bg-purple-100 dark:bg-purple-900/50 text-purple-600 dark:text-purple-400 mx-auto flex items-center justify-center mb-4">
+                  <div className="w-16 h-16 rounded-3xl bg-zinc-100 dark:bg-[#27272A] text-zinc-800 dark:text-zinc-200 mx-auto flex items-center justify-center mb-4">
                     <Upload className="w-8 h-8" />
                   </div>
-                  <h3 className="text-base font-bold text-slate-800 dark:text-slate-100 mb-1">
+                  <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
                     Arraste o arquivo do extrato ou clique para selecionar
                   </h3>
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-6 max-w-md mx-auto">
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-6 max-w-md mx-auto">
                     Suporta extratos em <strong>PDF Santander</strong>, arquivos bancários <strong>OFX</strong>, tabelas <strong>CSV</strong> ou arquivos de texto puro.
                   </p>
 
                   {isProcessing ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-purple-50/80 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
-                      <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin" />
-                      <p className="text-xs font-black text-purple-700 dark:text-purple-300 animate-pulse">
+                    <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-zinc-100/80 dark:bg-[#222226] rounded-2xl border border-zinc-200 dark:border-[#27272A]">
+                      <Loader2 className="w-8 h-8 text-zinc-900 dark:text-zinc-100 animate-spin" />
+                      <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 animate-pulse">
                         {processingStatus || 'Processando extrato bancário...'}
                       </p>
                     </div>
@@ -453,7 +393,7 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                       <button
                         type="button"
                         onClick={() => fileInputRef.current?.click()}
-                        className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-xs cursor-pointer shadow-lg shadow-purple-600/25 transition-all"
+                        className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 active:scale-95 text-white font-bold text-xs cursor-pointer shadow-xs transition-all"
                       >
                         <FileText className="w-4 h-4" />
                         Escolher Arquivo do Celular / Computador
@@ -461,10 +401,10 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                     </div>
                   )}
 
-                  <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-center">
+                  <div className="mt-8 pt-6 border-t border-zinc-200/80 dark:border-[#27272A] flex justify-center">
                     <button
                       onClick={loadExampleSantander}
-                      className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1.5"
+                      className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline flex items-center gap-1.5 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       Ou teste agora com um exemplo real do Santander (Ago/2026)
@@ -477,12 +417,12 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
               {activeTab === 'paste' && (
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <label className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                    <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                       Cole aqui o texto do extrato ou da fatura bancária:
                     </label>
                     <button
                       onClick={loadExampleSantander}
-                      className="text-xs font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1"
+                      className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline flex items-center gap-1 cursor-pointer"
                     >
                       <Sparkles className="w-3.5 h-3.5" />
                       Preencher Exemplo Santander
@@ -493,13 +433,13 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                     value={pastedText}
                     onChange={(e) => setPastedText(e.target.value)}
                     placeholder="Exemplo:&#10;03/08 PIX RECEBIDO Francisco Edson dos Santo - 200,00&#10;PIX ENVIADO S de Lima Costa Panificad - 19,00-&#10;DEBITO AUT. TELEFONE CELULAR CLARO MOVEL - 27,01-&#10;05/08 PIX ENVIADO TOP LANCHES LTDA - 25,00-"
-                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 text-xs font-mono text-slate-800 dark:text-slate-200 focus:ring-2 focus:ring-purple-500 outline-none resize-y"
+                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-4 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none resize-y"
                   />
                   <div className="flex justify-end">
                     <button
                       disabled={!pastedText.trim() || isProcessing}
                       onClick={() => processRawText(pastedText, 'text')}
-                      className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer"
+                      className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer"
                     >
                       <Sparkles className="w-4 h-4" />
                       {isProcessing ? 'Processando...' : 'Analisar e Identificar Movimentações'}
@@ -530,51 +470,51 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
             </div>
           ) : (
             /* PREVIEW AND REVISION SCREEN */
-            <div className="space-y-4">
+            <div className="space-y-3.5 sm:space-y-4">
               {/* SUMMARY METRIC CARDS */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="bg-slate-50 dark:bg-slate-950 p-3.5 rounded-2xl border border-slate-200 dark:border-slate-800">
-                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Identificados</span>
-                  <span className="text-xl font-black text-slate-800 dark:text-white">
-                    {totalItems} <span className="text-xs font-normal text-slate-400">({selectedItems.length} selecionados)</span>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
+                <div className="bg-zinc-50 dark:bg-[#141416] p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200/80 dark:border-[#27272A]">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Identificados</span>
+                  <span className="text-sm sm:text-xl font-black text-zinc-900 dark:text-white font-mono">
+                    {totalItems} <span className="text-[10px] sm:text-xs font-normal text-zinc-400">({selectedItems.length} sel.)</span>
                   </span>
                 </div>
 
-                <div className="bg-emerald-50 dark:bg-emerald-950/30 p-3.5 rounded-2xl border border-emerald-200 dark:border-emerald-800/50">
-                  <span className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Total Receitas</span>
-                  <span className="text-xl font-black text-emerald-600 dark:text-emerald-400">
+                <div className="bg-emerald-50 dark:bg-emerald-950/30 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-emerald-200 dark:border-emerald-800/50">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-emerald-600 dark:text-emerald-400 uppercase tracking-wider block">Receitas</span>
+                  <span className="text-sm sm:text-xl font-black text-emerald-600 dark:text-emerald-400 font-mono truncate block">
                     R$ {totalReceitas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
-                <div className="bg-rose-50 dark:bg-rose-950/30 p-3.5 rounded-2xl border border-rose-200 dark:border-rose-800/50">
-                  <span className="text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Total Despesas</span>
-                  <span className="text-xl font-black text-rose-600 dark:text-rose-400">
+                <div className="bg-rose-50 dark:bg-rose-950/30 p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-rose-200 dark:border-rose-800/50">
+                  <span className="text-[9px] sm:text-[10px] font-bold text-rose-600 dark:text-rose-400 uppercase tracking-wider block">Despesas</span>
+                  <span className="text-sm sm:text-xl font-black text-rose-600 dark:text-rose-400 font-mono truncate block">
                     R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
 
-                <div className={`p-3.5 rounded-2xl border ${
+                <div className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border ${
                   duplicateCount > 0
                     ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
-                    : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800'
+                    : 'bg-zinc-50 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A]'
                 }`}>
-                  <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
-                    Duplicatas Bloqueadas
+                  <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
+                    Duplicatas
                   </span>
-                  <span className="text-xl font-black text-amber-600 dark:text-amber-400">
-                    {duplicateCount} <span className="text-xs font-normal text-slate-500">desmarcadas</span>
+                  <span className="text-sm sm:text-xl font-black text-amber-600 dark:text-amber-400 truncate block">
+                    {duplicateCount} <span className="text-[10px] sm:text-xs font-normal text-zinc-500">bloqueadas</span>
                   </span>
                 </div>
               </div>
 
               {/* ACTION TOOLBAR & FILTER TABS */}
-              <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-slate-50 dark:bg-slate-950/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center gap-1.5 flex-wrap">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 bg-zinc-50 dark:bg-[#141416] p-2.5 sm:p-3 rounded-2xl border border-zinc-200/80 dark:border-[#27272A]">
+                <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                   <button
                     onClick={() => setFilterMode('todos')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      filterMode === 'todos' ? 'bg-purple-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-850'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      filterMode === 'todos' ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
                     }`}
                   >
                     Todos ({totalItems})
@@ -582,8 +522,8 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                   {duplicateCount > 0 && (
                     <button
                       onClick={() => setFilterMode('duplicatas')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
-                        filterMode === 'duplicatas' ? 'bg-amber-600 text-white shadow-xs' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950'
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                        filterMode === 'duplicatas' ? 'bg-amber-600 text-white shadow-xs' : 'text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-950/40'
                       }`}
                     >
                       <AlertTriangle className="w-3.5 h-3.5" />
@@ -593,8 +533,8 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                   {pendingCategoryCount > 0 && (
                     <button
                       onClick={() => setFilterMode('pendentes')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all flex items-center gap-1 ${
-                        filterMode === 'pendentes' ? 'bg-indigo-600 text-white shadow-xs' : 'text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 dark:hover:bg-indigo-950'
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
+                        filterMode === 'pendentes' ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                       }`}
                     >
                       <Sparkles className="w-3.5 h-3.5" />
@@ -603,174 +543,282 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                   )}
                   <button
                     onClick={() => setFilterMode('despesas')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      filterMode === 'despesas' ? 'bg-rose-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-850'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      filterMode === 'despesas' ? 'bg-rose-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
                     }`}
                   >
                     Despesas
                   </button>
                   <button
                     onClick={() => setFilterMode('receitas')}
-                    className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all ${
-                      filterMode === 'receitas' ? 'bg-emerald-600 text-white shadow-xs' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-850'
+                    className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
+                      filterMode === 'receitas' ? 'bg-emerald-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
                     }`}
                   >
                     Receitas
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <div className="flex items-center gap-2 justify-between sm:justify-end pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-200 dark:border-[#27272A]">
                   <button
                     onClick={selectAllValid}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 transition-colors"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#27272A] transition-colors cursor-pointer"
                   >
                     Marcar Válidas
                   </button>
                   <button
                     onClick={unselectAll}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#27272A] transition-colors cursor-pointer"
                   >
                     Desmarcar Todas
                   </button>
                   <button
                     onClick={() => setHasParsed(false)}
-                    className="px-3 py-1.5 rounded-xl text-xs font-bold text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors flex items-center gap-1"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#27272A] transition-colors flex items-center gap-1 cursor-pointer"
                   >
-                    <RefreshCw className="w-3.5 h-3.5" />
-                    Novo Arquivo
+                    <RefreshCw className="w-3 h-3" />
+                    <span>Novo</span>
                   </button>
                 </div>
               </div>
 
-              {/* TABLE LIST OF ITEMS */}
-              <div className="border border-slate-200 dark:border-slate-800 rounded-2xl overflow-hidden max-h-[48vh] overflow-y-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-100 dark:bg-slate-950 sticky top-0 z-10 text-[11px] font-black text-slate-600 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedItems.length > 0 && selectedItems.length === parsedItems.filter(i => !i.isDuplicate).length}
-                          onChange={(e) => e.target.checked ? selectAllValid() : unselectAll()}
-                          className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
-                        />
-                      </th>
-                      <th className="py-2.5 px-3 w-24">Data</th>
-                      <th className="py-2.5 px-3">Descrição / Histórico</th>
-                      <th className="py-2.5 px-3 w-48">Categoria Sugerida</th>
-                      <th className="py-2.5 px-3 w-32 text-right">Valor</th>
-                      <th className="py-2.5 px-3 w-10 text-center"></th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                    {displayedItems.map((item) => {
-                      const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
-                      return (
-                        <tr
-                          key={item.id}
-                          className={`transition-colors ${
-                            item.isDuplicate
-                              ? 'bg-amber-50/60 dark:bg-amber-950/20'
-                              : !item.categoriaSugeridaConfiavel
-                              ? 'bg-indigo-50/30 dark:bg-indigo-950/15'
-                              : 'hover:bg-slate-50 dark:hover:bg-slate-850/40'
-                          }`}
-                        >
-                          <td className="py-2.5 px-3 text-center">
+              {/* MOBILE VIEW: CARDS (Visible on screens < md) */}
+              <div className="block md:hidden space-y-2.5 max-h-[52vh] overflow-y-auto pr-0.5">
+                {displayedItems.length === 0 ? (
+                  <div className="p-8 text-center text-zinc-400 dark:text-zinc-500 text-xs font-bold">
+                    Nenhuma movimentação encontrada neste filtro.
+                  </div>
+                ) : (
+                  displayedItems.map((item) => {
+                    const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
+                    const isDesp = item.tipoItem === 'despesa';
+
+                    return (
+                      <div
+                        key={item.id}
+                        className={`p-3 rounded-2xl border transition-all ${
+                          item.selected
+                            ? 'border-zinc-400 dark:border-zinc-500 bg-white dark:bg-[#1A1A1E] shadow-xs'
+                            : 'border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/40 opacity-75'
+                        } ${item.isDuplicate ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' : ''}`}
+                      >
+                        {/* Card Top Row: Checkbox, Date, Tag, Amount */}
+                        <div className="flex items-center justify-between gap-2">
+                          <label className="flex items-center gap-2 cursor-pointer flex-1 min-w-0">
                             <input
                               type="checkbox"
                               checked={item.selected}
                               onChange={() => toggleItemSelection(item.id)}
-                              className="rounded text-purple-600 focus:ring-purple-500 cursor-pointer"
+                              className="w-4.5 h-4.5 rounded text-zinc-900 focus:ring-zinc-900 dark:text-white dark:focus:ring-white cursor-pointer shrink-0"
                             />
-                          </td>
-                          <td className="py-2.5 px-3 font-mono font-medium text-slate-600 dark:text-slate-300">
-                            {new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR')}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <div className="flex items-center gap-1.5 flex-wrap">
-                              <span className="font-bold text-slate-800 dark:text-slate-100">
-                                {item.descricao}
-                              </span>
-                              {item.tipoItem === 'despesa' ? (
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
-                                  Saída
-                                </span>
-                              ) : (
-                                <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
-                                  Entrada
+                            <span className="text-[11px] font-mono font-bold text-zinc-500 dark:text-zinc-400">
+                              {new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </span>
+                            <span
+                              className={`text-[9px] font-black px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0 ${
+                                isDesp
+                                  ? 'bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400'
+                                  : 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                              }`}
+                            >
+                              {isDesp ? 'Saída' : 'Entrada'}
+                            </span>
+                          </label>
+
+                          <span
+                            className={`font-black font-mono text-xs sm:text-sm shrink-0 ${
+                              isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}
+                          >
+                            {isDesp ? '-' : '+'} R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          </span>
+                        </div>
+
+                        {/* Description */}
+                        <div className="mt-2 pl-6.5">
+                          <p className="text-xs font-bold text-zinc-900 dark:text-white leading-snug break-words">
+                            {item.descricao}
+                          </p>
+
+                          {/* Duplicate Notice */}
+                          {item.isDuplicate && (
+                            <div className="mt-1.5 p-2 rounded-xl bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
+                              <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                              <span>{item.duplicateReason || 'Possível duplicata já cadastrada'}</span>
+                            </div>
+                          )}
+
+                          {/* Category Dropdown & Remove Button */}
+                          <div className="mt-2.5 flex items-center justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              {!item.categoriaSugeridaConfiavel && (
+                                <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 block mb-0.5">
+                                  ⚠️ Confirmar Categoria:
                                 </span>
                               )}
-                            </div>
-                            {item.isDuplicate && (
-                              <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
-                                <AlertTriangle className="w-3 h-3 shrink-0" />
-                                {item.duplicateReason || 'Possível duplicata já cadastrada'}
-                              </div>
-                            )}
-                          </td>
-                          <td className="py-2.5 px-3">
-                            <div className="relative">
                               <select
                                 value={item.categoria}
                                 onChange={(e) => updateItemCategory(item.id, e.target.value)}
                                 className={`w-full py-1.5 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
                                   !item.categoriaSugeridaConfiavel
-                                    ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
-                                    : 'bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200'
+                                    ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
+                                    : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
                                 }`}
                               >
-                                {availableCats.map(cat => (
-                                  <option key={cat} value={cat}>{cat}</option>
+                                {availableCats.map((cat) => (
+                                  <option key={cat} value={cat}>
+                                    {cat}
+                                  </option>
                                 ))}
                               </select>
-                              {!item.categoriaSugeridaConfiavel && (
-                                <span className="block text-[9px] font-black text-amber-600 dark:text-amber-400 mt-0.5">
-                                  ⚠️ Confirmar categoria
-                                </span>
-                              )}
                             </div>
-                          </td>
-                          <td className={`py-2.5 px-3 text-right font-black font-mono ${
-                            item.tipoItem === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
-                          }`}>
-                            {item.tipoItem === 'despesa' ? '-' : '+'} R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                          </td>
-                          <td className="py-2.5 px-3 text-center">
+
                             <button
                               onClick={() => removeItem(item.id)}
-                              className="text-slate-400 hover:text-rose-600 p-1 rounded transition-colors"
-                              title="Remover da lista de importação"
+                              className="p-2 rounded-xl text-zinc-400 hover:text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/30 transition-colors shrink-0 self-end"
+                              title="Remover este item"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+
+              {/* DESKTOP VIEW: TABLE (Visible on screens >= md) */}
+              <div className="hidden md:block border border-zinc-200/80 dark:border-[#27272A] rounded-2xl overflow-hidden max-h-[48vh] overflow-y-auto">
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs border-collapse min-w-[720px]">
+                    <thead className="bg-zinc-100 dark:bg-[#141416] sticky top-0 z-10 text-[11px] font-black text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-[#27272A]">
+                      <tr>
+                        <th className="py-2.5 px-3 w-10 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedItems.length > 0 && selectedItems.length === parsedItems.filter(i => !i.isDuplicate).length}
+                            onChange={(e) => e.target.checked ? selectAllValid() : unselectAll()}
+                            className="rounded text-zinc-900 focus:ring-zinc-900 dark:text-white cursor-pointer"
+                          />
+                        </th>
+                        <th className="py-2.5 px-3 w-24">Data</th>
+                        <th className="py-2.5 px-3">Descrição / Histórico</th>
+                        <th className="py-2.5 px-3 w-48">Categoria Sugerida</th>
+                        <th className="py-2.5 px-3 w-32 text-right">Valor</th>
+                        <th className="py-2.5 px-3 w-10 text-center"></th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 dark:divide-[#27272A]/60">
+                      {displayedItems.map((item) => {
+                        const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
+                        return (
+                          <tr
+                            key={item.id}
+                            className={`transition-colors ${
+                              item.isDuplicate
+                                ? 'bg-amber-50/60 dark:bg-amber-950/20'
+                                : !item.categoriaSugeridaConfiavel
+                                ? 'bg-zinc-100/50 dark:bg-[#222226]/50'
+                                : 'hover:bg-zinc-50 dark:hover:bg-[#222226]/40'
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 text-center">
+                              <input
+                                type="checkbox"
+                                checked={item.selected}
+                                onChange={() => toggleItemSelection(item.id)}
+                                className="rounded text-zinc-900 focus:ring-zinc-900 dark:text-white cursor-pointer"
+                              />
+                            </td>
+                            <td className="py-2.5 px-3 font-mono font-medium text-zinc-600 dark:text-zinc-300">
+                              {new Date(item.data + 'T12:00:00').toLocaleDateString('pt-BR')}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span className="font-bold text-zinc-800 dark:text-zinc-100">
+                                  {item.descricao}
+                                </span>
+                                {item.tipoItem === 'despesa' ? (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
+                                    Saída
+                                  </span>
+                                ) : (
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                                    Entrada
+                                  </span>
+                                )}
+                              </div>
+                              {item.isDuplicate && (
+                                <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
+                                  <AlertTriangle className="w-3 h-3 shrink-0" />
+                                  {item.duplicateReason || 'Possível duplicata já cadastrada'}
+                                </div>
+                              )}
+                            </td>
+                            <td className="py-2.5 px-3">
+                              <div className="relative">
+                                <select
+                                  value={item.categoria}
+                                  onChange={(e) => updateItemCategory(item.id, e.target.value)}
+                                  className={`w-full py-1.5 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
+                                    !item.categoriaSugeridaConfiavel
+                                      ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
+                                      : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
+                                  }`}
+                                >
+                                  {availableCats.map(cat => (
+                                    <option key={cat} value={cat}>{cat}</option>
+                                  ))}
+                                </select>
+                                {!item.categoriaSugeridaConfiavel && (
+                                  <span className="block text-[9px] font-black text-amber-600 dark:text-amber-400 mt-0.5">
+                                    ⚠️ Confirmar categoria
+                                  </span>
+                                )}
+                              </div>
+                            </td>
+                            <td className={`py-2.5 px-3 text-right font-black font-mono ${
+                              item.tipoItem === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
+                            }`}>
+                              {item.tipoItem === 'despesa' ? '-' : '+'} R$ {item.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                            </td>
+                            <td className="py-2.5 px-3 text-center">
+                              <button
+                                onClick={() => removeItem(item.id)}
+                                className="text-zinc-400 hover:text-rose-600 p-1 rounded transition-colors"
+                                title="Remover da lista de importação"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
           )}
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="px-6 py-4 border-t border-slate-150 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/60 flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="text-xs text-slate-500 dark:text-slate-400 text-center sm:text-left">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-zinc-100 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/60 flex flex-col sm:flex-row justify-between items-center gap-2.5 sm:gap-3">
+          <div className="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 text-center sm:text-left w-full sm:w-auto">
             {hasParsed ? (
               <span>
-                Conta: <strong>{currentAccount?.nome}</strong> • {selectedItems.length} selecionados para inclusão
+                Conta: <strong>{currentAccount?.nome}</strong> • <strong>{selectedItems.length}</strong> de {totalItems} selecionados
               </span>
             ) : (
-              <span>Os dados são processados localmente no seu navegador para total segurança.</span>
+              <span>Processamento local seguro no seu dispositivo.</span>
             )}
           </div>
 
-          <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end">
+          <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={onClose}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors"
+              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#27272A] transition-colors text-center cursor-pointer"
             >
               Cancelar
             </button>
@@ -779,10 +827,10 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
               <button
                 disabled={selectedItems.length === 0 || isProcessing}
                 onClick={handleConfirmImport}
-                className="flex items-center gap-2 px-6 py-2.5 rounded-2xl bg-purple-600 hover:bg-purple-700 disabled:opacity-50 text-white font-black text-xs shadow-lg shadow-purple-600/20 transition-all cursor-pointer hover:scale-102"
+                className="flex-1 sm:flex-initial flex items-center justify-center gap-2 px-5 py-2.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white dark:text-zinc-950 disabled:opacity-50 text-white font-bold text-xs shadow-xs transition-all cursor-pointer active:scale-95 whitespace-nowrap"
               >
-                <Check className="w-4 h-4" />
-                {isProcessing ? 'Importando...' : `Confirmar e Lançar ${selectedItems.length} Movimentações`}
+                <Check className="w-4 h-4 shrink-0" />
+                <span>{isProcessing ? 'Importando...' : `Lançar ${selectedItems.length} Itens`}</span>
               </button>
             )}
           </div>

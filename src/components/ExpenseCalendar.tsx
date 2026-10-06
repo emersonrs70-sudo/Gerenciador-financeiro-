@@ -133,9 +133,9 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
     if (despesas <= 50) {
       return {
         level: 'cool',
-        bg: 'bg-slate-50 hover:bg-slate-100 dark:bg-slate-900/60 dark:hover:bg-slate-800 text-slate-750 dark:text-slate-300 border-slate-200 dark:border-slate-800',
-        badge: 'bg-blue-500 text-white',
-        desc: 'Gasto Controlado (Frio)'
+        bg: 'bg-zinc-50 hover:bg-zinc-100 dark:bg-[#1A1A1E] dark:hover:bg-[#222226] text-zinc-700 dark:text-zinc-300 border-zinc-200/80 dark:border-[#27272A]',
+        badge: 'bg-zinc-600 text-white',
+        desc: 'Gasto Baixo / Controlado'
       };
     }
     if (despesas <= 150) {
@@ -328,39 +328,38 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
   const groupedMonths = getGroupedMonths();
 
   return (
-    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-4 md:p-5 shadow-xs transition-all duration-300">
+    <div className="w-full bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-4 md:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] transition-all">
       <div className="flex flex-col lg:flex-row gap-5">
         
         {/* CALENDAR/THERMOMETER GRID VIEW */}
         <div className="flex-1 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-3 gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-100 dark:border-[#27272A] pb-3 gap-2">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-red-500/10 dark:bg-red-950/30 flex items-center justify-center text-red-500">
-                <CalendarIcon className="w-4 h-4 animate-pulse" />
+              <div className="w-8 h-8 rounded-lg bg-zinc-100 dark:bg-[#27272A] flex items-center justify-center text-zinc-700 dark:text-zinc-300">
+                <CalendarIcon className="w-4 h-4" />
               </div>
               <div>
-                <h2 className="text-sm font-black text-slate-800 dark:text-white flex items-center gap-1.5 flex-wrap">
-                  Termômetro de Despesas
-                  <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-red-100 dark:bg-red-950/60 text-red-600 dark:text-red-400 rounded-md">
+                <h2 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 flex-wrap">
+                  Termômetro de Despesas Diárias
+                  <span className="text-[9px] font-semibold uppercase px-2 py-0.5 bg-zinc-100 dark:bg-[#27272A] text-zinc-600 dark:text-zinc-400 rounded-md">
                     {periodoFiltro === '7dias' ? '7 Dias' :
                      periodoFiltro === '15dias' ? '15 Dias' :
                      periodoFiltro === '3meses' ? 'Trimestral' :
                      periodoFiltro === 'ano' ? 'Anual' : 'Mensal'}
                   </span>
                 </h2>
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 font-medium">
-                  {periodoFiltro === '7dias' ? 'Últimos 7 dias de transações calibrados pelo termômetro' :
-                   periodoFiltro === '15dias' ? 'Distribuição térmica de gastos dos últimos 15 dias' :
-                   periodoFiltro === '3meses' ? 'Grade térmica trimestral compacta por mês' :
-                   periodoFiltro === 'ano' ? `Visão unificada das calorias financeiras de ${currentYear}` :
-                   `${MONTH_NAMES_PT[currentMonth]} de ${currentYear} • Cores indicam calor de gastos`}
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
+                  {periodoFiltro === '7dias' ? 'Últimos 7 dias de transações' :
+                   periodoFiltro === '15dias' ? 'Distribuição de gastos dos últimos 15 dias' :
+                   periodoFiltro === '3meses' ? 'Grade trimestral compacta por mês' :
+                   periodoFiltro === 'ano' ? `Visão unificada das movimentações de ${currentYear}` :
+                   `${MONTH_NAMES_PT[currentMonth]} de ${currentYear} · Intensidade de gastos por dia`}
                 </p>
               </div>
             </div>
             
-            <div className="flex items-center gap-1 bg-slate-50 dark:bg-slate-950 px-2.5 py-1 rounded-xl text-[9px] text-slate-500 font-bold border border-slate-150 dark:border-slate-800 self-start sm:self-center">
-              <Sparkles className="w-3 h-3 text-red-500" />
-              <span>Cores mudam por temperatura de gastos</span>
+            <div className="flex items-center gap-1 bg-zinc-50 dark:bg-[#141416] px-2.5 py-1 rounded-xl text-[10px] text-zinc-500 font-medium border border-zinc-200/80 dark:border-[#27272A] self-start sm:self-center">
+              <span>Intensidade por volume de gastos</span>
             </div>
           </div>
 
@@ -380,20 +379,20 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                       onClick={() => setSelectedDateStr(item.dateStr)}
                       className={`p-2 flex flex-col items-center justify-between border rounded-xl transition-all duration-200 cursor-pointer min-h-[90px] ${style.bg} ${
                         isSelected 
-                          ? 'ring-2 ring-purple-500 border-purple-500 scale-102 z-10 shadow-md' 
+                          ? 'ring-2 ring-zinc-900 dark:ring-zinc-100 border-zinc-900 dark:border-zinc-100 scale-102 z-10 shadow-md' 
                           : 'shadow-3xs'
                       }`}
                     >
                       <div className="text-center">
-                        <span className="text-[8px] font-black uppercase block text-slate-400 dark:text-slate-500 leading-none mb-1">
+                        <span className="text-[8px] font-black uppercase block text-zinc-400 dark:text-zinc-500 leading-none mb-1">
                           {item.weekdayLabel}
                         </span>
-                        <span className={`text-xs font-black block leading-none ${isSelected ? 'text-purple-600 dark:text-purple-400 font-black' : ''}`}>
+                        <span className={`text-xs font-black block leading-none ${isSelected ? 'text-zinc-900 dark:text-white font-black' : ''}`}>
                           {item.dayLabel}
                         </span>
                       </div>
                       <div className="text-center w-full mt-2">
-                        <p className="text-[10px] font-black leading-none text-slate-800 dark:text-slate-100">
+                        <p className="text-[10px] font-black leading-none text-zinc-800 dark:text-zinc-100">
                           {finances.despesas > 0 ? `R$ ${Math.round(finances.despesas)}` : 'R$ 0'}
                         </p>
                         {finances.receitas > 0 && (
@@ -421,12 +420,12 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                       onClick={() => setSelectedDateStr(item.dateStr)}
                       className={`p-1.5 flex flex-col items-center justify-between border rounded-xl transition-all duration-200 cursor-pointer min-h-[80px] ${style.bg} ${
                         isSelected 
-                          ? 'ring-2 ring-purple-500 border-purple-500 scale-102 z-10 shadow-md' 
+                          ? 'ring-2 ring-zinc-900 dark:ring-zinc-100 border-zinc-900 dark:border-zinc-100 scale-102 z-10 shadow-md' 
                           : 'shadow-3xs'
                       }`}
                     >
                       <div className="text-center">
-                        <span className="text-[7px] font-bold uppercase block text-slate-400 dark:text-slate-500 leading-none mb-1">
+                        <span className="text-[7px] font-bold uppercase block text-zinc-400 dark:text-zinc-500 leading-none mb-1">
                           {item.weekdayLabel}
                         </span>
                         <span className="text-[9px] font-black block leading-none">
@@ -434,7 +433,7 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                         </span>
                       </div>
                       <div className="text-center w-full mt-2">
-                        <p className="text-[9px] font-black leading-none text-slate-800 dark:text-slate-100">
+                        <p className="text-[9px] font-black leading-none text-zinc-800 dark:text-zinc-100">
                           {finances.despesas > 0 ? `R$ ${Math.round(finances.despesas)}` : '0'}
                         </p>
                         {finances.receitas > 0 && (
@@ -455,7 +454,7 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                 {/* Weekday headers */}
                 <div className="grid grid-cols-7 gap-1 text-center">
                   {['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'].map(d => (
-                    <span key={d} className="text-[9px] font-black text-slate-400 dark:text-slate-500 py-1">
+                    <span key={d} className="text-[9px] font-black text-zinc-400 dark:text-zinc-500 py-1">
                       {d}
                     </span>
                   ))}
@@ -464,7 +463,7 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                 <div className="grid grid-cols-7 gap-1">
                   {periodDaysList.map((item, idx) => {
                     if (item.isPlaceholder) {
-                      return <div key={`empty-${idx}`} className="aspect-square bg-slate-100/30 dark:bg-slate-950/10 rounded-xl" />;
+                      return <div key={`empty-${idx}`} className="aspect-square bg-zinc-100/30 dark:bg-zinc-900/10 rounded-xl" />;
                     }
                     const finances = getDayFinances(item.dateStr);
                     const style = getThermometerStyle(finances.despesas);
@@ -475,12 +474,12 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                         onClick={() => setSelectedDateStr(item.dateStr)}
                         className={`aspect-square p-1.5 flex flex-col justify-between border rounded-xl transition-all duration-200 relative cursor-pointer group ${style.bg} ${
                           isSelected 
-                            ? 'ring-2 ring-purple-500 border-purple-500 scale-102 z-10 shadow-md' 
+                            ? 'ring-2 ring-zinc-900 dark:ring-zinc-100 border-zinc-900 dark:border-zinc-100 scale-102 z-10 shadow-md' 
                             : 'shadow-3xs'
                         }`}
                       >
                         <div className="flex items-center justify-between w-full">
-                          <span className={`text-[10px] md:text-xs font-black ${isSelected ? 'text-purple-600 dark:text-purple-400' : ''}`}>
+                          <span className={`text-[10px] md:text-xs font-black ${isSelected ? 'text-zinc-900 dark:text-white' : ''}`}>
                             {item.dayNum}
                           </span>
                           {finances.despesas === 0 ? (
@@ -519,9 +518,9 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                 {Object.entries(groupedMonths).map(([monthKey, days]) => {
                   const [year, mIdx] = monthKey.split('-').map(Number);
                   return (
-                    <div key={monthKey} className="space-y-1.5 bg-slate-55/10 dark:bg-slate-950/20 p-2.5 rounded-xl border border-slate-100 dark:border-slate-900/60">
-                      <h4 className="text-[10px] font-black text-slate-500 dark:text-slate-450 uppercase tracking-wider flex items-center gap-1">
-                        <span className="w-1.5 h-1.5 bg-purple-500 rounded-full" />
+                    <div key={monthKey} className="space-y-1.5 bg-zinc-50 dark:bg-[#141416] p-2.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A]">
+                      <h4 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 bg-zinc-600 dark:bg-zinc-300 rounded-full" />
                         {MONTH_NAMES_PT[mIdx]} de {year}
                       </h4>
                       <div className="flex flex-wrap gap-1">
@@ -535,7 +534,7 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                               onClick={() => setSelectedDateStr(item.dateStr)}
                               title={`${item.dayNum}/${mIdx+1}: R$ ${finances.despesas.toFixed(2)}`}
                               className={`w-7 h-7 rounded-md border flex items-center justify-center text-[9px] font-black transition-all cursor-pointer ${style.bg} ${
-                                isSelected ? 'ring-2 ring-purple-500 border-purple-500 scale-110 z-10 shadow-sm' : 'shadow-3xs'
+                                isSelected ? 'ring-2 ring-zinc-900 dark:ring-zinc-100 border-zinc-900 dark:border-zinc-100 scale-110 z-10 shadow-sm' : 'shadow-3xs'
                               }`}
                             >
                               {item.dayNum}
@@ -555,8 +554,8 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                 {Object.entries(groupedMonths).map(([monthKey, days]) => {
                   const [year, mIdx] = monthKey.split('-').map(Number);
                   return (
-                    <div key={monthKey} className="bg-slate-50/50 dark:bg-slate-950/20 p-2.5 border border-slate-100 dark:border-slate-850 rounded-xl space-y-1.5">
-                      <h4 className="text-[9px] font-black text-slate-550 dark:text-slate-400 uppercase tracking-wider">
+                    <div key={monthKey} className="bg-zinc-50 dark:bg-[#141416] p-2.5 border border-zinc-200/80 dark:border-[#27272A] rounded-xl space-y-1.5">
+                      <h4 className="text-[9px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">
                         {MONTH_NAMES_PT[mIdx]} {year}
                       </h4>
                       <div className="grid grid-cols-7 gap-1">
@@ -570,7 +569,7 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                               onClick={() => setSelectedDateStr(item.dateStr)}
                               title={`${item.dayNum} ${MONTH_NAMES_PT[mIdx]}: R$ ${finances.despesas.toFixed(2)}`}
                               className={`aspect-square rounded-md border-[0.5px] flex items-center justify-center text-[8px] font-bold transition-all cursor-pointer ${style.bg} ${
-                                isSelected ? 'ring-1.5 ring-purple-500 border-purple-550 scale-105 z-10 shadow-sm' : ''
+                                isSelected ? 'ring-1.5 ring-zinc-900 dark:ring-zinc-100 border-zinc-900 dark:border-zinc-100 scale-105 z-10 shadow-sm' : ''
                               }`}
                             >
                               {item.dayNum}
@@ -587,11 +586,11 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
           </div>
 
           {/* THERMOMETER COLORS LEGEND */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-slate-50 dark:bg-slate-950/40 border border-slate-100 dark:border-slate-800/60 rounded-xl px-3 py-2 text-[9px] font-bold text-slate-500 dark:text-slate-400 gap-2">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] rounded-xl px-3 py-2 text-[9px] font-bold text-zinc-500 dark:text-zinc-400 gap-2">
             <span className="uppercase tracking-wider">Gasto Diário:</span>
             <div className="flex items-center gap-3 flex-wrap">
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-emerald-500" /> R$ 0 (Eco 🌿)</span>
-              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-slate-300 dark:bg-slate-700" /> ≤ R$ 50</span>
+              <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-zinc-300 dark:bg-zinc-700" /> ≤ R$ 50</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-amber-500" /> ≤ R$ 150</span>
               <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 rounded bg-orange-500" /> ≤ R$ 300</span>
               <span className="flex items-center gap-1 text-red-650 dark:text-red-400"><span className="w-2.5 h-2.5 rounded bg-red-600 animate-pulse" /> &gt; R$ 300</span>
@@ -603,21 +602,21 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
         <div className="w-full lg:w-72 flex flex-col gap-4">
           
           {/* DYNAMIC RELATÓRIO DE CALORIAS */}
-          <div className="bg-slate-50 dark:bg-slate-950/50 rounded-xl p-3.5 border border-slate-100 dark:border-slate-850 space-y-3">
-            <h3 className="text-[10px] font-black text-slate-450 dark:text-slate-500 uppercase tracking-widest">
+          <div className="bg-zinc-50 dark:bg-[#141416] rounded-xl p-3.5 border border-zinc-200/80 dark:border-[#27272A] space-y-3">
+            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
               Calorias Financeiras ({periodoFiltro === '7dias' ? '7D' : periodoFiltro === '15dias' ? '15D' : periodoFiltro === '3meses' ? 'Trimestre' : periodoFiltro === 'ano' ? 'Ano' : 'Mês'})
             </h3>
             
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-2 rounded-xl text-center shadow-3xs">
-                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Dias Limpos 🌿</p>
+              <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] p-2 rounded-xl text-center shadow-3xs">
+                <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Dias Limpos 🌿</p>
                 <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{noSpendDays} d</p>
-                <p className="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium">Gastou R$ 0,00</p>
+                <p className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-medium">Gastou R$ 0,00</p>
               </div>
-              <div className="bg-white dark:bg-slate-900 border border-slate-150 dark:border-slate-800/80 p-2 rounded-xl text-center shadow-3xs">
-                <p className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase">Média Diária</p>
-                <p className="text-sm font-black text-purple-600 dark:text-purple-400 mt-0.5">R$ {Math.round(averageDailySpend)}</p>
-                <p className="text-[7.5px] text-slate-400 dark:text-slate-500 font-medium">Alvo &lt; R$ 100/dia</p>
+              <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] p-2 rounded-xl text-center shadow-3xs">
+                <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Média Diária</p>
+                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">R$ {Math.round(averageDailySpend)}</p>
+                <p className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-medium">Alvo &lt; R$ 100/dia</p>
               </div>
             </div>
 
@@ -628,8 +627,8 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                     <Flame className="w-4 h-4 animate-bounce" />
                   </div>
                   <div>
-                    <p className="text-[8px] font-bold text-slate-400 dark:text-slate-550 uppercase leading-none">Pico do Período</p>
-                    <p className="text-[10px] font-black text-slate-800 dark:text-slate-200 mt-1">
+                    <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase leading-none">Pico do Período</p>
+                    <p className="text-[10px] font-black text-zinc-800 dark:text-zinc-200 mt-1">
                       {highestSpendDayStr ? `${highestSpendDayStr.split('-')[2]}/${highestSpendDayStr.split('-')[1]}` : ''}
                     </p>
                   </div>
@@ -646,12 +645,12 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
           </div>
 
           {/* ACTIVE DAY DETAILS */}
-          <div className="flex-1 bg-slate-50 dark:bg-slate-950/50 rounded-xl p-3.5 border border-slate-100 dark:border-slate-850 flex flex-col justify-between min-h-[160px]">
+          <div className="flex-1 bg-zinc-50 dark:bg-[#141416] rounded-xl p-3.5 border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between min-h-[160px]">
             {selectedDateStr && activeFinances && activeThermometer ? (
               <div className="space-y-3 flex-1 flex flex-col justify-between">
                 <div>
-                  <div className="flex items-center justify-between border-b border-slate-150 dark:border-slate-800 pb-2">
-                    <span className="text-[10.5px] font-black text-slate-750 dark:text-slate-200">
+                  <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-[#27272A] pb-2">
+                    <span className="text-[10.5px] font-black text-zinc-800 dark:text-zinc-200">
                       {getReadableDate(selectedDateStr)}
                     </span>
                     <span className={`text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase ${activeThermometer.badge}`}>
@@ -661,19 +660,19 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
 
                   {/* Day financial summaries */}
                   <div className="grid grid-cols-2 gap-2 mt-2">
-                    <div className="bg-slate-100 dark:bg-slate-900/80 px-2 py-1.5 rounded-lg shadow-3xs">
-                      <span className="text-[7px] text-slate-400 dark:text-slate-500 font-bold uppercase flex items-center gap-0.5">
-                        <TrendingDown className="w-2.5 h-2.5 text-red-500" /> Gastos
+                    <div className="bg-white dark:bg-[#1A1A1E] px-2 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#27272A] shadow-3xs">
+                      <span className="text-[7px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-0.5">
+                        <TrendingDown className="w-2.5 h-2.5 text-rose-500" /> Gastos
                       </span>
-                      <p className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5">
+                      <p className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-0.5">
                         R$ {activeFinances.despesas.toFixed(2)}
                       </p>
                     </div>
-                    <div className="bg-slate-100 dark:bg-slate-900/80 px-2 py-1.5 rounded-lg shadow-3xs">
-                      <span className="text-[7px] text-slate-400 dark:text-slate-500 font-bold uppercase flex items-center gap-0.5">
+                    <div className="bg-white dark:bg-[#1A1A1E] px-2 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#27272A] shadow-3xs">
+                      <span className="text-[7px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-0.5">
                         <TrendingUp className="w-2.5 h-2.5 text-emerald-500" /> Recebido
                       </span>
-                      <p className="text-xs font-black text-slate-800 dark:text-slate-200 mt-0.5">
+                      <p className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-0.5">
                         R$ {activeFinances.receitas.toFixed(2)}
                       </p>
                     </div>
@@ -685,40 +684,40 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
                       activeFinances.items.map((item) => (
                         <div 
                           key={item.id}
-                          className="flex items-center justify-between text-[10px] p-2 bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800/60 rounded-xl shadow-3xs"
+                          className="flex items-center justify-between text-[10px] p-2 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-xl shadow-3xs"
                         >
                           <div className="flex flex-col gap-0.5">
-                            <span className="font-bold text-slate-850 dark:text-slate-200 leading-tight">
+                            <span className="font-bold text-zinc-900 dark:text-zinc-200 leading-tight">
                               {item.descricao}
                             </span>
-                            <span className="text-[8px] text-slate-400 dark:text-slate-500 font-bold uppercase">
+                            <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">
                               {item.categoria}
                             </span>
                           </div>
                           <span className={`font-black ${
-                            item.tipoItem === 'despesa' ? 'text-red-500' : 'text-emerald-500'
+                            item.tipoItem === 'despesa' ? 'text-rose-500' : 'text-emerald-500'
                           }`}>
                             {item.tipoItem === 'despesa' ? '-' : '+'} R$ {item.valor.toFixed(2)}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-5 text-slate-400 dark:text-slate-500 text-[10px] font-bold italic border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                      <div className="text-center py-5 text-zinc-400 dark:text-zinc-500 text-[10px] font-bold italic border border-dashed border-zinc-200 dark:border-[#27272A] rounded-xl">
                         Sem lançamentos neste dia
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="pt-2 text-[8px] text-slate-400 dark:text-slate-500 flex items-center gap-1">
-                  <Info className="w-3 h-3 text-purple-400" />
+                <div className="pt-2 text-[8px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1">
+                  <Info className="w-3 h-3 text-zinc-400" />
                   <span>Clique nas células para carregar os detalhes do dia!</span>
                 </div>
               </div>
             ) : (
               <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                <CalendarIcon className="w-7 h-7 text-slate-300 dark:text-slate-750 mb-1.5" />
-                <p className="text-[10px] text-slate-400 dark:text-slate-500 font-bold italic">
+                <CalendarIcon className="w-7 h-7 text-zinc-300 dark:text-zinc-700 mb-1.5" />
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold italic">
                   Selecione um dia do termômetro para detalhar os lançamentos realizados!
                 </p>
               </div>
