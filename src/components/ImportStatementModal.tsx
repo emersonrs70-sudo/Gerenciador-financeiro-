@@ -1,14 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Upload, FileText, CheckCircle2, AlertTriangle, X, ArrowUpCircle, ArrowDownCircle,
-  HelpCircle, Sparkles, Filter, Trash2, Check, RefreshCw, Layers
+  HelpCircle, Sparkles, Filter, Trash2, Check, RefreshCw, Layers, Loader2
 } from 'lucide-react';
 import { Transaction, BankAccount, safeRandomUUID, getBillMonthForDate } from '../types';
 import {
   ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement
 } from '../lib/statementParser';
-import { extractTextFromPdf } from '../lib/pdfTextExtractor';
+import { extractTextFromPdf, isPdfBuffer } from '../lib/pdfTextExtractor';
 
 interface ImportStatementModalProps {
   isOpen: boolean;
@@ -46,9 +46,12 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     return selectedAccountId !== 'consolidado' ? selectedAccountId : (accounts[0]?.id || 'santander');
   });
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Raw paste input state
   const [pastedText, setPastedText] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
   // Parsed review items
@@ -81,7 +84,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       }
 
       if (items.length === 0) {
-        setErrorMessage('Nenhuma movimentação foi identificada. Certifique-se de que o arquivo ou texto contém lançamentos válidos com datas e valores.');
+        setErrorMessage('Nenhuma movimentação foi identificada no documento. Se for uma foto/imagem escaneada sem texto ou com layout diferente, você pode copiar as linhas de extrato e colar na aba "Copiar e Colar Texto".');
         setParsedItems([]);
         setHasParsed(false);
       } else {
@@ -93,33 +96,44 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       setErrorMessage(`Ocorreu um erro ao processar o extrato: ${err?.message || 'Formato não reconhecido'}`);
     } finally {
       setIsProcessing(false);
+      setProcessingStatus('');
     }
   };
 
   // Handle file drop or selection
   const handleFileUpload = async (file: File) => {
     setIsProcessing(true);
+    setProcessingStatus(`Lendo arquivo "${file.name}" (${(file.size / 1024).toFixed(0)} KB)...`);
     setErrorMessage(null);
 
     try {
-      const fileName = file.name.toLowerCase();
-      if (fileName.endsWith('.pdf')) {
-        const extractedText = await extractTextFromPdf(file);
+      const arrayBuffer = await file.arrayBuffer();
+      const fileName = (file.name || '').toLowerCase();
+      const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
+
+      if (isPdf) {
+        setProcessingStatus('Extraindo páginas e movimentações do PDF...');
+        const extractedText = await extractTextFromPdf(arrayBuffer);
+        setProcessingStatus('Analisando transações e cruzando dados...');
         processRawText(extractedText, 'pdf');
       } else if (fileName.endsWith('.ofx')) {
-        const text = await file.text();
+        setProcessingStatus('Processando arquivo bancário OFX...');
+        const text = new TextDecoder('latin1').decode(arrayBuffer);
         processRawText(text, 'ofx');
       } else if (fileName.endsWith('.csv')) {
-        const text = await file.text();
+        setProcessingStatus('Processando arquivo CSV...');
+        const text = new TextDecoder('utf-8').decode(arrayBuffer);
         processRawText(text, 'csv');
       } else {
-        const text = await file.text();
+        setProcessingStatus('Processando texto do extrato...');
+        const text = new TextDecoder('utf-8').decode(arrayBuffer);
         processRawText(text, 'text');
       }
     } catch (err: any) {
       console.error('Error reading statement file:', err);
-      setErrorMessage(`Erro ao ler o arquivo: ${err?.message || 'Arquivo corrompido ou inacessível.'}`);
+      setErrorMessage(`Não foi possível processar o arquivo "${file.name}": ${err?.message || 'Arquivo inacessível ou formato não reconhecido'}. Você também pode copiar o texto da fatura/extrato e colar diretamente na aba "Copiar e Colar Texto".`);
       setIsProcessing(false);
+      setProcessingStatus('');
     }
   };
 
@@ -351,20 +365,39 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                     Suporta extratos em <strong>PDF Santander</strong>, arquivos bancários <strong>OFX</strong>, tabelas <strong>CSV</strong> ou arquivos de texto puro.
                   </p>
 
-                  <label className="inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-purple-600 hover:bg-purple-700 text-white font-black text-xs cursor-pointer shadow-lg shadow-purple-600/20 transition-all hover:scale-102">
-                    <FileText className="w-4 h-4" />
-                    Escolher Arquivo do Computador / Celular
-                    <input
-                      type="file"
-                      accept=".pdf,.ofx,.csv,.txt"
-                      className="hidden"
-                      onChange={(e) => {
-                        if (e.target.files && e.target.files.length > 0) {
-                          handleFileUpload(e.target.files[0]);
-                        }
-                      }}
-                    />
-                  </label>
+                  {isProcessing ? (
+                    <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-purple-50/80 dark:bg-purple-950/40 rounded-2xl border border-purple-200 dark:border-purple-800">
+                      <Loader2 className="w-8 h-8 text-purple-600 dark:text-purple-400 animate-spin" />
+                      <p className="text-xs font-black text-purple-700 dark:text-purple-300 animate-pulse">
+                        {processingStatus || 'Processando extrato bancário...'}
+                      </p>
+                    </div>
+                  ) : (
+                    <div>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="application/pdf,.pdf,.ofx,.csv,.txt,text/plain,text/csv"
+                        className="sr-only"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) {
+                            handleFileUpload(file);
+                          }
+                          e.target.value = '';
+                        }}
+                      />
+
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-purple-600 hover:bg-purple-700 active:scale-95 text-white font-black text-xs cursor-pointer shadow-lg shadow-purple-600/25 transition-all"
+                      >
+                        <FileText className="w-4 h-4" />
+                        Escolher Arquivo do Celular / Computador
+                      </button>
+                    </div>
+                  )}
 
                   <div className="mt-8 pt-6 border-t border-slate-200 dark:border-slate-800 flex justify-center">
                     <button
@@ -415,9 +448,21 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
 
               {/* ERROR ALERT */}
               {errorMessage && (
-                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex items-center gap-3">
-                  <AlertTriangle className="w-5 h-5 shrink-0" />
-                  <span>{errorMessage}</span>
+                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                  <div className="flex items-start sm:items-center gap-3">
+                    <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5 sm:mt-0" />
+                    <span>{errorMessage}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setErrorMessage(null);
+                      setActiveTab('paste');
+                    }}
+                    className="shrink-0 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer transition-all self-end sm:self-auto"
+                  >
+                    Colar Texto do Extrato
+                  </button>
                 </div>
               )}
             </div>
