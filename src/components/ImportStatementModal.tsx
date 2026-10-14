@@ -161,13 +161,26 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     setParsedItems(prev => prev.map(item => ({ ...item, selected: false })));
   };
 
+  const updateItemDescription = (id: string, newDesc: string) => {
+    setParsedItems(prev => prev.map(item => {
+      if (item.id === id) {
+        return {
+          ...item,
+          descricao: newDesc
+        };
+      }
+      return item;
+    }));
+  };
+
   const updateItemCategory = (id: string, newCategory: string) => {
     setParsedItems(prev => prev.map(item => {
       if (item.id === id) {
         return {
           ...item,
           categoria: newCategory,
-          categoriaSugeridaConfiavel: true // User confirmed it!
+          categoriaSugeridaConfiavel: true, // User confirmed it!
+          requerAprovacao: false
         };
       }
       return item;
@@ -182,7 +195,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const totalItems = parsedItems.length;
   const selectedItems = parsedItems.filter(i => i.selected);
   const duplicateCount = parsedItems.filter(i => i.isDuplicate).length;
-  const pendingCategoryCount = parsedItems.filter(i => !i.categoriaSugeridaConfiavel).length;
+  const pendingReviewCount = parsedItems.filter(i => i.requerAprovacao || !i.categoriaSugeridaConfiavel).length;
 
   const totalReceitas = selectedItems.filter(i => i.tipoItem === 'receita').reduce((acc, curr) => acc + curr.valor, 0);
   const totalDespesas = selectedItems.filter(i => i.tipoItem === 'despesa').reduce((acc, curr) => acc + curr.valor, 0);
@@ -190,7 +203,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   // Filtered list for display
   const displayedItems = parsedItems.filter(item => {
     if (filterMode === 'duplicatas') return item.isDuplicate;
-    if (filterMode === 'pendentes') return !item.categoriaSugeridaConfiavel;
+    if (filterMode === 'pendentes') return item.requerAprovacao || !item.categoriaSugeridaConfiavel;
     if (filterMode === 'despesas') return item.tipoItem === 'despesa';
     if (filterMode === 'receitas') return item.tipoItem === 'receita';
     return true;
@@ -227,30 +240,80 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     onClose();
   };
 
-  // Pre-load example text from Santander extract
+  // Pre-load example text from real Santander extract (julho/2026)
   const loadExampleSantander = () => {
-    const example = `03/08 PIX RECEBIDO Francisco Edson dos Santo - 200,00
+    const example = `Resumo - julho/2026
+Conta Corrente 01.054578-9
+Movimentação
+Data Descrição Nº Documento Movimento (R$) Saldo (R$)
+SALDO EM 30/06 1.718,18
+01/07 DEBITO AUT. TELEFONE CELULAR CLARO MOVEL - 27,01-
+PIX ENVIADO LIVRARIA E PAPELARIA LOIO - 4,00-
+IOF IMPOSTO OPERACOES FINANCEIRAS PERIODO: 01/06 A 30/06/26 - 0,51-
+IOF ADICIONAL - AUTOMATICO PERIODO: 01/06 A 30/06/26 - 16,49- 1.670,17
+02/07 PIX RECEBIDO Sony Emerson Rocha dos Sa - 89,24
+PIX ENVIADO Sony Emerson Rocha dos Sa - 750,00-
+PIX RECEBIDO EMMANUEL R ANDRADE - 445,00
+PIX RECEBIDO EMMANUEL R ANDRADE - 42,50 1.496,91
+03/07 PIX ENVIADO Francisca das Chagas Sant - 890,00-
+REMUNERACAO APLICACAO AUTOMATICA - 0,01 606,92
+06/07 PIX ENVIADO Daniel Lucas Farrapo Lima - 5,00-
+PIX ENVIADO 07 665 770 Jose Sales de - 20,00-
+PIX ENVIADO Renan de Sousa Barros - 9,50-
+PIX ENVIADO J I MENDES MANCO - 25,50-
+PIX ENVIADO BARATAO TECNOLOGIA S A - 64,01-
+PIX RECEBIDO MARIA CLAUDIA ROCHA DOS S - 200,00 682,91
+07/07 PIX RECEBIDO MARIA CLAUDIA ROCHA DOS S - 1.500,00
 PIX ENVIADO Sony Emerson Rocha dos Sa - 200,00-
-PIX ENVIADO S de Lima Costa Panificad - 19,00-
-PIX ENVIADO Sony Emerson Rocha dos Sa - 4.800,00-
-PIX ENVIADO Sony Emerson Rocha dos Sa - 2.000,00-
-DEBITO AUT. TELEFONE CELULAR CLARO MOVEL - 27,01-
-04/08 PIX RECEBIDO JOSE MARIA DOS SANTOS - 2.000,00
-05/08 PIX ENVIADO TOP LANCHES LTDA - 25,00-
-08/08 DEBITO VISA ELECTRON BRASIL GRUPO REZENDE - 71,22-
-PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
-10/08 PIX ENVIADO Francisco Ronaldo Meneses - 4,50-
-12/08 PIX ENVIADO LIVRARIA E PAPELARIA LOIO - 72,00-
-13/08 PIX ENVIADO Supermercado Cimir Ltda - 19,20-
-17/08 DEBITO VISA ELECTRON BRASIL REDE L CAR - 83,83-
-20/08 PIX RECEBIDO A A C SAUDE MORRINHOS - 805,00
-20/08 PAGAMENTO DE BOLETO OUTROS BANCOS ELEVEN PROTECAO VEICULAR - 101,89-
-24/08 DEBITO VISA ELECTRON BRASIL POSTO LUAR DO SERTA - 50,00-
-24/08 PIX ENVIADO L CAR PETROLEO E LUBRIFIC - 210,83-
-28/08 LIQUIDO DE VENCIMENTO CNPJ 010656452000180 - 214,43
-31/08 PIX ENVIADO MULTICINE CINEMAS LTDA - 45,00-
-31/08 PIX ENVIADO AUTO POSTO REZENDE LTDA - 56,26-
-31/08 DEBITO AUT. FATURA CARTAO VISA FINAL 0245 - 419,83-`;
+SAQUE DINHEIRO BANCO 24H 07/07 10:43 328119 1.000,00-
+SAQUE DINHEIRO BANCO 24H 07/07 10:45 503119 500,00- 482,91
+08/07 PIX ENVIADO M DE JESUS MARANHAO RODRI - 63,70- 419,21
+10/07 PIX RECEBIDO EMMANUEL R ANDRADE - 110,00 529,21
+13/07 DEBITO VISA ELECTRON BRASIL 12/07 POSTO AVENIDA 304364 30,00-
+PIX RECEBIDO SONY EMERSON ROCHA DOS SA - 4.000,00
+PIX ENVIADO Sony Emerson Rocha dos Sa - 4.000,00-
+PIX ENVIADO EMPREENDIMENTOS PAGUE MEN - 75,09-
+PIX ENVIADO ATACADAO S A - 3,99-
+DEBITO VISA ELECTRON BRASIL 13/07 JAVALI BURGUER 484464 24,47- 395,66
+14/07 DEBITO VISA ELECTRON BRASIL 14/07 CaetanoJuscelino 571064 46,00- 349,66
+15/07 LIQUIDO DE VENCIMENTO CNPJ 010656452000180 010715 1.910,00
+PAGAMENTO DE BOLETO OUTROS BANCOS HINOVA PAY INSTITUICAO DE - 101,84-
+PAGAMENTO DE BOLETO OUTROS BANCOS ENEL DISTRIBUICAO CEARA - 245,84- 1.911,98
+16/07 PIX RECEBIDO A A C SAUDE MORRINHOS - 805,00
+PIX ENVIADO Sony Emerson Rocha dos Sa - 1.500,00-
+PIX ENVIADO Ana Sarah da Cunha Rocha - 155,00-
+PIX ENVIADO OPEN FINANCE BARATAO TECNOLOGIA S A - 66,12- 995,86
+17/07 PIX ENVIADO Zhao Lijun - 11,00-
+PIX ENVIADO COMERCIAL DE MIUDEZAS FRE - 21,97-
+PIX ENVIADO Rannielle Pereira Nascime - 10,00- 952,89
+20/07 PIX ENVIADO 46 303 065 Juscelino da C - 18,00- 934,89
+21/07 DEBITO VISA ELECTRON BRASIL 21/07 IFD.DOM JANSEN REST 400764 55,92- 878,97
+22/07 PIX ENVIADO Claudio Inacio Silva - 25,00-
+PIX ENVIADO Sony Emerson Rocha dos Sa - 500,00-
+REMUNERACAO APLICACAO AUTOMATICA - 0,02 353,99
+23/07 PIX RECEBIDO JEREMIAS BEZERRA SALES - 18,91
+DEBITO VISA ELECTRON BRASIL 23/07 RESTAURANTE LANCHE 060464 18,00-
+PIX ENVIADO OPEN FINANCE BARATAO TECNOLOGIA S A - 66,63- 288,27
+24/07 DEBITO VISA ELECTRON BRASIL 24/07 RESTAURANTE LANCHE 350664 19,00- 269,27
+27/07 PIX ENVIADO MWN COMERCIAL DE ALIMENTO 523383 29,13-
+DEBITO VISA ELECTRON BRASIL 25/07 LOJA FISICA LJ 15 D 472164 23,60-
+DEBITO VISA ELECTRON BRASIL 26/07 LOJA FISICA LJ 15 D 442764 25,16-
+DEBITO VISA ELECTRON BRASIL 26/07 LOJA FISICA LJ 15 D 240364 10,29-
+PIX ENVIADO Maria Juliana Araujo Paix - 20,00- 161,09
+28/07 PIX ENVIADO SHPP BRASIL INSTITUICAO D - 116,39-
+PIX ENVIADO Maria Elane Araujo Braga - 20,00-
+PIX ENVIADO 46 303 065 Juscelino da C - 28,00- 3,30-
+29/07 LIQUIDO DE VENCIMENTO CNPJ 010656452000180 010729 6.000,96
+PIX ENVIADO OPEN FINANCE BARATAO TECNOLOGIA S A - 33,86-
+PIX ENVIADO MASTER POSTO COMERCIO DE - 23,00-
+DEBITO VISA ELECTRON BRASIL 29/07 M DE JESUS MARANH 410464 30,00- 5.910,80
+30/07 LIQUIDO DE VENCIMENTO CNPJ 010656452000180 010730 2.865,71
+DEBITO AUT. FATURA CARTAO VISA FINAL 0245 - 388,89-
+PIX ENVIADO SHPP BRASIL INSTITUICAO D - 54,86-
+PIX ENVIADO Maria Elane Araujo Braga - 50,00-
+PIX ENVIADO Antonio Estenio Sousa Ara - 40,00-
+PIX ENVIADO Marcio Robson Lopes - 29,50- 8.213,26
+SALDO EM 31/07 8.213,26`;
 
     setPastedText(example);
     setActiveTab('paste');
@@ -530,15 +593,17 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                       Duplicatas ({duplicateCount})
                     </button>
                   )}
-                  {pendingCategoryCount > 0 && (
+                  {pendingReviewCount > 0 && (
                     <button
                       onClick={() => setFilterMode('pendentes')}
-                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1 cursor-pointer ${
-                        filterMode === 'pendentes' ? 'bg-zinc-800 text-white dark:bg-zinc-200 dark:text-zinc-950 shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                      className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 flex items-center gap-1.5 cursor-pointer ${
+                        filterMode === 'pendentes'
+                          ? 'bg-amber-600 text-white shadow-xs'
+                          : 'bg-amber-100/80 text-amber-900 dark:bg-amber-950/50 dark:text-amber-300 hover:bg-amber-200/80'
                       }`}
                     >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Definir Categoria ({pendingCategoryCount})
+                      <Sparkles className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                      Requer Revisão ({pendingReviewCount})
                     </button>
                   )}
                   <button
@@ -592,6 +657,7 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                   displayedItems.map((item) => {
                     const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
                     const isDesp = item.tipoItem === 'despesa';
+                    const needsReview = item.requerAprovacao || !item.categoriaSugeridaConfiavel;
 
                     return (
                       <div
@@ -634,33 +700,57 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                           </span>
                         </div>
 
-                        {/* Description */}
-                        <div className="mt-2 pl-6.5">
-                          <p className="text-xs font-bold text-zinc-900 dark:text-white leading-snug break-words">
-                            {item.descricao}
-                          </p>
+                        {/* Description with inline editing */}
+                        <div className="mt-2 pl-6.5 space-y-1.5">
+                          <input
+                            type="text"
+                            value={item.descricao}
+                            onChange={(e) => updateItemDescription(item.id, e.target.value)}
+                            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200 dark:border-[#27272A] rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                            placeholder="Descrição da transação"
+                          />
+
+                          {/* Approval / Uncertainty Notice */}
+                          {needsReview && item.motivoDuvida && (
+                            <div className="p-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/60 text-[10px] font-bold text-amber-800 dark:text-amber-300 flex items-center gap-1.5">
+                              <Sparkles className="w-3 h-3 shrink-0 text-amber-600 dark:text-amber-400" />
+                              <span>{item.motivoDuvida}</span>
+                            </div>
+                          )}
 
                           {/* Duplicate Notice */}
                           {item.isDuplicate && (
-                            <div className="mt-1.5 p-2 rounded-xl bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
+                            <div className="p-2 rounded-xl bg-amber-100/70 dark:bg-amber-950/50 border border-amber-300/60 dark:border-amber-800 text-[10px] font-bold text-amber-800 dark:text-amber-200 flex items-start gap-1.5">
                               <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
                               <span>{item.duplicateReason || 'Possível duplicata já cadastrada'}</span>
                             </div>
                           )}
 
+                          {/* Quick Category Suggestion Pills */}
+                          {needsReview && item.sugestoesCategorias && item.sugestoesCategorias.length > 0 && (
+                            <div className="pt-1 flex items-center gap-1 flex-wrap">
+                              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500">Sugerir:</span>
+                              {item.sugestoesCategorias.map((sug) => (
+                                <button
+                                  key={sug}
+                                  type="button"
+                                  onClick={() => updateItemCategory(item.id, sug)}
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-[#27272A] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
+                                >
+                                  {sug}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
                           {/* Category Dropdown & Remove Button */}
-                          <div className="mt-2.5 flex items-center justify-between gap-2">
+                          <div className="mt-2 flex items-center justify-between gap-2 pt-1">
                             <div className="flex-1 min-w-0">
-                              {!item.categoriaSugeridaConfiavel && (
-                                <span className="text-[9px] font-black text-amber-600 dark:text-amber-400 block mb-0.5">
-                                  ⚠️ Confirmar Categoria:
-                                </span>
-                              )}
                               <select
                                 value={item.categoria}
                                 onChange={(e) => updateItemCategory(item.id, e.target.value)}
                                 className={`w-full py-1.5 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                  !item.categoriaSugeridaConfiavel
+                                  needsReview
                                     ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
                                     : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
                                 }`}
@@ -691,7 +781,7 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
               {/* DESKTOP VIEW: TABLE (Visible on screens >= md) */}
               <div className="hidden md:block border border-zinc-200/80 dark:border-[#27272A] rounded-2xl overflow-hidden max-h-[48vh] overflow-y-auto">
                 <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs border-collapse min-w-[720px]">
+                  <table className="w-full text-left text-xs border-collapse min-w-[760px]">
                     <thead className="bg-zinc-100 dark:bg-[#141416] sticky top-0 z-10 text-[11px] font-black text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-[#27272A]">
                       <tr>
                         <th className="py-2.5 px-3 w-10 text-center">
@@ -704,7 +794,7 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                         </th>
                         <th className="py-2.5 px-3 w-24">Data</th>
                         <th className="py-2.5 px-3">Descrição / Histórico</th>
-                        <th className="py-2.5 px-3 w-48">Categoria Sugerida</th>
+                        <th className="py-2.5 px-3 w-56">Categoria Sugerida</th>
                         <th className="py-2.5 px-3 w-32 text-right">Valor</th>
                         <th className="py-2.5 px-3 w-10 text-center"></th>
                       </tr>
@@ -712,14 +802,16 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                     <tbody className="divide-y divide-zinc-100 dark:divide-[#27272A]/60">
                       {displayedItems.map((item) => {
                         const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
+                        const needsReview = item.requerAprovacao || !item.categoriaSugeridaConfiavel;
+
                         return (
                           <tr
                             key={item.id}
                             className={`transition-colors ${
                               item.isDuplicate
                                 ? 'bg-amber-50/60 dark:bg-amber-950/20'
-                                : !item.categoriaSugeridaConfiavel
-                                ? 'bg-zinc-100/50 dark:bg-[#222226]/50'
+                                : needsReview
+                                ? 'bg-amber-50/30 dark:bg-amber-950/15'
                                 : 'hover:bg-zinc-50 dark:hover:bg-[#222226]/40'
                             }`}
                           >
@@ -736,19 +828,32 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                             </td>
                             <td className="py-2.5 px-3">
                               <div className="flex items-center gap-1.5 flex-wrap">
-                                <span className="font-bold text-zinc-800 dark:text-zinc-100">
-                                  {item.descricao}
-                                </span>
+                                <input
+                                  type="text"
+                                  value={item.descricao}
+                                  onChange={(e) => updateItemDescription(item.id, e.target.value)}
+                                  className="font-bold text-zinc-900 dark:text-zinc-100 bg-transparent hover:bg-zinc-100 dark:hover:bg-[#27272A] px-1.5 py-0.5 rounded border border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:bg-white dark:focus:bg-[#1A1A1E] focus:border-zinc-400 focus:outline-none flex-1 min-w-[200px]"
+                                  title="Clique para editar a descrição"
+                                />
                                 {item.tipoItem === 'despesa' ? (
-                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400">
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-rose-100 dark:bg-rose-950/60 text-rose-600 dark:text-rose-400 shrink-0">
                                     Saída
                                   </span>
                                 ) : (
-                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400">
+                                  <span className="text-[9px] font-black px-1.5 py-0.5 rounded bg-emerald-100 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400 shrink-0">
                                     Entrada
                                   </span>
                                 )}
                               </div>
+
+                              {/* Uncertainty / Approval Reason Notice */}
+                              {needsReview && item.motivoDuvida && (
+                                <div className="text-[10px] font-bold text-amber-700 dark:text-amber-300 mt-1 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-500 shrink-0" />
+                                  <span>{item.motivoDuvida}</span>
+                                </div>
+                              )}
+
                               {item.isDuplicate && (
                                 <div className="text-[10px] font-bold text-amber-600 dark:text-amber-400 mt-0.5 flex items-center gap-1">
                                   <AlertTriangle className="w-3 h-3 shrink-0" />
@@ -757,12 +862,12 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                               )}
                             </td>
                             <td className="py-2.5 px-3">
-                              <div className="relative">
+                              <div className="space-y-1">
                                 <select
                                   value={item.categoria}
                                   onChange={(e) => updateItemCategory(item.id, e.target.value)}
-                                  className={`w-full py-1.5 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
-                                    !item.categoriaSugeridaConfiavel
+                                  className={`w-full py-1 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
+                                    needsReview
                                       ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
                                       : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
                                   }`}
@@ -771,10 +876,23 @@ PIX ENVIADO RESTAURANTE TOCA POTIGUARA - 38,20-
                                     <option key={cat} value={cat}>{cat}</option>
                                   ))}
                                 </select>
-                                {!item.categoriaSugeridaConfiavel && (
-                                  <span className="block text-[9px] font-black text-amber-600 dark:text-amber-400 mt-0.5">
-                                    ⚠️ Confirmar categoria
-                                  </span>
+
+                                {/* 1-Click Suggestion Pills */}
+                                {needsReview && item.sugestoesCategorias && item.sugestoesCategorias.length > 0 && (
+                                  <div className="flex items-center gap-1 flex-wrap">
+                                    <span className="text-[8px] font-bold text-zinc-400">Opções:</span>
+                                    {item.sugestoesCategorias.map((sug) => (
+                                      <button
+                                        key={sug}
+                                        type="button"
+                                        onClick={() => updateItemCategory(item.id, sug)}
+                                        className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-900 hover:text-white dark:bg-[#27272A] dark:text-zinc-300 dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
+                                        title={`Definir como ${sug}`}
+                                      >
+                                        {sug}
+                                      </button>
+                                    ))}
+                                  </div>
                                 )}
                               </div>
                             </td>

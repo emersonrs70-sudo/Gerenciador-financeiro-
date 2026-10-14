@@ -9,20 +9,23 @@ export interface ParsedItem {
   tipoItem: 'despesa' | 'receita';
   categoria: string;
   categoriaSugeridaConfiavel: boolean;
+  requerAprovacao?: boolean;
+  motivoDuvida?: string;
+  sugestoesCategorias?: string[];
   isDuplicate: boolean;
   duplicateReason?: string;
   selected: boolean;
 }
 
-// Keyword-based automatic categorization rules
+// Keyword-based automatic categorization rules with Santander merchant intelligence
 const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
   {
     category: 'Alimentação',
     keywords: [
       'panificad', 'padaria', 'lanche', 'restaurante', 'potiguar', 'supermercado', 'alimento',
       'cimir', 'açougue', 'acougue', 'ifood', 'mercado', 'comercial praciano', 'comercial de alimento',
-      'top lanches', 'mwn comercial', 'churrascaria', 'pizzaria', 'hamburguer', 'burger', 'cafe',
-      'baratao tecnologia', 'hortifruti', 'atacadão', 'atacadao', 'assaí', 'assai'
+      'mwn comercial', 'top lanches', 'javali burguer', 'dom jansen', 'ifd.', 'churrascaria',
+      'pizzaria', 'hamburguer', 'burger', 'cafe', 'hortifruti', 'atacadão', 'atacadao', 'assaí', 'assai'
     ]
   },
   {
@@ -30,7 +33,8 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
     keywords: [
       'car petroleo', 'rede l car', 'l car', 'posto', 'combustivel', 'gasolina', 'etanol',
       'uber', '99app', '99 app', 'estacionamento', 'protecao veicular', 'eleven protecao',
-      'auto posto', 'rezende', 'posto luar', 'lubrific', 'oficina', 'mecanica', 'pedagio', 'sem parar'
+      'auto posto', 'rezende', 'posto luar', 'posto avenida', 'master posto', 'lubrific',
+      'oficina', 'mecanica', 'pedagio', 'sem parar', 'veicular'
     ]
   },
   {
@@ -43,7 +47,7 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
   {
     category: 'Saúde',
     keywords: [
-      'saude', 'aac saude', 'farmacia', 'drogaria', 'pague menos', 'drogasil', 'droga raia',
+      'saude', 'aac saude', 'farmacia', 'drogaria', 'pague menos', 'pague men', 'drogasil', 'droga raia',
       'medico', 'clinica', 'laboratorio', 'hospital', 'dentista', 'odont', 'exame', 'consulta'
     ]
   },
@@ -51,7 +55,8 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
     category: 'Lazer',
     keywords: [
       'multicine', 'cinema', 'cinemark', 'cinepolis', 'livraria', 'papelaria', 'loio', 'show',
-      'teatro', 'netflix', 'spotify', 'prime video', 'disney', 'ingresso', 'viagem', 'hotel', 'airbnb'
+      'teatro', 'netflix', 'spotify', 'prime video', 'disney', 'ingresso', 'viagem', 'hotel',
+      'airbnb', 'shpp brasil', 'shopee', 'baratao tecnologia'
     ]
   },
   {
@@ -63,7 +68,7 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
   {
     category: 'Salário',
     keywords: [
-      'liquido de vencimento', 'salario', 'provento', 'remuneracao', 'folha de pagamento',
+      'liquido de vencimento', 'salario', 'salário', 'provento', 'remuneracao', 'folha de pagamento',
       'admissao', 'rescisao', '13o salario', 'adiantamento salarial'
     ]
   },
@@ -85,33 +90,98 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
 export function guessCategory(descricao: string, tipoItem: 'despesa' | 'receita', availableCategories: string[]): {
   categoria: string;
   confiavel: boolean;
+  requerAprovacao: boolean;
+  motivoDuvida?: string;
+  sugestoesCategorias?: string[];
 } {
   const lower = descricao.toLowerCase();
 
-  // Check specific rules first
+  // 1. Check for specific keywords
   for (const rule of CATEGORY_RULES) {
     if (rule.keywords.some(k => lower.includes(k))) {
       const matched = availableCategories.find(c => c.toLowerCase() === rule.category.toLowerCase());
-      if (matched) {
-        return { categoria: matched, confiavel: true };
-      }
-      return { categoria: rule.category, confiavel: true };
+      const cat = matched || rule.category;
+      return {
+        categoria: cat,
+        confiavel: true,
+        requerAprovacao: false
+      };
     }
   }
 
-  // If it's a salary-like credit
+  // 2. Specific case: Transfer to own name / titularity
+  if (lower.includes('sony emerson') || lower.includes('emerson rocha') || lower.includes('mesma titularidade')) {
+    const defaultCat = availableCategories.find(c => c.toLowerCase().includes('outros')) || availableCategories[0] || 'Outros';
+    return {
+      categoria: defaultCat,
+      confiavel: false,
+      requerAprovacao: true,
+      motivoDuvida: 'Transferência para conta pessoal - confirme a finalidade',
+      sugestoesCategorias: ['Outros', 'Investimentos', 'Moradia'].filter(c => availableCategories.includes(c))
+    };
+  }
+
+  // 3. ATM Cash withdrawals
+  if (lower.includes('saque') || lower.includes('banco 24h')) {
+    const defaultCat = availableCategories.find(c => c.toLowerCase().includes('outros')) || availableCategories[0] || 'Outros';
+    return {
+      categoria: defaultCat,
+      confiavel: false,
+      requerAprovacao: true,
+      motivoDuvida: 'Saque em espécie - selecione onde o dinheiro foi utilizado',
+      sugestoesCategorias: ['Alimentação', 'Transporte', 'Lazer', 'Outros'].filter(c => availableCategories.includes(c))
+    };
+  }
+
+  // 4. Generic debit or physical store without clear category
+  if (lower.includes('loja fisica') || lower.includes('miudezas') || lower.includes('hinova pay')) {
+    const defaultCat = availableCategories.find(c => c.toLowerCase().includes('outros')) || availableCategories[0] || 'Outros';
+    return {
+      categoria: defaultCat,
+      confiavel: false,
+      requerAprovacao: true,
+      motivoDuvida: 'Estabelecimento com descrição genérica - selecione a categoria correta',
+      sugestoesCategorias: ['Alimentação', 'Transporte', 'Lazer', 'Moradia', 'Outros'].filter(c => availableCategories.includes(c))
+    };
+  }
+
+  // 5. If it's a salary-like credit
   if (tipoItem === 'receita') {
     const salaryCat = availableCategories.find(c => c.toLowerCase().includes('salário') || c.toLowerCase().includes('salario'));
-    if (salaryCat && (lower.includes('vencimento') || lower.includes('empresa') || lower.includes('remunera'))) {
-      return { categoria: salaryCat, confiavel: true };
+    if (salaryCat && (lower.includes('vencimento') || lower.includes('empresa') || lower.includes('remunera') || lower.includes('folha'))) {
+      return { categoria: salaryCat, confiavel: true, requerAprovacao: false };
     }
     const otherRec = availableCategories.find(c => c.toLowerCase().includes('outras') || c.toLowerCase().includes('renda extra')) || availableCategories[0] || 'Outras Receitas';
-    return { categoria: otherRec, confiavel: false };
+    return {
+      categoria: otherRec,
+      confiavel: false,
+      requerAprovacao: true,
+      motivoDuvida: 'Receita identificada - confirme a origem',
+      sugestoesCategorias: availableCategories.slice(0, 3)
+    };
+  }
+
+  // 6. Generic PIX sent to unknown individual or entity
+  if (lower.includes('pix enviado') || lower.includes('transferencia')) {
+    const defaultCat = availableCategories.find(c => c.toLowerCase().includes('outros')) || availableCategories[0] || 'Outros';
+    return {
+      categoria: defaultCat,
+      confiavel: false,
+      requerAprovacao: true,
+      motivoDuvida: 'PIX sem categoria evidente - selecione a categoria adequada',
+      sugestoesCategorias: ['Alimentação', 'Transporte', 'Lazer', 'Moradia', 'Outros'].filter(c => availableCategories.includes(c))
+    };
   }
 
   // Fallback for expenses: Not confident, requires user review
   const defaultCat = availableCategories.find(c => c.toLowerCase().includes('outros') || c.toLowerCase().includes('geral')) || availableCategories[0] || 'Outros';
-  return { categoria: defaultCat, confiavel: false };
+  return {
+    categoria: defaultCat,
+    confiavel: false,
+    requerAprovacao: true,
+    motivoDuvida: 'Classificação automática incerta - favor revisar',
+    sugestoesCategorias: ['Alimentação', 'Transporte', 'Lazer', 'Moradia', 'Outros'].filter(c => availableCategories.includes(c))
+  };
 }
 
 // Anti-duplication check against existing transactions
@@ -169,17 +239,14 @@ export function parseBRLAmount(rawVal: string): { valor: number; isNegative: boo
   return { valor: val, isNegative };
 }
 
-// Specialized Santander statement text parser
+// Specialized Santander statement text & PDF parser
 export function parseSantanderStatement(
   text: string,
   existingTransactions: Transaction[] = [],
   categoriesDespesa: string[] = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'],
   categoriesReceita: string[] = ['Salário', 'Outras Receitas']
 ): ParsedItem[] {
-  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
-  const items: ParsedItem[] = [];
-
-  // 1. Detect Year and Month from statement text (e.g. "agosto/2026", "08/2026", "agosto de 2026")
+  // 1. Detect Year and Month from statement text (e.g. "julho/2026", "agosto/2026", "08/2026", "julho de 2026")
   let referenceYear = new Date().getFullYear();
   let referenceMonth = new Date().getMonth() + 1; // 1-12
 
@@ -188,15 +255,19 @@ export function parseSantanderStatement(
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
   ];
 
-  for (const line of lines) {
-    const monthYearMatch = line.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]+(\d{4})/i);
-    if (monthYearMatch) {
+  const monthYearMatch = text.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]+(\d{4})/i)
+    || text.match(/\b(0[1-9]|1[0-2])\/(\d{4})\b/);
+
+  if (monthYearMatch) {
+    if (isNaN(Number(monthYearMatch[1]))) {
       const idx = monthNames.findIndex(m => m === monthYearMatch[1].toLowerCase());
       if (idx !== -1) {
         referenceMonth = (idx % 12) + 1;
         referenceYear = parseInt(monthYearMatch[2], 10);
-        break;
       }
+    } else {
+      referenceMonth = parseInt(monthYearMatch[1], 10);
+      referenceYear = parseInt(monthYearMatch[2], 10);
     }
   }
 
@@ -207,169 +278,226 @@ export function parseSantanderStatement(
     return `${referenceYear}-${m}-${d}`;
   };
 
-  let currentDay = '01';
-  let currentMonthStr = String(referenceMonth).padStart(2, '0');
+  // 2. Isolate the Movimentação table to eliminate junk tables (Saldos por Período, Comprovantes repetidos, Pacote de Serviços, etc.)
+  let relevantText = text;
 
-  // Skip summary patterns
-  const isSummaryLine = (l: string) => {
-    const upper = l.toUpperCase();
-    return (
-      upper.includes('SALDO EM') ||
-      upper.includes('SALDO DE CONTA') ||
-      upper.includes('TOTAL DE CRÉDITOS') ||
-      upper.includes('TOTAL DE DEBITOS') ||
-      upper.includes('TOTAL DE DÉBITOS') ||
-      upper.includes('SALDO DISPONÍVEL') ||
-      upper.includes('SALDO DISPONIVEL') ||
-      upper.includes('LIMITE SANTANDER') ||
-      upper.includes('PROVISÃO DE ENCARGOS') ||
-      upper.includes('RESUMO -') ||
-      upper.includes('EXTRATO CONSOLIDADO') ||
-      upper.includes('FALE CONOSCO') ||
-      upper.includes('PROTEJA-SE') ||
-      upper.includes('ÍNDICES ECONÔMICOS') ||
-      upper.includes('PACOTE DE SERVIÇOS') ||
-      upper.startsWith('DATA DESCRIÇÃO') ||
-      upper.startsWith('MOVIMENTAÇÃO') ||
-      upper.startsWith('PAGINA:')
-    );
-  };
+  // Cut off after Movimentação table ends
+  const cutoffKeywords = [
+    'Saldos por Período',
+    'Saldos por Periodo',
+    'Débito Automático em Conta Corrente',
+    'Debito Automatico em Conta Corrente',
+    'Compras com Cartão de Débito',
+    'Compras com Cartao de Debito',
+    'Comprovantes de Pagamento',
+    'Créditos Contratados',
+    'Creditos Contratados',
+    'Pacote de Serviços',
+    'Índices Econômicos'
+  ];
 
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-
-    if (isSummaryLine(line)) {
-      continue;
-    }
-
-    // Check for date in line: "03/08", "03/08/2026"
-    const dateMatch = line.match(/^(\d{2})\/(\d{2})\b/) || line.match(/\b(\d{2})\/(\d{2})\b/);
-    if (dateMatch) {
-      currentDay = dateMatch[1];
-      currentMonthStr = dateMatch[2];
-    }
-
-    // Check for monetary value in line: e.g. "19,00-", "- 19,00-", "200,00", "- 200,00", "4.800,00-", "71,22-"
-    const valMatch = line.match(/(?:^|\s)-?\s*([\d\.]+,\d{2}-?)(?:\s|$)/);
-    if (valMatch) {
-      const parsedVal = parseBRLAmount(valMatch[1]);
-      if (!parsedVal || parsedVal.valor === 0) continue;
-
-      // Extract description from this line
-      let desc = line
-        .replace(valMatch[0], '')
-        .replace(/^\d{2}\/\d{2}\s*/, '')
-        .replace(/^-+\s*/, '')
-        .trim();
-
-      // If desc is empty or too short, look back at preceding lines in the same block
-      if (!desc || desc.length < 3 || /^[0-9\s\.\-]+$/.test(desc)) {
-        const parts: string[] = [];
-        for (let j = Math.max(0, i - 2); j < i; j++) {
-          const prev = lines[j];
-          if (
-            !isSummaryLine(prev) &&
-            !prev.match(/[\d\.]+,\d{2}/) &&
-            prev.length > 2 &&
-            prev.length < 70
-          ) {
-            parts.push(prev.replace(/^\d{2}\/\d{2}\s*/, '').trim());
-          }
-        }
-        desc = parts.join(' - ');
-      }
-
-      // Check if following line has details (e.g. "CLARO MOVEL" or "BARATAO TECNOLOGIA")
-      if (i + 1 < lines.length) {
-        const next = lines[i + 1].trim();
-        const isNextStartOfNewTransaction = /^(PIX|DEBITO|DÉBITO|CREDITO|CRÉDITO|SAQUE|TRANSFERENCIA|TRANSFERÊNCIA|PAGAMENTO|LIQUIDO|LÍQUIDO|REMUNERACAO|REMUNERAÇÃO|IOF|SALDO)/i.test(next);
-
-        if (
-          !isNextStartOfNewTransaction &&
-          !isSummaryLine(next) &&
-          !next.match(/[\d\.]+,\d{2}/) &&
-          !next.match(/^\d{2}\/\d{2}/) &&
-          next.length > 2 &&
-          next.length < 50
-        ) {
-          if (!desc.toLowerCase().includes(next.toLowerCase())) {
-            desc = `${desc} - ${next}`.trim();
-          }
-        }
-      }
-
-      // Clean up description
-      let cleanDesc = desc
-        .replace(/^[-–\s]+|[-–\s]+$/g, '')
-        .replace(/\s{2,}/g, ' ')
-        .trim();
-
-      if (!cleanDesc || cleanDesc.toUpperCase().includes('SALDO')) {
-        continue;
-      }
-
-      // Format Santander titles cleanly
-      cleanDesc = cleanDesc
-        .replace(/^PIX ENVIADO\s*-\s*/i, 'PIX Enviado: ')
-        .replace(/^PIX RECEBIDO\s*-\s*/i, 'PIX Recebido: ')
-        .replace(/^DEBITO VISA ELECTRON BRASIL\s*-\s*/i, 'Cartão Débito: ')
-        .replace(/^DEBITO AUT\. TELEFONE CELULAR\s*-\s*/i, 'Débito Automático: ')
-        .replace(/^DEBITO AUT\. FATURA CARTAO VISA\s*-\s*/i, 'Fatura Cartão: ')
-        .replace(/^LIQUIDO DE VENCIMENTO\s*-\s*/i, 'Salário: ');
-
-      // Determine item type (expense vs income)
-      let tipoItem: 'despesa' | 'receita' = parsedVal.isNegative ? 'despesa' : 'receita';
-      const lower = cleanDesc.toLowerCase();
-
-      if (
-        lower.includes('pix recebido') ||
-        lower.includes('liquido de vencimento') ||
-        lower.includes('salario') ||
-        lower.includes('salário') ||
-        lower.includes('provento') ||
-        lower.includes('remuneracao aplicacao') ||
-        lower.includes('remuneração aplicação')
-      ) {
-        tipoItem = 'receita';
-      } else if (
-        parsedVal.isNegative ||
-        lower.includes('pix enviado') ||
-        lower.includes('debito') ||
-        lower.includes('d\u00e9bito') ||
-        lower.includes('saque') ||
-        lower.includes('boleto') ||
-        lower.includes('iof') ||
-        lower.includes('tarifa') ||
-        lower.includes('fatura')
-      ) {
-        tipoItem = 'despesa';
-      }
-
-      const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;
-      const { categoria, confiavel } = guessCategory(cleanDesc, tipoItem, availableCats);
-
-      const isoDate = formatIsoDate(currentDay, currentMonthStr);
-      const dupCheck = checkDuplicate(
-        { data: isoDate, descricao: cleanDesc, valor: parsedVal.valor, tipoItem },
-        existingTransactions
-      );
-
-      items.push({
-        id: `santander-${Date.now()}-${items.length}-${Math.random().toString(36).substring(2, 6)}`,
-        data: isoDate,
-        descricao: cleanDesc,
-        valor: parsedVal.valor,
-        tipoItem,
-        categoria,
-        categoriaSugeridaConfiavel: confiavel,
-        isDuplicate: dupCheck.isDuplicate,
-        duplicateReason: dupCheck.reason,
-        selected: !dupCheck.isDuplicate
-      });
+  for (const kw of cutoffKeywords) {
+    const idx = relevantText.indexOf(kw);
+    if (idx !== -1) {
+      relevantText = relevantText.substring(0, idx);
+      break;
     }
   }
 
-  // De-duplicate items within the parsed list itself
+  // Discard intro headers before "Conta Corrente" / "Movimentação" / "Data Descrição"
+  const startIdx = relevantText.search(/(?:Conta Corrente\s+)?Movimenta[çc][ãa]o/i);
+  if (startIdx !== -1) {
+    relevantText = relevantText.substring(startIdx);
+  }
+
+  const rawLines = relevantText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const items: ParsedItem[] = [];
+
+  let currentDay = '01';
+  let currentMonthStr = String(referenceMonth).padStart(2, '0');
+
+  // Skip table headers and summary lines
+  const isJunkLine = (l: string) => {
+    const upper = l.toUpperCase();
+    return (
+      upper.startsWith('EXTRATO CONSOLIDADO') ||
+      upper.startsWith('PAGINA:') ||
+      upper.startsWith('FALE CONOSCO') ||
+      upper.startsWith('PROTEJA-SE') ||
+      upper.startsWith('BALP_UY_') ||
+      upper.startsWith('EXTRATO_PF_') ||
+      upper.startsWith('RESUMO -') ||
+      upper.startsWith('DATA DESCRIÇÃO') ||
+      upper.startsWith('MOVIMENTAÇÃO') ||
+      upper.startsWith('CONTA CORRENTE') ||
+      upper.startsWith('NOME') ||
+      upper.startsWith('AGÊNCIA') ||
+      upper.startsWith('SALDO EM') ||
+      upper.startsWith('SALDO DE CONTA') ||
+      upper.startsWith('TOTAL DE CRÉDITOS') ||
+      upper.startsWith('TOTAL DE DÉBITOS') ||
+      upper.startsWith('TOTAL DE DEBITOS') ||
+      upper.startsWith('SALDO DISPONÍVEL') ||
+      upper.startsWith('SALDO DISPONIVEL') ||
+      upper.startsWith('LIMITE SANTANDER') ||
+      upper.startsWith('PROVISÃO DE ENCARGOS') ||
+      upper.startsWith('SE VOCÊ NÃO TEM LIMITE')
+    );
+  };
+
+  // Currency matching regex: matches "- 27,01-", "27,01-", "1.910,00", "89,24", etc.
+  const currencyTokenRegex = /-?\s*\d{1,3}(?:\.\d{3})*,\d{2}-?/g;
+
+  let bufferedPrefix = '';
+
+  for (let i = 0; i < rawLines.length; i++) {
+    const line = rawLines[i];
+
+    if (isJunkLine(line)) {
+      continue;
+    }
+
+    // Check if line begins with a transaction date "01/07", "15/07"
+    const leadingDateMatch = line.match(/^(\d{2})\/(\d{2})\b/);
+    if (leadingDateMatch) {
+      currentDay = leadingDateMatch[1];
+      currentMonthStr = leadingDateMatch[2];
+    }
+
+    // Check if line contains currency amounts
+    const currencyMatches = line.match(currencyTokenRegex);
+
+    if (!currencyMatches || currencyMatches.length === 0) {
+      // Line might be the first part of a wrapped multi-line description (e.g. "01/07 DEBITO AUT. TELEFONE CELULAR")
+      if (
+        !line.toUpperCase().includes('SALDO') &&
+        !line.match(/^\d+$/) &&
+        line.length > 2 &&
+        line.length < 80
+      ) {
+        bufferedPrefix = (bufferedPrefix ? `${bufferedPrefix} ` : '') + line.replace(/^\d{2}\/\d{2}\s*/, '').trim();
+      }
+      continue;
+    }
+
+    // In Santander Movimentação:
+    // If there are 2 or more currency tokens on the line:
+    // Token 0 is ALWAYS Movimento (R$)
+    // Token 1 is ALWAYS Saldo (R$) (running balance)
+    // If there is only 1 currency token:
+    // Token 0 is Movimento (R$)
+    const rawMovimentoToken = currencyMatches[0];
+    const parsedVal = parseBRLAmount(rawMovimentoToken);
+
+    if (!parsedVal || parsedVal.valor === 0) {
+      bufferedPrefix = '';
+      continue;
+    }
+
+    // Extract text before rawMovimentoToken
+    const tokenIndex = line.indexOf(rawMovimentoToken);
+    let descPart = tokenIndex !== -1 ? line.substring(0, tokenIndex) : line;
+
+    // Strip leading date if present
+    descPart = descPart.replace(/^\d{2}\/\d{2}\s*/, '');
+
+    // Strip document number (like "328119", "010715", "484464" or "-") at the end of descPart
+    descPart = descPart.replace(/\s+(?:\d{5,8}|-)\s*$/, '').trim();
+
+    // If there was a buffered prefix from the previous line, combine
+    let fullDesc = (bufferedPrefix ? `${bufferedPrefix} ${descPart}` : descPart).trim();
+    bufferedPrefix = ''; // reset buffer
+
+    if (!fullDesc || fullDesc.toUpperCase().includes('SALDO EM') || /^[0-9\s\.\-]+$/.test(fullDesc)) {
+      continue;
+    }
+
+    // Humanize and clean Santander patterns
+    let cleanDesc = fullDesc
+      // Debit card purchases: "DEBITO VISA ELECTRON BRASIL 12/07 POSTO AVENIDA" -> "Cartão Débito: POSTO AVENIDA"
+      .replace(/^DEBITO VISA ELECTRON BRASIL(?:\s+\d{2}\/\d{2})?\s*-?\s*/i, 'Cartão Débito: ')
+      // Auto debits: "DEBITO AUT. TELEFONE CELULAR CLARO MOVEL" -> "Débito Automático: CLARO MOVEL"
+      .replace(/^DEBITO AUT\.\s+TELEFONE CELULAR\s*-?\s*/i, 'Débito Automático: ')
+      // Card invoice debits: "DEBITO AUT. FATURA CARTAO VISA FINAL 0245" -> "Fatura Cartão: VISA Final 0245"
+      .replace(/^DEBITO AUT\.\s+FATURA CARTAO VISA\s*(?:FINAL\s*(\d+))?/i, (_, finalDig) => finalDig ? `Fatura Cartão: VISA Final ${finalDig}` : 'Fatura Cartão: VISA')
+      // Boletos: "PAGAMENTO DE BOLETO OUTROS BANCOS ENEL DISTRIBUICAO CEARA" -> "Boleto: ENEL DISTRIBUICAO CEARA"
+      .replace(/^PAGAMENTO DE BOLETO OUTROS BANCOS\s*-?\s*/i, 'Boleto: ')
+      // Salary: "LIQUIDO DE VENCIMENTO CNPJ 010656452000180" -> "Salário: Vencimento Folha"
+      .replace(/^LIQUIDO DE VENCIMENTO(?:\s+CNPJ\s+\d+)?/i, 'Salário: Vencimento Folha')
+      // Automatic investment yield: "REMUNERACAO APLICACAO AUTOMATICA"
+      .replace(/^REMUNERACAO APLICACAO AUTOMATICA/i, 'Rendimento: Aplicação Automática')
+      // ATM withdrawals: "SAQUE DINHEIRO BANCO 24H 07/07 10:45" -> "Saque Banco 24H"
+      .replace(/^SAQUE DINHEIRO BANCO 24H(?:\s+\d{2}\/\d{2}\s+\d{2}:\d{2})?/i, 'Saque Banco 24H')
+      // IOF taxes
+      .replace(/^IOF IMPOSTO OPERACOES FINANCEIRAS.*/i, 'IOF Imposto Operações Financeiras')
+      .replace(/^IOF ADICIONAL\s*-\s*AUTOMATICO.*/i, 'IOF Adicional Automático')
+      // PIX Cleanups
+      .replace(/^PIX ENVIADO OPEN FINANCE\s*-?\s*/i, 'PIX Enviado: ')
+      .replace(/^PIX ENVIADO\s*-?\s*/i, 'PIX Enviado: ')
+      .replace(/^PIX RECEBIDO\s*-?\s*/i, 'PIX Recebido: ')
+      // Shopee store cleanup
+      .replace(/SHPP BRASIL INSTITUICAO D.*/i, 'SHPP BRASIL (Shopee)')
+      // General cleanup
+      .replace(/^[-–\s]+|[-–\s]+$/g, '')
+      .replace(/\s{2,}/g, ' ')
+      .trim();
+
+    // Determine type: expense vs income
+    let tipoItem: 'despesa' | 'receita' = parsedVal.isNegative ? 'despesa' : 'receita';
+    const lower = cleanDesc.toLowerCase();
+
+    if (
+      lower.includes('pix recebido') ||
+      lower.includes('salário') ||
+      lower.includes('salario') ||
+      lower.includes('rendimento: aplicação') ||
+      lower.includes('remuneração aplicação') ||
+      lower.includes('provento')
+    ) {
+      tipoItem = 'receita';
+    } else if (
+      parsedVal.isNegative ||
+      lower.includes('pix enviado') ||
+      lower.includes('cartão débito') ||
+      lower.includes('cartao debito') ||
+      lower.includes('débito') ||
+      lower.includes('debito') ||
+      lower.includes('saque') ||
+      lower.includes('boleto') ||
+      lower.includes('fatura') ||
+      lower.includes('iof') ||
+      lower.includes('tarifa')
+    ) {
+      tipoItem = 'despesa';
+    }
+
+    const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;
+    const categoryResult = guessCategory(cleanDesc, tipoItem, availableCats);
+
+    const isoDate = formatIsoDate(currentDay, currentMonthStr);
+    const dupCheck = checkDuplicate(
+      { data: isoDate, descricao: cleanDesc, valor: parsedVal.valor, tipoItem },
+      existingTransactions
+    );
+
+    items.push({
+      id: `santander-${Date.now()}-${items.length}-${Math.random().toString(36).substring(2, 6)}`,
+      data: isoDate,
+      descricao: cleanDesc,
+      valor: parsedVal.valor,
+      tipoItem,
+      categoria: categoryResult.categoria,
+      categoriaSugeridaConfiavel: categoryResult.confiavel,
+      requerAprovacao: categoryResult.requerAprovacao,
+      motivoDuvida: categoryResult.motivoDuvida,
+      sugestoesCategorias: categoryResult.sugestoesCategorias,
+      isDuplicate: dupCheck.isDuplicate,
+      duplicateReason: dupCheck.reason,
+      selected: !dupCheck.isDuplicate
+    });
+  }
+
+  // De-duplicate within the statement itself
   const finalItems: ParsedItem[] = [];
   const seenKeys = new Set<string>();
 

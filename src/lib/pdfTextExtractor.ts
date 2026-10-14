@@ -123,21 +123,36 @@ export async function extractTextFromPdf(file: File | ArrayBuffer): Promise<stri
       const page = await pdf.getPage(pageNum);
       const content = await page.getTextContent();
       
-      const items = content.items as any[];
+      const rawItems = (content.items as any[]).filter(
+        item => item && 'str' in item && typeof item.str === 'string'
+      );
+
+      // Sort items by visual layout:
+      // In PDF coordinate space, Y increases from bottom to top.
+      // Larger Y = top of the page.
+      // If items share roughly the same Y (within 3.5px), sort left to right by X (transform[4]).
+      rawItems.sort((a, b) => {
+        const yDiff = b.transform[5] - a.transform[5];
+        if (Math.abs(yDiff) > 3.5) {
+          return yDiff;
+        }
+        return a.transform[4] - b.transform[4];
+      });
+
       let lastY: number | null = null;
       let pageString = '';
 
-      for (const item of items) {
-        if ('str' in item) {
-          const text = item.str;
-          if (lastY !== null && Math.abs(item.transform[5] - lastY) > 5) {
-            pageString += '\n';
-          } else if (pageString.length > 0 && !pageString.endsWith('\n') && !pageString.endsWith(' ')) {
-            pageString += ' ';
-          }
-          pageString += text;
-          lastY = item.transform[5];
+      for (const item of rawItems) {
+        const text = item.str;
+        const currentY = item.transform[5];
+
+        if (lastY !== null && Math.abs(currentY - lastY) > 3.5) {
+          pageString += '\n';
+        } else if (pageString.length > 0 && !pageString.endsWith('\n') && !pageString.endsWith(' ')) {
+          pageString += ' ';
         }
+        pageString += text;
+        lastY = currentY;
       }
 
       pageTexts.push(pageString);
