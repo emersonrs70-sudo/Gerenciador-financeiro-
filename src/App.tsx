@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
-  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, LogOut, User, Sparkles
+  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
@@ -20,7 +20,6 @@ import { FinancialCharts } from './components/FinancialCharts';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
-import { AuthScreen } from './components/AuthScreen';
 import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
 
@@ -75,10 +74,12 @@ const MONTHS = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+const DEFAULT_PERSONAL_USER = { email: 'emersonrs70@gmail.com', name: 'Emerson' };
+
 export default function App() {
-  // Current logged in user profile
-  const [currentUser, setCurrentUser] = useState<{ email: string; name: string } | null>(() => {
-    return getLocal<{ email: string; name: string } | null>('fintech_current_user', null);
+  // Current user profile (Personal account - access directly without credentials)
+  const [currentUser, setCurrentUser] = useState<{ email: string; name: string }>(() => {
+    return getLocal<{ email: string; name: string }>('fintech_current_user', DEFAULT_PERSONAL_USER) || DEFAULT_PERSONAL_USER;
   });
 
   // Calendar Anchored date
@@ -847,18 +848,6 @@ export default function App() {
     showToast('Projeto de meta deletado.', 'info');
   };
 
-  const handleLogout = () => {
-    if (window.confirm('Deseja realmente fechar seu cofre financeiro?')) {
-      setCurrentUser(null);
-      localStorage.removeItem('fintech_current_user');
-      setTransactions([]);
-      setProjects([]);
-      setCategoriasDespesa(DEFAULT_CATEGORIES_DESPESA);
-      setCategoriasReceita(DEFAULT_CATEGORIES_RECEITA);
-      showToast('Cofre FintechCore fechado com sucesso!', 'info');
-    }
-  };
-
   // --- STATS ANALYSERS ---
 
   const currentYear = dataAncorada.getFullYear();
@@ -1279,26 +1268,22 @@ export default function App() {
     }
   };
 
-  if (!currentUser) {
-    return <AuthScreen onLoginSuccess={(user) => { setCurrentUser(user); saveLocal('fintech_current_user', user); }} isOnline={isOnline} />;
-  }
-
   return (
-    <div className="bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 min-h-screen font-sans antialiased transition-all duration-300 pb-20 md:pb-6 relative">
+    <div className="bg-[#F8F8FA] text-zinc-900 dark:bg-[#121214] dark:text-zinc-100 min-h-screen font-sans antialiased transition-all duration-300 pb-20 md:pb-6 relative">
       {/* TOAST SYSTEM ALERTS STREAM */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2.5 w-full max-w-sm px-6">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-black transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-slate-900 ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] ${
               t.type === 'sucesso'
-                ? 'border-emerald-200 dark:border-emerald-950 text-emerald-600 dark:text-emerald-400'
+                ? 'text-emerald-600 dark:text-emerald-400'
                 : t.type === 'erro'
-                ? 'border-red-200 dark:border-red-950 text-red-600 dark:text-red-400'
-                : 'border-blue-200 dark:border-blue-950 text-blue-600 dark:text-blue-400'
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-zinc-700 dark:text-zinc-300'
             }`}
           >
-            <div className={`w-2 h-2 rounded-full ${t.type === 'sucesso' ? 'bg-emerald-500' : t.type === 'erro' ? 'bg-red-500' : 'bg-blue-500'} animate-ping`} />
+            <div className={`w-2 h-2 rounded-full ${t.type === 'sucesso' ? 'bg-emerald-500' : t.type === 'erro' ? 'bg-rose-500' : 'bg-zinc-400'} animate-ping`} />
             <span>{t.msg}</span>
           </div>
         ))}
@@ -1466,15 +1451,6 @@ export default function App() {
                 title="Alternar tema"
               >
                 {isDarkMode ? <Sun className="w-4 h-4 text-zinc-200" /> : <Moon className="w-4 h-4 text-zinc-700" />}
-              </button>
-
-              {/* LOGOUT BUTTON */}
-              <button
-                onClick={handleLogout}
-                className="p-2 bg-zinc-100 hover:bg-rose-50 text-zinc-500 hover:text-rose-600 dark:bg-[#1A1A1E] dark:hover:bg-rose-950/30 dark:text-zinc-400 dark:hover:text-rose-400 border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer transition-colors"
-                title="Sair do Cofre"
-              >
-                <LogOut className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -1853,33 +1829,23 @@ export default function App() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-2">
+              <div>
                 {/* Theme Switch */}
                 <button
                   onClick={toggleTheme}
-                  className="flex items-center justify-center gap-1.5 p-2 bg-zinc-50 dark:bg-[#27272A] hover:bg-zinc-100 dark:hover:bg-[#323238] border border-zinc-200 dark:border-[#323238] rounded-xl cursor-pointer text-zinc-700 dark:text-zinc-300 transition-all text-xs font-bold active:scale-95"
+                  className="w-full flex items-center justify-center gap-2 p-2.5 bg-zinc-50 dark:bg-[#27272A] hover:bg-zinc-100 dark:hover:bg-[#323238] border border-zinc-200 dark:border-[#323238] rounded-xl cursor-pointer text-zinc-700 dark:text-zinc-300 transition-all text-xs font-bold active:scale-95"
                 >
                   {isDarkMode ? (
                     <>
                       <Sun className="w-3.5 h-3.5 text-zinc-200 shrink-0" />
-                      <span>Claro</span>
+                      <span>Modo Claro</span>
                     </>
                   ) : (
                     <>
                       <Moon className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
-                      <span>Escuro</span>
+                      <span>Modo Escuro</span>
                     </>
                   )}
-                </button>
-
-                {/* Sair do Cofre */}
-                <button
-                  onClick={handleLogout}
-                  className="flex items-center justify-center gap-1.5 p-2 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/20 text-rose-500 rounded-xl cursor-pointer transition-all text-xs font-bold active:scale-95"
-                  title="Sair do Cofre"
-                >
-                  <LogOut className="w-3.5 h-3.5 shrink-0" />
-                  <span>Sair</span>
                 </button>
               </div>
 
