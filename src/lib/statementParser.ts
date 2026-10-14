@@ -20,6 +20,12 @@ export interface ParsedItem {
 // Keyword-based automatic categorization rules with Santander merchant intelligence
 const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
   {
+    category: 'Outros',
+    keywords: [
+      'iof', 'imposto', 'tarifa', 'anuidade', 'encargos', 'taxa', 'cet'
+    ]
+  },
+  {
     category: 'Alimentação',
     keywords: [
       'panificad', 'padaria', 'lanche', 'restaurante', 'potiguar', 'supermercado', 'alimento',
@@ -31,10 +37,10 @@ const CATEGORY_RULES: { category: string; keywords: string[] }[] = [
   {
     category: 'Transporte',
     keywords: [
-      'car petroleo', 'rede l car', 'l car', 'posto', 'combustivel', 'gasolina', 'etanol',
+      'car petroleo', 'rede l car', 'l car', 'combustivel', 'gasolina', 'etanol',
       'uber', '99app', '99 app', 'estacionamento', 'protecao veicular', 'eleven protecao',
       'auto posto', 'rezende', 'posto luar', 'posto avenida', 'master posto', 'lubrific',
-      'oficina', 'mecanica', 'pedagio', 'sem parar', 'veicular'
+      'oficina', 'mecanica', 'pedagio', 'sem parar', 'veicular', 'posto '
     ]
   },
   {
@@ -226,17 +232,59 @@ export function checkDuplicate(
   return { isDuplicate: false };
 }
 
-// Convert Brazilian currency string like "200,00-", "- 200,00-", "1.500,00-", "200,00", "5.877,98"
+// Convert Brazilian currency string like "200,00-", "- 200,00-", "1.500,00-", "200,00", "5.877,98", "50,00 D", "89,24 C"
 export function parseBRLAmount(rawVal: string): { valor: number; isNegative: boolean } | null {
   const cleaned = rawVal.trim().replace(/\s/g, '');
   if (!cleaned) return null;
 
-  const isNegative = cleaned.endsWith('-') || cleaned.startsWith('-');
-  const numOnly = cleaned.replace(/-/g, '').replace(/\./g, '').replace(',', '.');
+  // Negative indicators: leading/trailing minus, D/d suffix, or parentheses
+  const isNegative = cleaned.endsWith('-') || cleaned.startsWith('-') || /[dD]$/.test(cleaned) || /^\(.*\)$/.test(cleaned);
+  const numOnly = cleaned.replace(/[^\d,]/g, '').replace(',', '.');
   const val = parseFloat(numOnly);
 
   if (isNaN(val) || val <= 0) return null;
   return { valor: val, isNegative };
+}
+
+// Clean and humanize Brazilian/Santander descriptions
+export function cleanBankDescription(desc: string): string {
+  return desc
+    // Debit card purchases
+    .replace(/^DEBITO VISA ELECTRON BRASIL(?:\s+\d{2}\/\d{2})?\s*-?\s*/i, 'Cartão Débito: ')
+    .replace(/^COMPRA CART[ÃA]O D[ÉE]BITO(?:\s+\d{2}\/\d{2})?\s*-?\s*/i, 'Cartão Débito: ')
+    // Auto debits
+    .replace(/^DEBITO AUT\.\s+TELEFONE CELULAR\s*-?\s*/i, 'Débito Automático: ')
+    .replace(/^D[ÉE]BITO AUTOM[ÁA]TICO\s*-?\s*/i, 'Débito Automático: ')
+    // Card invoice debits
+    .replace(/^DEBITO AUT\.\s+FATURA CARTAO VISA\s*(?:FINAL\s*(\d+))?/i, (_, finalDig) => finalDig ? `Fatura Cartão: VISA Final ${finalDig}` : 'Fatura Cartão: VISA')
+    .replace(/^PAGTO FATURA CARTAO\s*-?\s*/i, 'Fatura Cartão: ')
+    // Boletos
+    .replace(/^PAGAMENTO DE BOLETO OUTROS BANCOS\s*-?\s*/i, 'Boleto: ')
+    .replace(/^PAGAMENTO DE BOLETO\s*-?\s*/i, 'Boleto: ')
+    .replace(/^PAGTO COBRANCA\s*-?\s*/i, 'Boleto: ')
+    // Salary
+    .replace(/^LIQUIDO DE VENCIMENTO(?:\s+CNPJ\s+\d+)?/i, 'Salário: Vencimento Folha')
+    // Automatic investment yield
+    .replace(/^REMUNERACAO APLICACAO AUTOMATICA/i, 'Rendimento: Aplicação Automática')
+    .replace(/^RENDIMENTO APLIC\w*/i, 'Rendimento: Aplicação Automática')
+    // ATM withdrawals
+    .replace(/^SAQUE DINHEIRO BANCO 24H(?:\s+\d{2}\/\d{2}\s+\d{2}:\d{2})?/i, 'Saque Banco 24H')
+    .replace(/^SAQUE TERMINAL BANCO 24H/i, 'Saque Banco 24H')
+    // IOF taxes
+    .replace(/^IOF IMPOSTO OPERACOES FINANCEIRAS.*/i, 'IOF Imposto Operações Financeiras')
+    .replace(/^IOF ADICIONAL\s*-\s*AUTOMATICO.*/i, 'IOF Adicional Automático')
+    // PIX Cleanups
+    .replace(/^PIX ENVIADO OPEN FINANCE\s*-?\s*/i, 'PIX Enviado: ')
+    .replace(/^PIX ENVIADO\s*-?\s*/i, 'PIX Enviado: ')
+    .replace(/^PIX RECEBIDO\s*-?\s*/i, 'PIX Recebido: ')
+    .replace(/^TRANSF\.?\s*PIX\s*-?\s*/i, 'PIX: ')
+    // Shopee / popular merchants
+    .replace(/SHPP BRASIL INSTITUICAO D.*/i, 'SHPP BRASIL (Shopee)')
+    // General punctuation and space cleanup
+    .replace(/:\s*:/g, ':')
+    .replace(/^[-–\s:]+|[-–\s:]+$/g, '')
+    .replace(/\s{2,}/g, ' ')
+    .trim();
 }
 
 // Specialized Santander statement text & PDF parser
@@ -255,8 +303,10 @@ export function parseSantanderStatement(
     'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'
   ];
 
-  const monthYearMatch = text.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]+(\d{4})/i)
-    || text.match(/\b(0[1-9]|1[0-2])\/(\d{4})\b/);
+  const monthYearMatch = text.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]+(20\d{2})/i)
+    || text.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(20\d{2})/i)
+    || text.match(/\b(0[1-9]|1[0-2])\/(20\d{2})\b/)
+    || text.match(/\d{2}\/(0[1-9]|1[0-2])\/(20\d{2})/);
 
   if (monthYearMatch) {
     if (isNaN(Number(monthYearMatch[1]))) {
@@ -267,86 +317,87 @@ export function parseSantanderStatement(
       }
     } else {
       referenceMonth = parseInt(monthYearMatch[1], 10);
-      referenceYear = parseInt(monthYearMatch[2], 10);
+      referenceYear = parseInt(monthYearMatch[2] || monthYearMatch[3], 10);
     }
   }
 
   // Helper to format ISO date
-  const formatIsoDate = (day: string, month: string) => {
+  const formatIsoDate = (day: string, month: string, customYear?: number) => {
     const d = day.padStart(2, '0');
     const m = (month || String(referenceMonth)).padStart(2, '0');
-    return `${referenceYear}-${m}-${d}`;
+    const y = customYear || referenceYear;
+    return `${y}-${m}-${d}`;
   };
 
-  // 2. Isolate the Movimentação table to eliminate junk tables (Saldos por Período, Comprovantes repetidos, Pacote de Serviços, etc.)
-  let relevantText = text;
-
-  // Cut off after Movimentação table ends
-  const cutoffKeywords = [
-    'Saldos por Período',
-    'Saldos por Periodo',
-    'Débito Automático em Conta Corrente',
-    'Debito Automatico em Conta Corrente',
-    'Compras com Cartão de Débito',
-    'Compras com Cartao de Debito',
-    'Comprovantes de Pagamento',
-    'Créditos Contratados',
-    'Creditos Contratados',
-    'Pacote de Serviços',
-    'Índices Econômicos'
-  ];
-
-  for (const kw of cutoffKeywords) {
-    const idx = relevantText.indexOf(kw);
-    if (idx !== -1) {
-      relevantText = relevantText.substring(0, idx);
-      break;
-    }
-  }
-
-  // Discard intro headers before "Conta Corrente" / "Movimentação" / "Data Descrição"
-  const startIdx = relevantText.search(/(?:Conta Corrente\s+)?Movimenta[çc][ãa]o/i);
-  if (startIdx !== -1) {
-    relevantText = relevantText.substring(startIdx);
-  }
-
-  const rawLines = relevantText.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const rawLines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const items: ParsedItem[] = [];
 
   let currentDay = '01';
   let currentMonthStr = String(referenceMonth).padStart(2, '0');
+  let currentYearVal = referenceYear;
 
-  // Skip table headers and summary lines
+  // Skip Santander headers, metadata, footers and summary lines
   const isJunkLine = (l: string) => {
     const upper = l.toUpperCase();
     return (
       upper.startsWith('EXTRATO CONSOLIDADO') ||
+      upper.startsWith('EXTRATO DE CONTA') ||
+      upper.startsWith('EXTRATO CONTA') ||
+      upper.startsWith('BANCO SANTANDER') ||
       upper.startsWith('PAGINA:') ||
+      upper.startsWith('PÁGINA:') ||
+      upper.startsWith('--- NOVA PAGINA') ||
       upper.startsWith('FALE CONOSCO') ||
       upper.startsWith('PROTEJA-SE') ||
       upper.startsWith('BALP_UY_') ||
       upper.startsWith('EXTRATO_PF_') ||
       upper.startsWith('RESUMO -') ||
       upper.startsWith('DATA DESCRIÇÃO') ||
+      upper.startsWith('DATA HISTÓRICO') ||
+      upper.startsWith('DATA DOCTO') ||
       upper.startsWith('MOVIMENTAÇÃO') ||
+      upper.startsWith('MOVIMENTACAO') ||
       upper.startsWith('CONTA CORRENTE') ||
-      upper.startsWith('NOME') ||
-      upper.startsWith('AGÊNCIA') ||
-      upper.startsWith('SALDO EM') ||
+      upper.startsWith('AGÊNCIA:') ||
+      upper.startsWith('AGENCIA:') ||
+      upper.startsWith('CONTA:') ||
+      upper.startsWith('TITULAR:') ||
+      upper.startsWith('NOME:') ||
+      upper.startsWith('CPF:') ||
+      upper.startsWith('CNPJ:') ||
+      upper.startsWith('SALDO ') ||
+      upper.startsWith('SALDO:') ||
       upper.startsWith('SALDO DE CONTA') ||
+      upper.includes('SALDO ANTERIOR') ||
+      upper.includes('SALDO ATUAL') ||
+      upper.includes('SALDO FINAL') ||
+      upper.includes('SALDO BLOQUEADO') ||
+      upper.includes('SALDO DISPON') ||
       upper.startsWith('TOTAL DE CRÉDITOS') ||
+      upper.startsWith('TOTAL DE CRÉDITO') ||
       upper.startsWith('TOTAL DE DÉBITOS') ||
       upper.startsWith('TOTAL DE DEBITOS') ||
-      upper.startsWith('SALDO DISPONÍVEL') ||
-      upper.startsWith('SALDO DISPONIVEL') ||
       upper.startsWith('LIMITE SANTANDER') ||
       upper.startsWith('PROVISÃO DE ENCARGOS') ||
-      upper.startsWith('SE VOCÊ NÃO TEM LIMITE')
+      upper.startsWith('PROVISAO DE ENCARGOS') ||
+      upper.startsWith('SE VOCÊ NÃO TEM LIMITE') ||
+      upper.startsWith('SALDOS POR PERÍODO') ||
+      upper.startsWith('SALDOS POR PERIODO') ||
+      upper.startsWith('RESUMO DE APLICAÇÕES') ||
+      upper.startsWith('RESUMO DE APLICACOES') ||
+      upper.startsWith('ÍNDICES ECONÔMICOS') ||
+      upper.startsWith('INDICES ECONOMICOS') ||
+      upper.startsWith('PACOTE DE SERVIÇOS') ||
+      upper.startsWith('PACOTE DE SERVICOS') ||
+      upper.startsWith('OUVIDORIA SANTANDER') ||
+      upper.startsWith('CENTRAL DE ATENDIMENTO') ||
+      upper.startsWith('SAC SANTANDER') ||
+      upper.includes('DISPONÍVEL NO INTERNET BANKING')
     );
   };
 
-  // Currency matching regex: matches "- 27,01-", "27,01-", "1.910,00", "89,24", etc.
-  const currencyTokenRegex = /-?\s*\d{1,3}(?:\.\d{3})*,\d{2}-?/g;
+  // Currency matching regex: matches "- 27,01-", "27,01-", "1.910,00", "89,24", "50,00 D", "R$ 50,00", etc.
+  const currencyTokenRegex = /-?\s*R?\$?\s*\d{1,3}(?:\.\d{3})*,\d{2}\s*[-–]?(?:\s*[DDCc])?/g;
 
   let bufferedPrefix = '';
 
@@ -357,25 +408,35 @@ export function parseSantanderStatement(
       continue;
     }
 
-    // Check if line begins with a transaction date "01/07", "15/07"
-    const leadingDateMatch = line.match(/^(\d{2})\/(\d{2})\b/);
-    if (leadingDateMatch) {
-      currentDay = leadingDateMatch[1];
-      currentMonthStr = leadingDateMatch[2];
+    // Check if line contains a transaction date (e.g., "01/07", "01/07/2026", "01/07/26")
+    const dateMatch = line.match(/\b(\d{2})\/(\d{2})(?:\/(\d{2,4}))?\b/);
+    if (dateMatch) {
+      currentDay = dateMatch[1];
+      currentMonthStr = dateMatch[2];
+      if (dateMatch[3]) {
+        currentYearVal = dateMatch[3].length === 2 ? parseInt(`20${dateMatch[3]}`, 10) : parseInt(dateMatch[3], 10);
+      }
     }
 
     // Check if line contains currency amounts
     const currencyMatches = line.match(currencyTokenRegex);
 
     if (!currencyMatches || currencyMatches.length === 0) {
-      // Line might be the first part of a wrapped multi-line description (e.g. "01/07 DEBITO AUT. TELEFONE CELULAR")
+      // Line might be the description part of a wrapped multi-line transaction
       if (
         !line.toUpperCase().includes('SALDO') &&
         !line.match(/^\d+$/) &&
         line.length > 2 &&
-        line.length < 80
+        line.length < 120
       ) {
-        bufferedPrefix = (bufferedPrefix ? `${bufferedPrefix} ` : '') + line.replace(/^\d{2}\/\d{2}\s*/, '').trim();
+        // Strip date from prefix if present
+        let cleanLinePart = line;
+        if (dateMatch) {
+          cleanLinePart = cleanLinePart.replace(dateMatch[0], '').trim();
+        }
+        if (cleanLinePart.length > 1) {
+          bufferedPrefix = (bufferedPrefix ? `${bufferedPrefix} ` : '') + cleanLinePart;
+        }
       }
       continue;
     }
@@ -398,49 +459,26 @@ export function parseSantanderStatement(
     const tokenIndex = line.indexOf(rawMovimentoToken);
     let descPart = tokenIndex !== -1 ? line.substring(0, tokenIndex) : line;
 
-    // Strip leading date if present
-    descPart = descPart.replace(/^\d{2}\/\d{2}\s*/, '');
+    // Strip leading date if present (including full YYYY or YY)
+    descPart = descPart.replace(/^\s*\d{2}\/\d{2}(?:\/\d{2,4})?\s*/, '');
+
+    // Strip internal transaction date if still present at the start of merchant
+    descPart = descPart.replace(/\b\d{2}\/\d{2}(?:\/\d{2,4})?\b/, ' ');
 
     // Strip document number (like "328119", "010715", "484464" or "-") at the end of descPart
-    descPart = descPart.replace(/\s+(?:\d{5,8}|-)\s*$/, '').trim();
+    descPart = descPart.replace(/\s+(?:\d{4,8}|-)\s*$/, '').trim();
 
     // If there was a buffered prefix from the previous line, combine
     let fullDesc = (bufferedPrefix ? `${bufferedPrefix} ${descPart}` : descPart).trim();
     bufferedPrefix = ''; // reset buffer
 
+    // Skip empty descriptions or running balance rows
     if (!fullDesc || fullDesc.toUpperCase().includes('SALDO EM') || /^[0-9\s\.\-]+$/.test(fullDesc)) {
       continue;
     }
 
     // Humanize and clean Santander patterns
-    let cleanDesc = fullDesc
-      // Debit card purchases: "DEBITO VISA ELECTRON BRASIL 12/07 POSTO AVENIDA" -> "Cartão Débito: POSTO AVENIDA"
-      .replace(/^DEBITO VISA ELECTRON BRASIL(?:\s+\d{2}\/\d{2})?\s*-?\s*/i, 'Cartão Débito: ')
-      // Auto debits: "DEBITO AUT. TELEFONE CELULAR CLARO MOVEL" -> "Débito Automático: CLARO MOVEL"
-      .replace(/^DEBITO AUT\.\s+TELEFONE CELULAR\s*-?\s*/i, 'Débito Automático: ')
-      // Card invoice debits: "DEBITO AUT. FATURA CARTAO VISA FINAL 0245" -> "Fatura Cartão: VISA Final 0245"
-      .replace(/^DEBITO AUT\.\s+FATURA CARTAO VISA\s*(?:FINAL\s*(\d+))?/i, (_, finalDig) => finalDig ? `Fatura Cartão: VISA Final ${finalDig}` : 'Fatura Cartão: VISA')
-      // Boletos: "PAGAMENTO DE BOLETO OUTROS BANCOS ENEL DISTRIBUICAO CEARA" -> "Boleto: ENEL DISTRIBUICAO CEARA"
-      .replace(/^PAGAMENTO DE BOLETO OUTROS BANCOS\s*-?\s*/i, 'Boleto: ')
-      // Salary: "LIQUIDO DE VENCIMENTO CNPJ 010656452000180" -> "Salário: Vencimento Folha"
-      .replace(/^LIQUIDO DE VENCIMENTO(?:\s+CNPJ\s+\d+)?/i, 'Salário: Vencimento Folha')
-      // Automatic investment yield: "REMUNERACAO APLICACAO AUTOMATICA"
-      .replace(/^REMUNERACAO APLICACAO AUTOMATICA/i, 'Rendimento: Aplicação Automática')
-      // ATM withdrawals: "SAQUE DINHEIRO BANCO 24H 07/07 10:45" -> "Saque Banco 24H"
-      .replace(/^SAQUE DINHEIRO BANCO 24H(?:\s+\d{2}\/\d{2}\s+\d{2}:\d{2})?/i, 'Saque Banco 24H')
-      // IOF taxes
-      .replace(/^IOF IMPOSTO OPERACOES FINANCEIRAS.*/i, 'IOF Imposto Operações Financeiras')
-      .replace(/^IOF ADICIONAL\s*-\s*AUTOMATICO.*/i, 'IOF Adicional Automático')
-      // PIX Cleanups
-      .replace(/^PIX ENVIADO OPEN FINANCE\s*-?\s*/i, 'PIX Enviado: ')
-      .replace(/^PIX ENVIADO\s*-?\s*/i, 'PIX Enviado: ')
-      .replace(/^PIX RECEBIDO\s*-?\s*/i, 'PIX Recebido: ')
-      // Shopee store cleanup
-      .replace(/SHPP BRASIL INSTITUICAO D.*/i, 'SHPP BRASIL (Shopee)')
-      // General cleanup
-      .replace(/^[-–\s]+|[-–\s]+$/g, '')
-      .replace(/\s{2,}/g, ' ')
-      .trim();
+    const cleanDesc = cleanBankDescription(fullDesc);
 
     // Determine type: expense vs income
     let tipoItem: 'despesa' | 'receita' = parsedVal.isNegative ? 'despesa' : 'receita';
@@ -474,7 +512,7 @@ export function parseSantanderStatement(
     const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;
     const categoryResult = guessCategory(cleanDesc, tipoItem, availableCats);
 
-    const isoDate = formatIsoDate(currentDay, currentMonthStr);
+    const isoDate = formatIsoDate(currentDay, currentMonthStr, currentYearVal);
     const dupCheck = checkDuplicate(
       { data: isoDate, descricao: cleanDesc, valor: parsedVal.valor, tipoItem },
       existingTransactions
@@ -510,6 +548,232 @@ export function parseSantanderStatement(
   }
 
   return finalItems;
+}
+
+// Universal Brazilian Bank Statement Parser (Tier 2 Fallback)
+// Handles any Brazilian bank format (Nubank, Itaú, Bradesco, Inter, Caixa, BB, Santander, C6, etc.)
+export function parseUniversalBankStatement(
+  text: string,
+  existingTransactions: Transaction[] = [],
+  categoriesDespesa: string[] = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'],
+  categoriesReceita: string[] = ['Salário', 'Outras Receitas']
+): ParsedItem[] {
+  let referenceYear = new Date().getFullYear();
+  let referenceMonth = new Date().getMonth() + 1;
+
+  const yearMatch = text.match(/\b(202[4-9])\b/);
+  if (yearMatch) referenceYear = parseInt(yearMatch[1], 10);
+
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const items: ParsedItem[] = [];
+
+  let currentIsoDate = `${referenceYear}-${String(referenceMonth).padStart(2, '0')}-01`;
+
+  const currencyRegex = /-?\s*R?\$?\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*[-–]?(?:\s*[DDCc])?/g;
+
+  for (const line of lines) {
+    const upper = line.toUpperCase();
+
+    // Skip summary lines
+    if (
+      upper.startsWith('SALDO') ||
+      upper.includes('SALDO ANTERIOR') ||
+      upper.includes('SALDO ATUAL') ||
+      upper.includes('SALDO DISPONIVEL') ||
+      upper.includes('TOTAL DE') ||
+      upper.includes('EXTRATO DE') ||
+      upper.includes('PÁGINA') ||
+      upper.includes('PAGINA')
+    ) {
+      continue;
+    }
+
+    // Date search on line: DD/MM/YYYY, DD/MM/YY, or DD/MM
+    const fullDateMatch = line.match(/\b(\d{2})\/(\d{2})\/(20\d{2})\b/);
+    const shortYearDateMatch = line.match(/\b(\d{2})\/(\d{2})\/(\d{2})\b/);
+    const dayMonthMatch = line.match(/\b(\d{2})\/(\d{2})\b/);
+
+    if (fullDateMatch) {
+      currentIsoDate = `${fullDateMatch[3]}-${fullDateMatch[2]}-${fullDateMatch[1]}`;
+    } else if (shortYearDateMatch) {
+      currentIsoDate = `20${shortYearDateMatch[3]}-${shortYearDateMatch[2]}-${shortYearDateMatch[1]}`;
+    } else if (dayMonthMatch) {
+      currentIsoDate = `${referenceYear}-${dayMonthMatch[2]}-${dayMonthMatch[1]}`;
+    }
+
+    // Currency values on line
+    const currencyMatches = line.match(currencyRegex);
+    if (!currencyMatches || currencyMatches.length === 0) continue;
+
+    // First currency match is the transaction value
+    const rawVal = currencyMatches[0];
+    const parsed = parseBRLAmount(rawVal);
+    if (!parsed || parsed.valor === 0) continue;
+
+    // Clean description by removing currency, dates, and leading/trailing dashes
+    let desc = line
+      .replace(fullDateMatch ? fullDateMatch[0] : '', '')
+      .replace(shortYearDateMatch ? shortYearDateMatch[0] : '', '')
+      .replace(dayMonthMatch ? dayMonthMatch[0] : '', '')
+      .replace(rawVal, '');
+
+    // If second currency value exists (running balance), remove it too
+    if (currencyMatches.length > 1) {
+      desc = desc.replace(currencyMatches[1], '');
+    }
+
+    desc = cleanBankDescription(desc);
+    if (!desc || desc.length < 2 || /^[0-9\s\.\-]+$/.test(desc)) continue;
+
+    let tipoItem: 'despesa' | 'receita' = 'despesa';
+    const lower = desc.toLowerCase();
+    const rawUpper = rawVal.toUpperCase();
+
+    if (
+      lower.includes('pix recebido') ||
+      lower.includes('salário') ||
+      lower.includes('salario') ||
+      lower.includes('rendimento') ||
+      lower.includes('crédito') ||
+      lower.includes('credito') ||
+      lower.includes('depósito') ||
+      lower.includes('deposito') ||
+      rawUpper.endsWith('C') ||
+      rawUpper.startsWith('+')
+    ) {
+      tipoItem = 'receita';
+    } else {
+      tipoItem = 'despesa';
+    }
+
+    const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;
+    const categoryResult = guessCategory(desc, tipoItem, availableCats);
+
+    const dupCheck = checkDuplicate(
+      { data: currentIsoDate, descricao: desc, valor: parsed.valor, tipoItem },
+      existingTransactions
+    );
+
+    items.push({
+      id: `universal-${Date.now()}-${items.length}-${Math.random().toString(36).substring(2, 6)}`,
+      data: currentIsoDate,
+      descricao: desc,
+      valor: parsed.valor,
+      tipoItem,
+      categoria: categoryResult.categoria,
+      categoriaSugeridaConfiavel: categoryResult.confiavel,
+      requerAprovacao: categoryResult.requerAprovacao,
+      motivoDuvida: categoryResult.motivoDuvida,
+      sugestoesCategorias: categoryResult.sugestoesCategorias,
+      isDuplicate: dupCheck.isDuplicate,
+      duplicateReason: dupCheck.reason,
+      selected: !dupCheck.isDuplicate
+    });
+  }
+
+  return items;
+}
+
+// Relaxed Multi-line Fragment Parser (Tier 3 Fallback)
+// Handles fragmented extractions where date, text, and values are on separate lines
+export function parseRelaxedStatement(
+  text: string,
+  existingTransactions: Transaction[] = [],
+  categoriesDespesa: string[] = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'],
+  categoriesReceita: string[] = ['Salário', 'Outras Receitas']
+): ParsedItem[] {
+  const lines = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const items: ParsedItem[] = [];
+
+  const defaultYear = new Date().getFullYear();
+  let bufferedDate = `${defaultYear}-${String(new Date().getMonth() + 1).padStart(2, '0')}-01`;
+  let bufferedDescParts: string[] = [];
+
+  for (const line of lines) {
+    if (line.toUpperCase().includes('SALDO') || line.toUpperCase().startsWith('PAGINA')) {
+      continue;
+    }
+
+    // Check if line is a date
+    const dmy = line.match(/^(\d{2})\/(\d{2})(?:\/(20\d{2}|\d{2}))?$/);
+    if (dmy) {
+      const year = dmy[3] ? (dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3]) : String(defaultYear);
+      bufferedDate = `${year}-${dmy[2]}-${dmy[1]}`;
+      continue;
+    }
+
+    // Check if line is a currency value
+    const curMatch = line.match(/^-?\s*R?\$?\s*(\d{1,3}(?:\.\d{3})*,\d{2})\s*[-–]?(?:\s*[DDCc])?$/);
+    if (curMatch) {
+      const parsed = parseBRLAmount(curMatch[0]);
+      if (parsed && parsed.valor > 0 && bufferedDescParts.length > 0) {
+        const fullDesc = cleanBankDescription(bufferedDescParts.join(' '));
+        bufferedDescParts = [];
+
+        if (fullDesc && fullDesc.length > 2) {
+          const tipoItem: 'despesa' | 'receita' = parsed.isNegative ? 'despesa' : 'receita';
+          const availableCats = tipoItem === 'despesa' ? categoriesDespesa : categoriesReceita;
+          const categoryResult = guessCategory(fullDesc, tipoItem, availableCats);
+
+          const dupCheck = checkDuplicate(
+            { data: bufferedDate, descricao: fullDesc, valor: parsed.valor, tipoItem },
+            existingTransactions
+          );
+
+          items.push({
+            id: `relaxed-${Date.now()}-${items.length}-${Math.random().toString(36).substring(2, 6)}`,
+            data: bufferedDate,
+            descricao: fullDesc,
+            valor: parsed.valor,
+            tipoItem,
+            categoria: categoryResult.categoria,
+            categoriaSugeridaConfiavel: categoryResult.confiavel,
+            requerAprovacao: categoryResult.requerAprovacao,
+            motivoDuvida: categoryResult.motivoDuvida,
+            sugestoesCategorias: categoryResult.sugestoesCategorias,
+            isDuplicate: dupCheck.isDuplicate,
+            duplicateReason: dupCheck.reason,
+            selected: !dupCheck.isDuplicate
+          });
+        }
+      }
+      continue;
+    }
+
+    // Collect description line
+    if (!line.match(/^\d+$/) && line.length > 1 && line.length < 80) {
+      bufferedDescParts.push(line);
+      if (bufferedDescParts.length > 4) {
+        bufferedDescParts.shift(); // keep last 4 lines max
+      }
+    }
+  }
+
+  return items;
+}
+
+// Master Unified Bank Statement Parser (Runs Tier 1 -> Tier 2 -> Tier 3)
+export function parseAnyBankStatement(
+  text: string,
+  existingTransactions: Transaction[] = [],
+  categoriesDespesa: string[] = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'],
+  categoriesReceita: string[] = ['Salário', 'Outras Receitas']
+): ParsedItem[] {
+  // 1. Try Santander Specialized Parser
+  let items = parseSantanderStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  if (items.length > 0) {
+    return items;
+  }
+
+  // 2. Try Universal Brazilian Bank Statement Parser
+  items = parseUniversalBankStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  if (items.length > 0) {
+    return items;
+  }
+
+  // 3. Try Relaxed Multi-line Fragment Parser
+  items = parseRelaxedStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  return items;
 }
 
 // OFX Statement Parser

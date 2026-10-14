@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Transaction, BankAccount, safeRandomUUID, getBillMonthForDate } from '../types';
 import {
-  ParsedItem, parseSantanderStatement, parseOFXStatement, parseCSVStatement
+  ParsedItem, parseSantanderStatement, parseAnyBankStatement, parseOFXStatement, parseCSVStatement
 } from '../lib/statementParser';
 import { extractTextFromPdf, isPdfBuffer } from '../lib/pdfTextExtractor';
 
@@ -50,6 +50,8 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
 
   // Raw paste input state
   const [pastedText, setPastedText] = useState('');
+  const [lastExtractedText, setLastExtractedText] = useState<string>('');
+  const [showExtractedPreview, setShowExtractedPreview] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
@@ -70,6 +72,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const processRawText = (text: string, fileType: 'pdf' | 'ofx' | 'csv' | 'text' = 'text') => {
     setIsProcessing(true);
     setErrorMessage(null);
+    setLastExtractedText(text);
 
     try {
       let items: ParsedItem[] = [];
@@ -79,12 +82,12 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       } else if (fileType === 'csv' || (text.includes(';') && text.includes('\n'))) {
         items = parseCSVStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
       } else {
-        // Santander or general Brazilian text statement
-        items = parseSantanderStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
+        // Multi-tier parser: Santander -> Universal Brazilian Bank -> Relaxed Multi-line
+        items = parseAnyBankStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
       }
 
       if (items.length === 0) {
-        setErrorMessage('Nenhuma movimentação foi identificada no documento. Se for uma foto/imagem escaneada sem texto ou com layout diferente, você pode copiar as linhas de extrato e colar na aba "Copiar e Colar Texto".');
+        setErrorMessage('Nenhuma movimentação foi detectada automaticamente nas linhas deste documento. Você pode conferir o texto lido abaixo ou copiá-lo para a aba "Copiar e Colar".');
         setParsedItems([]);
         setHasParsed(false);
       } else {
@@ -112,26 +115,30 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
 
       if (isPdf) {
-        setProcessingStatus('Extraindo páginas e movimentações do PDF...');
+        setProcessingStatus('Extraindo páginas e linhas do PDF...');
         const extractedText = await extractTextFromPdf(arrayBuffer);
+        setLastExtractedText(extractedText);
         setProcessingStatus('Analisando transações e cruzando dados...');
         processRawText(extractedText, 'pdf');
       } else if (fileName.endsWith('.ofx')) {
         setProcessingStatus('Processando arquivo bancário OFX...');
         const text = new TextDecoder('latin1').decode(arrayBuffer);
+        setLastExtractedText(text);
         processRawText(text, 'ofx');
       } else if (fileName.endsWith('.csv')) {
         setProcessingStatus('Processando arquivo CSV...');
         const text = new TextDecoder('utf-8').decode(arrayBuffer);
+        setLastExtractedText(text);
         processRawText(text, 'csv');
       } else {
         setProcessingStatus('Processando texto do extrato...');
         const text = new TextDecoder('utf-8').decode(arrayBuffer);
+        setLastExtractedText(text);
         processRawText(text, 'text');
       }
     } catch (err: any) {
       console.error('Error reading statement file:', err);
-      setErrorMessage(`Não foi possível processar o arquivo "${file.name}": ${err?.message || 'Arquivo inacessível ou formato não reconhecido'}. Você também pode copiar o texto da fatura/extrato e colar diretamente na aba "Copiar e Colar Texto".`);
+      setErrorMessage(`Não foi possível ler o arquivo "${file.name}": ${err?.message || 'Arquivo inacessível ou formato não reconhecido'}.`);
       setIsProcessing(false);
       setProcessingStatus('');
     }
@@ -511,23 +518,67 @@ SALDO EM 31/07 8.213,26`;
                 </div>
               )}
 
-              {/* ERROR ALERT */}
+              {/* ERROR ALERT & EXTRACTED TEXT INSPECTOR */}
               {errorMessage && (
-                <div className="p-4 rounded-2xl bg-rose-50 dark:bg-rose-950/40 border border-rose-200 dark:border-rose-900 text-rose-700 dark:text-rose-300 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                  <div className="flex items-start sm:items-center gap-3">
-                    <AlertTriangle className="w-5 h-5 shrink-0 text-rose-500 mt-0.5 sm:mt-0" />
-                    <span>{errorMessage}</span>
+                <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-900/60 text-amber-900 dark:text-amber-200 text-xs space-y-3">
+                  <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                    <div className="flex items-start gap-3">
+                      <AlertTriangle className="w-5 h-5 shrink-0 text-amber-600 dark:text-amber-400 mt-0.5" />
+                      <div>
+                        <p className="font-semibold">{errorMessage}</p>
+                        {lastExtractedText && (
+                          <p className="text-[11px] text-amber-700/80 dark:text-amber-300/80 mt-0.5">
+                            Foram extraídos {lastExtractedText.length} caracteres do documento.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 self-end sm:self-auto shrink-0">
+                      {lastExtractedText && (
+                        <button
+                          type="button"
+                          onClick={() => setShowExtractedPreview(prev => !prev)}
+                          className="px-3 py-1.5 rounded-xl bg-zinc-200 dark:bg-zinc-800 hover:bg-zinc-300 dark:hover:bg-zinc-700 text-zinc-800 dark:text-zinc-200 font-semibold text-xs cursor-pointer transition-all"
+                        >
+                          {showExtractedPreview ? 'Ocultar Texto' : 'Ver Texto Lido'}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (lastExtractedText) {
+                            setPastedText(lastExtractedText);
+                          }
+                          setErrorMessage(null);
+                          setActiveTab('paste');
+                        }}
+                        className="px-3.5 py-1.5 rounded-xl bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold text-xs cursor-pointer transition-all"
+                      >
+                        {lastExtractedText ? 'Editar Texto na Aba Colar' : 'Colar Texto do Extrato'}
+                      </button>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setErrorMessage(null);
-                      setActiveTab('paste');
-                    }}
-                    className="shrink-0 px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-xs cursor-pointer transition-all self-end sm:self-auto"
-                  >
-                    Colar Texto do Extrato
-                  </button>
+
+                  {showExtractedPreview && lastExtractedText && (
+                    <div className="pt-2 border-t border-amber-200/60 dark:border-amber-900/40 space-y-2">
+                      <div className="flex items-center justify-between text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">
+                        <span>Texto bruto capturado do arquivo:</span>
+                        <button
+                          type="button"
+                          onClick={() => processRawText(lastExtractedText, 'text')}
+                          className="text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-pointer"
+                        >
+                          Reprocessar no Modo Universal
+                        </button>
+                      </div>
+                      <textarea
+                        readOnly
+                        value={lastExtractedText}
+                        rows={6}
+                        className="w-full p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-[11px] font-mono text-zinc-700 dark:text-zinc-300 select-all"
+                      />
+                    </div>
+                  )}
                 </div>
               )}
             </div>
