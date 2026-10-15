@@ -142,3 +142,5 @@ export async function loginWithGoogle(): Promise<FirebaseUser> {
 export async function logoutUser(): Promise<void> {
   await signOut(auth);
 }
+
+export { firebaseConfig };

@@ -31,6 +31,7 @@ import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
 import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
+import { FirebaseDomainModal } from './components/FirebaseDomainModal';
 
 interface Toast {
   id: string;
@@ -387,6 +388,10 @@ export default function App() {
     return () => unsubscribe();
   }, [firebaseUser, currentUser.email]);
 
+  const [domainModalError, setDomainModalError] = useState<{ isOpen: boolean; code?: string; message?: string }>({
+    isOpen: false
+  });
+
   // Google Login and Logout triggers
   const handleGoogleLogin = async () => {
     try {
@@ -395,7 +400,25 @@ export default function App() {
       showToast(`Bem-vindo, ${user.displayName || 'Usuário'}! Conectado ao Firebase.`, 'sucesso');
     } catch (err: any) {
       console.error('Google Sign-in error:', err);
-      showToast('Falha ao autenticar com o Google.', 'erro');
+      const errCode = err?.code || '';
+      const errMsg = err?.message || '';
+
+      if (errCode === 'auth/unauthorized-domain' || errMsg.includes('unauthorized-domain')) {
+        setDomainModalError({
+          isOpen: true,
+          code: 'auth/unauthorized-domain',
+          message: 'Domínio do GitHub não está na lista de autorizados do Firebase.'
+        });
+        showToast('Domínio não autorizado no Firebase. Abrindo guia de configuração...', 'erro');
+      } else if (errCode === 'auth/popup-blocked') {
+        showToast('Pop-up de login bloqueado pelo navegador. Por favor, permita pop-ups nesta página.', 'erro');
+      } else if (errCode === 'auth/popup-closed-by-user') {
+        showToast('Login cancelado: janela do Google fechada antes da confirmação.', 'info');
+      } else if (errCode === 'auth/network-request-failed') {
+        showToast('Falha de rede ao tentar conectar com os servidores do Google/Firebase.', 'erro');
+      } else {
+        showToast(`Falha ao conectar com o Google (${errCode || 'erro'}).`, 'erro');
+      }
     } finally {
       setIsSyncingFirebase(false);
     }
@@ -2003,6 +2026,14 @@ export default function App() {
         categoriasDespesa={categoriasDespesa}
         categoriasReceita={categoriasReceita}
         onImportBatch={handleBatchAddTransactions}
+      />
+
+      {/* FIREBASE GITHUB / CUSTOM DOMAIN AUTHORIZATION HELPER MODAL */}
+      <FirebaseDomainModal
+        isOpen={domainModalError.isOpen}
+        onClose={() => setDomainModalError({ isOpen: false })}
+        errorCode={domainModalError.code}
+        errorMessage={domainModalError.message}
       />
     </div>
   );
