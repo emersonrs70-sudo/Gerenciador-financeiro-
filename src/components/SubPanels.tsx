@@ -99,13 +99,13 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
     <div className="w-full transition-all duration-300">
       {/* 1. MODO HARDCORE */}
       {activeType === 'saldo-real' && (
-        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-3.5 shadow-xs">
-          <div className="flex justify-between items-center border-b border-zinc-150 dark:border-[#27272A] pb-2">
+        <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-3.5 shadow-xs">
+          <div className="flex justify-between items-center border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
               Modo Hardcore: Gasto Diário Seguro
             </h4>
-            <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-[#222226] text-zinc-700 dark:text-zinc-300 rounded-full">
+            <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-[#3B3B49] text-zinc-700 dark:text-zinc-300 rounded-full">
               Saúde Financeira
             </span>
           </div>
@@ -123,7 +123,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 <span>Energia do Caixa Atual</span>
                 <span>{Math.max(0, powerMeter).toFixed(0)}%</span>
               </div>
-              <div className="w-full bg-zinc-100 dark:bg-[#222226] h-2.5 rounded-full overflow-hidden">
+              <div className="w-full bg-zinc-100 dark:bg-[#3B3B49] h-2.5 rounded-full overflow-hidden">
                 <div
                   className="bg-emerald-500 h-full transition-all duration-500"
                   style={{ width: `${Math.max(0, powerMeter)}%` }}
@@ -131,7 +131,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
             </div>
           </div>
-          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-[#27272A]">
+          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-[#4C4E5D]/60">
             Fórmula inteligente baseada em sua liquidez acumulada real dividida pelos{' '}
             <strong className="text-zinc-700 dark:text-zinc-300">{diasRestantes} dias restantes</strong> do mês. Gastar abaixo de {formatValue(limiteDiario)} hoje melhora a sua projeção amanhã!
           </p>
@@ -169,8 +169,8 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
         const savingsPct = idealSavings > 0 ? (actualSaved / idealSavings) * 100 : 0;
 
         return (
-          <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-[#27272A] pb-3 gap-2">
+          <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-3 gap-2">
               <div>
                 <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
                   <PieChart className="w-4 h-4 text-zinc-500" />
@@ -190,7 +190,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
             </div>
 
             {isSimulation && (
-              <div className="bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] p-3 rounded-xl flex items-start gap-2">
+              <div className="bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-3 rounded-xl flex items-start gap-2">
                 <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
                 <p className="text-[10px] text-zinc-600 dark:text-zinc-300 leading-tight">
                   <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
@@ -200,7 +200,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {/* ESSENCIAIS - 50% */}
-              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades (50%)</span>
@@ -210,7 +210,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                     {formatValue(idealNeeds)}
                   </span>
                 </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
                   <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
                   <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
                     {formatValue(actualNeeds)}
@@ -235,7 +235,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
 
               {/* DESEJOS - 30% */}
-              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida (30%)</span>
@@ -245,7 +245,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                     {formatValue(idealWants)}
                   </span>
                 </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
                   <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
                   <span className={`font-bold ${actualWants > idealWants ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
                     {formatValue(actualWants)}
@@ -270,7 +270,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
 
               {/* POUPANÇA / RESERVA - 20% */}
-              <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/70 dark:border-[#27272A] shadow-2xs space-y-2">
+              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
@@ -280,7 +280,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                     {formatValue(idealSavings)}
                   </span>
                 </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex justify-between text-[10px]">
+                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
                   <span className="text-zinc-500 dark:text-zinc-400">Sobra Poupar:</span>
                   <span className="font-bold text-emerald-500">
                     {formatValue(actualSaved)}
@@ -305,7 +305,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
             </div>
 
-            <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#141416] rounded-xl border border-zinc-200/80 dark:border-[#27272A] text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
+            <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#252530] rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
               <span>💡</span>
               <span>
                 <strong>Como funciona o mapeamento automático:</strong> Despesas categorizadas como <em>Moradia</em>, <em>Alimentação</em>, e <em>Transporte</em> são somadas automaticamente em <strong>Necessidades</strong>. Todas as outras categorias (como <em>Lazer</em> e <em>Outros</em>) são direcionadas para <strong>Estilo de Vida</strong>. A diferença restante é o que você consegue efetivamente <strong>Poupar</strong>!
@@ -317,40 +317,40 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
       {/* 3. B-A-BA DE INVESTIMENTO */}
       {activeType === 'receitas' && (
-        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-3.5 shadow-xs">
-          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2">
+        <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-3.5 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <GraduationCap className="w-4.5 h-4.5 text-zinc-500" />
               Proporção de Investimentos: Projeção Anual
             </h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
+            <div className="bg-zinc-50/70 dark:bg-[#252530] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col justify-between gap-2 text-[11px]">
               <div>
                 <h5 className="font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-tight">Poupança Clássica</h5>
                 <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Retorno nominal fixo (retorno real exposto à inflação).</p>
               </div>
-              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
                 <span className="text-rose-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.0617)}</span>
               </div>
             </div>
-            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
+            <div className="bg-zinc-50/70 dark:bg-[#252530] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col justify-between gap-2 text-[11px]">
               <div>
                 <h5 className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">CDB 100% CDI</h5>
                 <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Liquidez imediata e proteção via FGC. Ótimo para sua reserva.</p>
               </div>
-              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
                 <span className="text-emerald-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.105)}</span>
               </div>
             </div>
-            <div className="bg-zinc-50/70 dark:bg-[#141416] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col justify-between gap-2 text-[11px]">
+            <div className="bg-zinc-50/70 dark:bg-[#252530] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col justify-between gap-2 text-[11px]">
               <div>
                 <h5 className="font-bold text-zinc-800 dark:text-zinc-200 uppercase tracking-tight">Tesouro Selic</h5>
                 <p className="text-zinc-500 dark:text-zinc-400 mt-0.5 text-[10px] leading-tight">Máxima segurança soberana nacional, com rendimento indexado.</p>
               </div>
-              <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 text-[10px] font-medium">
+              <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 text-[10px] font-medium">
                 Retorno Estimado 1ano:{' '}
                 <span className="text-emerald-500 font-bold">{formatValue(Math.max(0, saldoReal) * 0.1075)}</span>
               </div>
@@ -364,8 +364,8 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
       {/* 4. CORTADOR DE GORDURA */}
       {activeType === 'despesas' && (
-        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
-          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2 flex justify-between items-center">
+        <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2 flex justify-between items-center">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <Scissors className="w-4 h-4 text-zinc-500" />
               Cortador de Gordura Opcional
@@ -375,7 +375,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/80 dark:border-[#27272A] space-y-2.5">
+            <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-2.5">
               <div className="flex justify-between font-bold text-xs text-zinc-700 dark:text-zinc-300">
                 <span>🍿 Economia Lazer (Total: {formatValue(lazerGastos)})</span>
                 <span className="text-rose-500">{lazerCorte}%</span>
@@ -394,7 +394,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 <span className="text-emerald-600 dark:text-emerald-400 font-bold">{formatValue(economiaLazer)}</span>
               </div>
             </div>
-            <div className="bg-zinc-50/70 dark:bg-[#141416] p-4 rounded-xl border border-zinc-200/80 dark:border-[#27272A] space-y-2.5">
+            <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-2.5">
               <div className="flex justify-between font-bold text-xs text-zinc-700 dark:text-zinc-300">
                 <span>🛒 Compras Gerais (Total: {formatValue(comprasGastos)})</span>
                 <span className="text-rose-500">{comprasCorte}%</span>
@@ -422,8 +422,8 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
 
       {/* 5. PLANEJADOR DE SONHOS (DREAM PLANNER) */}
       {activeType === 'metas' && (
-        <div className="p-5 bg-white dark:bg-[#1A1A1E] rounded-2xl border border-zinc-200/80 dark:border-[#27272A] space-y-4 shadow-xs">
-          <div className="border-b border-zinc-150 dark:border-[#27272A] pb-2">
+        <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
+          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <Rocket className="w-4 h-4 text-zinc-500" />
               Planejador de Sonhos Multimetas
@@ -441,7 +441,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projNome}
                 onChange={(e) => setProjNome(e.target.value)}
                 required
-                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
+                className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <div>
@@ -454,7 +454,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projValor}
                 onChange={(e) => setProjValor(e.target.value)}
                 required
-                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
+                className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <div>
@@ -466,7 +466,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 value={projData}
                 onChange={(e) => setProjData(e.target.value)}
                 required
-                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
+                className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-zinc-400 font-medium"
               />
             </div>
             <button
@@ -477,10 +477,10 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
             </button>
           </form>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/30 dark:bg-[#141416]">
+          <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 bg-zinc-50/30 dark:bg-[#252530]">
             <table className="w-full text-left border-collapse">
               <thead>
-                <tr className="border-b border-zinc-200/80 dark:border-[#27272A] text-zinc-400 dark:text-zinc-500 text-[10px] uppercase font-bold bg-zinc-50 dark:bg-[#141416]">
+                <tr className="border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-400 dark:text-zinc-500 text-[10px] uppercase font-bold bg-zinc-50 dark:bg-[#252530]">
                   <th className="p-3">Projeto</th>
                   <th className="p-3">Custo Total</th>
                   <th className="p-3">Prazo Alvo</th>
@@ -488,7 +488,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                   <th className="p-3 text-center">Remover</th>
                 </tr>
               </thead>
-              <tbody className="text-xs divide-y divide-zinc-200/60 dark:divide-[#27272A]">
+              <tbody className="text-xs divide-y divide-zinc-200/60 dark:divide-[#4C4E5D]/40">
                 {projects.length === 0 ? (
                   <tr>
                     <td colSpan={5} className="p-6 text-center text-zinc-400 dark:text-zinc-500 font-medium">

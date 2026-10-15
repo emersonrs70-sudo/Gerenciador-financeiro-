@@ -3,7 +3,9 @@ import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles,
-  Cloud, RefreshCw, LogIn, LogOut
+  Cloud, RefreshCw, LogIn, LogOut, LayoutDashboard, Receipt, Target,
+  Landmark, Tags, Bot, Calendar, CreditCard, BarChart3, Menu, X, Plus,
+  Layers, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
@@ -26,6 +28,7 @@ import { SubPanels } from './components/SubPanels';
 import { TransactionForm } from './components/TransactionForm';
 import { TransactionTable } from './components/TransactionTable';
 import { FinancialCharts } from './components/FinancialCharts';
+import { ExpenseCalendar } from './components/ExpenseCalendar';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
@@ -120,6 +123,8 @@ export default function App() {
   const [isImportModalOpen, setIsImportModalOpen] = useState<boolean>(false);
   const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
+  const [novaCatNome, setNovaCatNome] = useState<string>('');
+  const [novaCatTipo, setNovaCatTipo] = useState<'despesa' | 'receita'>('despesa');
 
   const handleDeleteAccount = (id: string) => {
     if (accounts.length <= 1) {
@@ -140,7 +145,9 @@ export default function App() {
     saveLocal('local_bank_accounts', accounts);
   }, [accounts]);
 
-  // Selection statuses
+  // Navigation & View tabs (SaaS Layout Re-architecture)
+  const [activeNav, setActiveNav] = useState<'dashboard' | 'transacoes' | 'sonhos' | 'contas' | 'categorias' | 'ia'>('dashboard');
+  const [dashboardTab, setDashboardTab] = useState<'geral' | 'graficos' | 'calendario' | 'cartoes'>('geral');
   const [subpainelAberto, setSubpainelAberto] = useState<SubPainelType>(null);
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => getLocal<boolean>('app_theme_dark', true));
   const [mobileTabActive, setMobileTabActive] = useState<'dashboard' | 'transacoes' | 'planejador'>('dashboard');
@@ -491,6 +498,20 @@ export default function App() {
       saveLocal(`local_categorias_receita_${currentUser!.email}`, updated);
     }
     showToast(`Categoria "${nome}" adicionada com sucesso!`, 'sucesso');
+  };
+
+  // Delete category handler
+  const handleDeleteCategory = async (nome: string, tipoItem: 'despesa' | 'receita') => {
+    if (tipoItem === 'despesa') {
+      const updated = categoriasDespesa.filter(c => c !== nome);
+      setCategoriasDespesa(updated);
+      saveLocal(`local_categorias_despesa_${currentUser!.email}`, updated);
+    } else {
+      const updated = categoriasReceita.filter(c => c !== nome);
+      setCategoriasReceita(updated);
+      saveLocal(`local_categorias_receita_${currentUser!.email}`, updated);
+    }
+    showToast(`Categoria "${nome}" removida com sucesso!`, 'sucesso');
   };
 
   // Add transaction (despesa or receita) handler
@@ -947,726 +968,572 @@ export default function App() {
     return `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   };
 
-  const renderSidebarContent = () => (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center border-b border-zinc-100 dark:border-[#27272A] pb-3">
-        <div className="flex items-center gap-2">
-          <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300 shrink-0" />
-          <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500 dark:text-zinc-400">
-            Contas & Cartões
-          </h3>
+  const renderSidebarNavigation = (isMobile = false) => (
+    <div className="flex flex-col h-full justify-between p-4 bg-white dark:bg-[#32323F] text-zinc-800 dark:text-[#DDD5D0]">
+      {/* Top brand & navigation */}
+      <div className="space-y-4">
+        {/* Brand Lockup */}
+        <div className="flex items-center justify-between pb-3 border-b border-zinc-200/80 dark:border-[#4C4E5D]/60">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-[#32323F] dark:bg-[#4C4E5D] text-white dark:text-[#DDD5D0] flex items-center justify-center font-black text-xs shadow-xs border border-[#4C4E5D]/50">
+              FC
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <span className="font-extrabold tracking-tight text-sm text-zinc-900 dark:text-[#DDD5D0]">
+                  Fintech<span className="text-[#988E96] font-medium">Core</span>
+                </span>
+                <span className="text-[9px] px-1.5 py-0.2 bg-[#4C4E5D]/15 dark:bg-[#4C4E5D]/50 text-[#32323F] dark:text-[#BCABA8] rounded font-bold">
+                  PRO
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-500 dark:text-[#988E96]">Gestão & Nuvem</p>
+            </div>
+          </div>
+          {isMobile && (
+            <button
+              onClick={() => setIsMobileSidebarOpen(false)}
+              className="p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-[#4C4E5D] text-zinc-500 dark:text-[#988E96] cursor-pointer"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          )}
         </div>
-        <button
-          onClick={() => setIsAddAccountModalOpen(true)}
-          className="text-[10px] bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 font-bold px-2.5 py-1 rounded-lg transition-all shadow-xs cursor-pointer active:scale-95"
-        >
-          + Cadastrar
-        </button>
-      </div>
 
-      <div className="flex flex-col gap-2.5 max-h-[500px] overflow-y-auto pr-1">
-        {/* Consolidated View Button */}
-        <button
-          onClick={() => {
-            setSelectedAccountId('consolidado');
-            setIsMobileSidebarOpen(false);
-          }}
-          className={`w-full p-3 rounded-xl border text-left transition-all cursor-pointer flex justify-between items-center group relative ${
-            selectedAccountId === 'consolidado'
-              ? 'bg-zinc-900 dark:bg-zinc-100 dark:text-zinc-950 text-white border-transparent shadow-xs'
-              : 'bg-zinc-50/70 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-100/70 dark:hover:bg-[#1E1E22] text-zinc-900 dark:text-zinc-100'
-          }`}
-        >
-          <div className="truncate pr-2">
-            <p className={`text-[9px] font-bold uppercase tracking-wider ${selectedAccountId === 'consolidado' ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'}`}>
-              Visão Geral
-            </p>
-            <p className="text-xs font-bold truncate mt-0.5">Consolidado</p>
-            <p className="text-[11px] font-medium font-mono tabular-nums mt-0.5 opacity-90 truncate">
-              Disp: {formatCurrency(totalCashConsolidated)}
-            </p>
+        {/* Primary Navigation Menu */}
+        <div className="space-y-1">
+          <p className="px-2 text-[10px] font-bold uppercase tracking-wider text-[#988E96]">
+            Navegação
+          </p>
+
+          <button
+            onClick={() => {
+              setActiveNav('dashboard');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'dashboard'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <LayoutDashboard className={`w-4 h-4 ${activeNav === 'dashboard' ? 'text-emerald-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <span>Dashboard</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('transacoes');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'transacoes'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <Receipt className={`w-4 h-4 ${activeNav === 'transacoes' ? 'text-blue-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <span>Lançamentos & Extrato</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('sonhos');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'sonhos'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <Target className={`w-4 h-4 ${activeNav === 'sonhos' ? 'text-amber-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <div className="flex-1 flex items-center justify-between">
+              <span>Metas & Sonhos</span>
+              <span className="text-[10px] font-mono opacity-80">{projects.length}</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('contas');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'contas'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <Landmark className={`w-4 h-4 ${activeNav === 'contas' ? 'text-purple-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <div className="flex-1 flex items-center justify-between">
+              <span>Contas & Cartões</span>
+              <span className="text-[10px] font-mono opacity-80">{accounts.length}</span>
+            </div>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('categorias');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'categorias'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <Tags className={`w-4 h-4 ${activeNav === 'categorias' ? 'text-rose-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <span>Categorias</span>
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('ia');
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+              activeNav === 'ia'
+                ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                : 'text-zinc-700 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 dark:hover:text-[#DDD5D0]'
+            }`}
+          >
+            <Bot className={`w-4 h-4 ${activeNav === 'ia' ? 'text-teal-400' : 'text-zinc-500 dark:text-[#988E96]'}`} />
+            <span>Assistente IA</span>
+          </button>
+        </div>
+
+        {/* Quick Filter: Contas & Cartões */}
+        <div className="space-y-2 pt-2 border-t border-zinc-200/80 dark:border-[#4C4E5D]/60">
+          <div className="flex items-center justify-between px-2">
+            <span className="text-[10px] font-bold uppercase tracking-wider text-[#988E96]">
+              Filtro por Conta
+            </span>
+            <button
+              onClick={() => setIsAddAccountModalOpen(true)}
+              className="text-[10px] text-zinc-600 dark:text-[#BCABA8] hover:text-zinc-900 dark:hover:text-white font-bold cursor-pointer"
+            >
+              + Nova
+            </button>
           </div>
-          <div className={`w-7 h-7 rounded-lg shrink-0 flex items-center justify-center font-mono text-xs font-bold ${selectedAccountId === 'consolidado' ? 'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-950' : 'bg-zinc-200/70 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300'}`}>
-            Σ
-          </div>
-        </button>
 
-        {/* Individual accounts list */}
-        {accounts.map((acc) => {
-          const isSelected = selectedAccountId === acc.id;
-          const isCard = acc.tipo === 'credito';
-          const balance = accountBalances[acc.id] ?? 0;
-          
-          let displayBalance = balance;
-          if (isCard) {
-            const currentBillMonthStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
-            const cardExpensesForMonth = transactions
-              .filter(t => t.accountId === acc.id && t.tipoItem === 'despesa' && t.faturaMes === currentBillMonthStr)
-              .reduce((sum, t) => sum + t.valor, 0);
-            const cardPaymentsForMonth = transactions
-              .filter(t => t.accountId === acc.id && t.tipoItem === 'receita' && t.faturaMes === currentBillMonthStr)
-              .reduce((sum, t) => sum + t.valor, 0);
-            displayBalance = cardExpensesForMonth - cardPaymentsForMonth;
-          }
-
-          return (
-            <div
-              key={acc.id}
-              className={`w-full p-3 rounded-xl border text-left transition-all flex flex-col gap-2 group relative ${
-                isSelected
-                  ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 border-transparent shadow-xs'
-                  : 'bg-white dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-50/70 dark:hover:bg-[#1E1E22] text-zinc-900 dark:text-zinc-100'
+          <div className="space-y-1 max-h-36 overflow-y-auto custom-scrollbar pr-1">
+            <button
+              onClick={() => {
+                setSelectedAccountId('consolidado');
+                if (isMobile) setIsMobileSidebarOpen(false);
+              }}
+              className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                selectedAccountId === 'consolidado'
+                  ? 'bg-zinc-200/80 dark:bg-[#4C4E5D] text-zinc-900 dark:text-[#DDD5D0] font-bold'
+                  : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30'
               }`}
             >
-              <div 
-                className="cursor-pointer flex justify-between items-start"
-                onClick={() => {
-                  setSelectedAccountId(acc.id);
-                  setIsMobileSidebarOpen(false);
-                }}
-              >
-                <div className="truncate pr-2 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className={`w-2 h-2 rounded-full shrink-0 ${acc.cor || 'bg-zinc-500'}`} />
-                    <p className={`text-[9px] font-bold uppercase tracking-wider ${isSelected ? 'text-zinc-300 dark:text-zinc-600' : 'text-zinc-500 dark:text-zinc-400'}`}>
-                      {isCard ? 'Cartão de Crédito' : 'Conta Corrente'}
-                    </p>
+              <div className="flex items-center gap-2 truncate">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
+                <span className="truncate">Consolidado</span>
+              </div>
+              <span className="text-[10px] font-mono tabular-nums shrink-0 opacity-80">
+                {formatCurrency(totalCashConsolidated)}
+              </span>
+            </button>
+
+            {accounts.map(acc => {
+              const isSelected = selectedAccountId === acc.id;
+              const isCard = acc.tipo === 'credito';
+              const bal = accountBalances[acc.id] ?? 0;
+              return (
+                <button
+                  key={acc.id}
+                  onClick={() => {
+                    setSelectedAccountId(acc.id);
+                    if (isMobile) setIsMobileSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center justify-between px-2.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    isSelected
+                      ? 'bg-zinc-200/80 dark:bg-[#4C4E5D] text-zinc-900 dark:text-[#DDD5D0] font-bold'
+                      : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <span className={`w-2 h-2 rounded-full shrink-0 ${acc.cor || 'bg-zinc-400'}`} />
+                    <span className="truncate">{acc.nome}</span>
                   </div>
-                  <p className="text-xs font-bold truncate mt-1">{acc.nome}</p>
-                  <p className="text-[11px] font-medium font-mono tabular-nums mt-0.5">
-                    {isCard ? 'Fatura: ' : 'Saldo: '}
-                    {formatCurrency(isCard ? displayBalance : balance)}
-                  </p>
-                  {isCard && acc.limiteCredito && (
-                    <p className={`text-[9px] font-medium opacity-80 mt-0.5`}>
-                      Disponível: {formatCurrency(Math.max(acc.limiteCredito - balance, 0))}
-                    </p>
-                  )}
-                </div>
-
-                <div className={`p-1.5 rounded-lg shrink-0 ${isSelected ? 'bg-white/10 dark:bg-zinc-900/10' : 'bg-zinc-100 dark:bg-zinc-800'}`}>
-                  {isCard ? (
-                    <span className="text-[10px]">💳</span>
-                  ) : (
-                    <span className="text-[10px]">🏦</span>
-                  )}
-                </div>
-              </div>
-
-              {/* Edit and Delete operations */}
-              <div className="flex justify-end gap-1.5 border-t border-zinc-200/40 dark:border-[#27272A] pt-1.5 mt-0.5 opacity-80 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setEditingAccount(acc);
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[9px] font-semibold cursor-pointer flex items-center gap-1 transition-all ${
-                    isSelected 
-                      ? 'bg-white/15 text-white dark:bg-zinc-900/10 dark:text-zinc-950 hover:bg-white/25' 
-                      : 'bg-zinc-100 hover:bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300'
-                  }`}
-                  title="Editar Conta"
-                >
-                  Editar
+                  <span className="text-[10px] font-mono tabular-nums shrink-0 opacity-80">
+                    {isCard ? (acc.limiteCredito ? `R$ ${Math.round(Math.max(acc.limiteCredito - bal, 0))}` : 'Cartão') : formatCurrency(bal)}
+                  </span>
                 </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteAccount(acc.id);
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[9px] font-semibold cursor-pointer flex items-center gap-1 transition-all ${
-                    isSelected 
-                      ? 'bg-rose-500/20 text-rose-100 dark:text-rose-700 hover:bg-rose-500/30' 
-                      : 'bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-950/30 dark:text-rose-400'
-                  }`}
-                  title="Excluir Conta"
-                >
-                  Excluir
-                </button>
-              </div>
-            </div>
-          );
-        })}
+              );
+            })}
+          </div>
+
+          <button
+            onClick={() => {
+              setIsImportModalOpen(true);
+              if (isMobile) setIsMobileSidebarOpen(false);
+            }}
+            className="w-full mt-2 py-2 px-3 rounded-xl border border-dashed border-zinc-300 dark:border-[#4C4E5D] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 text-zinc-700 dark:text-[#DDD5D0] text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-95"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-zinc-500 dark:text-[#BCABA8]" />
+            <span>Importar Extrato PDF</span>
+          </button>
+        </div>
       </div>
 
-      {/* Button to import bank statement */}
-      <button
-        onClick={() => {
-          setIsImportModalOpen(true);
-          setIsMobileSidebarOpen(false);
-        }}
-        className="w-full p-2.5 rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50 hover:bg-zinc-100 dark:bg-[#141416] dark:hover:bg-[#1E1E22] text-zinc-800 dark:text-zinc-200 font-bold text-xs flex items-center justify-center gap-2 cursor-pointer transition-all active:scale-[0.98] shadow-xs"
-      >
-        <Sparkles className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
-        <span>Importar Extrato Bancário</span>
-      </button>
-
-      {/* Cloud Sync Status */}
-      <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416] text-xs space-y-1.5">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-1.5">
-            <Cloud className={`w-3.5 h-3.5 ${firebaseUser ? 'text-emerald-500' : 'text-amber-500'}`} />
-            <span className="font-bold text-zinc-800 dark:text-zinc-200">
-              {firebaseUser ? 'Firebase Firestore' : 'Armazenamento'}
+      {/* Sidebar Footer: Cloud Sync Status, User Profile, Streak & Theme */}
+      <div className="space-y-3 pt-3 border-t border-zinc-200/80 dark:border-[#4C4E5D]/60 mt-auto">
+        {/* Cloud Status */}
+        <div className="p-2.5 rounded-xl bg-zinc-100/70 dark:bg-[#252530] border border-zinc-200/70 dark:border-[#4C4E5D]/50 text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-1.5 truncate">
+              <Cloud className={`w-3.5 h-3.5 shrink-0 ${firebaseUser ? 'text-emerald-500' : 'text-amber-500'}`} />
+              <span className="font-bold text-[11px] text-zinc-800 dark:text-[#DDD5D0] truncate">
+                {firebaseUser ? 'Firebase Firestore' : 'Armazenamento'}
+              </span>
+            </div>
+            <span className={`text-[9px] px-1.5 py-0.2 rounded-md font-bold shrink-0 ${
+              firebaseUser
+                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/60 dark:text-emerald-400'
+                : 'bg-amber-100 text-amber-700 dark:bg-amber-950/60 dark:text-amber-400'
+            }`}>
+              {firebaseUser ? 'Nuvem' : 'Local'}
             </span>
           </div>
-          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
-            firebaseUser 
-              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' 
-              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
-          }`}>
-            {firebaseUser ? 'Nuvem Ativa' : 'Local'}
-          </span>
+
+          <p className="text-[10px] text-zinc-500 dark:text-[#988E96] truncate">
+            {firebaseUser ? firebaseUser.email || currentUser.email : 'Conecte para sincronizar em nuvem'}
+          </p>
+
+          {!firebaseUser ? (
+            <button
+              onClick={handleGoogleLogin}
+              disabled={isSyncingFirebase}
+              className="w-full mt-1 py-1 px-2 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-lg text-[10px] font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+            >
+              {isSyncingFirebase ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3 text-amber-400" />}
+              <span>{isSyncingFirebase ? 'Sincronizando...' : 'Conectar Firebase'}</span>
+            </button>
+          ) : (
+            <div className="flex justify-end pt-0.5">
+              <button
+                onClick={handleGoogleLogout}
+                className="text-[9px] text-[#988E96] hover:text-rose-500 flex items-center gap-1 transition-colors cursor-pointer"
+                title="Desconectar Firebase"
+              >
+                <LogOut className="w-2.5 h-2.5" />
+                <span>Desconectar</span>
+              </button>
+            </div>
+          )}
         </div>
-        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
-          {firebaseUser 
-            ? `Sincronizando em tempo real com ${firebaseUser.email || currentUser.email}. Multi-aparelhos ativo.`
-            : 'Conecte sua conta Google para sincronizar automaticamente todas as transações no Firebase entre seus aparelhos.'
-          }
-        </p>
-        {!firebaseUser && (
+
+        {/* Streak & Theme Row */}
+        <div className="flex items-center justify-between gap-2 px-1">
           <button
-            onClick={handleGoogleLogin}
-            disabled={isSyncingFirebase}
-            className="w-full mt-1.5 py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+            onClick={() => setIsStreakModalOpen(true)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all cursor-pointer ${
+              streak > 0
+                ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                : 'bg-zinc-100 dark:bg-[#252530] text-zinc-500 dark:text-[#988E96] border-zinc-200/80 dark:border-[#4C4E5D]/50'
+            }`}
+            title="Sequência diária de registros"
           >
-            {isSyncingFirebase ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3 text-amber-400 dark:text-amber-500" />}
-            <span>{isSyncingFirebase ? 'Sincronizando...' : 'Conectar ao Firebase (Google)'}</span>
+            <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
+            <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
           </button>
-        )}
+
+          <button
+            onClick={toggleTheme}
+            className="p-2 rounded-xl bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/50 text-zinc-600 dark:text-[#DDD5D0] transition-colors cursor-pointer"
+            title="Alternar Tema Claro / Escuro"
+          >
+            {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-700" />}
+          </button>
+        </div>
       </div>
     </div>
   );
 
-  const handleSubPanelToggle = (type: SubPainelType) => {
-    setSubpainelAberto((prev) => (prev === type ? null : type));
-    // Slide beautifully down to view if activated
-    if (subpainelAberto !== type) {
-      setTimeout(() => {
-        const sub = document.getElementById('container-subpaineis');
-        if (sub) sub.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-      }, 100);
-    }
-  };
-
-  return (
-    <div className="bg-[#F8F8FA] text-zinc-900 dark:bg-[#121214] dark:text-zinc-100 min-h-screen font-sans antialiased transition-all duration-300 pb-20 md:pb-6 relative">
-      {/* TOAST SYSTEM ALERTS STREAM */}
-      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2.5 w-full max-w-sm px-6">
-        {toasts.map((t) => (
-          <div
-            key={t.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] ${
-              t.type === 'sucesso'
-                ? 'text-emerald-600 dark:text-emerald-400'
-                : t.type === 'erro'
-                ? 'text-rose-600 dark:text-rose-400'
-                : 'text-zinc-700 dark:text-zinc-300'
-            }`}
-          >
-            <div className={`w-2 h-2 rounded-full ${t.type === 'sucesso' ? 'bg-emerald-500' : t.type === 'erro' ? 'bg-rose-500' : 'bg-zinc-400'} animate-ping`} />
-            <span>{t.msg}</span>
+  // Render view for Metas & Sonhos
+  const renderSonhosView = () => (
+    <div className="space-y-6">
+      <div className="p-5 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center font-bold">
+              <Target className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">
+                Metas & Projetos de Vida
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-[#988E96]">
+                Acompanhe a viabilidade dos seus sonhos com base na sua poupança real.
+              </p>
+            </div>
           </div>
-        ))}
+          <div className="text-right">
+            <span className="text-xs text-[#988E96]">Custo Total Acumulado:</span>
+            <p className="text-base font-black font-mono text-zinc-900 dark:text-[#DDD5D0]">
+              {formatCurrency(totalDreamCost)}
+            </p>
+          </div>
+        </div>
+
+        {/* Embedded SubPanels metas view */}
+        <SubPanels
+          activeType="metas"
+          transactions={transactions}
+          projects={projects}
+          onAddProject={handleAddProject}
+          onDeleteProject={handleDeleteProject}
+          saldoReal={saldoRealAcumulado}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+        />
+      </div>
+    </div>
+  );
+
+  // Render view for Contas & Cartões
+  const renderContasView = () => (
+    <div className="space-y-6">
+      <div className="p-5 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xs space-y-4">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-purple-500/10 text-purple-500 flex items-center justify-center font-bold">
+              <Landmark className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">
+                Gerenciador de Contas Bancárias & Cartões
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-[#988E96]">
+                Cadastre suas contas correntes, cartões de crédito e carteiras.
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={() => setIsAddAccountModalOpen(true)}
+            className="px-3.5 py-2 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer shadow-xs active:scale-95"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Adicionar Conta / Cartão</span>
+          </button>
+        </div>
+
+        {/* Accounts Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {accounts.map(acc => {
+            const isCard = acc.tipo === 'credito';
+            const bal = accountBalances[acc.id] ?? 0;
+            return (
+              <div
+                key={acc.id}
+                className="p-4 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 bg-zinc-50/70 dark:bg-[#252530] flex flex-col justify-between space-y-3"
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-2.5">
+                    <span className={`w-3 h-3 rounded-full ${acc.cor || 'bg-zinc-400'}`} />
+                    <div>
+                      <h3 className="text-xs font-bold text-zinc-900 dark:text-[#DDD5D0]">{acc.nome}</h3>
+                      <p className="text-[10px] uppercase font-bold text-[#988E96]">
+                        {isCard ? 'Cartão de Crédito' : acc.tipo === 'poupanca' ? 'Poupança' : 'Conta Corrente'}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm">{isCard ? '💳' : '🏦'}</span>
+                </div>
+
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-[#4C4E5D]/40 space-y-1">
+                  <p className="text-[10px] text-[#988E96]">{isCard ? 'Fatura Aberta' : 'Saldo Atual'}</p>
+                  <p className="text-lg font-bold font-mono text-zinc-900 dark:text-[#DDD5D0]">
+                    {formatCurrency(bal)}
+                  </p>
+                  {isCard && acc.limiteCredito && (
+                    <div className="text-[10px] text-[#988E96] flex justify-between">
+                      <span>Limite: {formatCurrency(acc.limiteCredito)}</span>
+                      <span>Disp: {formatCurrency(Math.max(acc.limiteCredito - bal, 0))}</span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-2 border-t border-zinc-200/60 dark:border-[#4C4E5D]/40">
+                  <button
+                    onClick={() => setEditingAccount(acc)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-zinc-200/70 hover:bg-zinc-300 dark:bg-[#4C4E5D]/50 dark:hover:bg-[#4C4E5D] text-zinc-800 dark:text-[#DDD5D0] cursor-pointer"
+                  >
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => handleDeleteAccount(acc.id)}
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold bg-rose-50 hover:bg-rose-100 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 cursor-pointer"
+                  >
+                    Excluir
+                  </button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+
+  // Render view for Categorias
+  const renderCategoriasView = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      {/* Despesas */}
+      <div className="p-5 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+          <div className="flex items-center gap-2">
+            <ArrowDownCircle className="w-4 h-4 text-rose-500" />
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">
+              Categorias de Despesas ({categoriasDespesa.length})
+            </h2>
+          </div>
+        </div>
+
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (novaCatNome.trim()) {
+              handleAddCategory(novaCatNome.trim(), 'despesa');
+              setNovaCatNome('');
+            }
+          }}
+          className="flex gap-2"
+        >
+          <input
+            type="text"
+            placeholder="Nova categoria de despesa..."
+            value={novaCatTipo === 'despesa' ? novaCatNome : ''}
+            onChange={(e) => {
+              setNovaCatTipo('despesa');
+              setNovaCatNome(e.target.value);
+            }}
+            className="flex-1 bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-[#DDD5D0] focus:outline-none focus:ring-1 focus:ring-[#BCABA8]"
+          />
+          <button
+            type="submit"
+            className="px-3 py-2 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs"
+          >
+            Adicionar
+          </button>
+        </form>
+
+        <div className="flex flex-wrap gap-2 pt-2">
+          {categoriasDespesa.map(cat => (
+            <div
+              key={cat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/50 text-xs font-semibold text-zinc-800 dark:text-[#DDD5D0]"
+            >
+              <span>{cat}</span>
+              {categoriasDespesa.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(cat, 'despesa')}
+                  className="text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                  title="Remover categoria"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* HEADER BAR */}
-      <header className="w-full bg-white/95 border-b border-zinc-200/80 dark:bg-[#121214]/95 dark:border-[#27272A] backdrop-blur-md p-3.5 sticky top-0 z-40 shadow-xs">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row justify-between items-center gap-3">
-          <div className="flex items-center justify-between w-full sm:w-auto">
-            <div className="flex items-center gap-2.5">
-              <button
-                onClick={() => setIsMobileSidebarOpen(true)}
-                className="lg:hidden p-2 hover:bg-zinc-100 dark:hover:bg-[#1E1E22] border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-600 dark:text-zinc-300 active:scale-95 transition-all flex items-center justify-center"
-                title="Ver Contas e Cartões"
-              >
-                <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-              </button>
-              <div className="w-8 h-8 rounded-xl bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-950 flex items-center justify-center font-black text-xs shadow-xs tracking-tight">
-                FC
-              </div>
-              <div>
-                <h1 className="text-sm sm:text-base font-extrabold tracking-tight flex items-center gap-1.5 text-zinc-900 dark:text-white">
-                  Fintech<span className="text-zinc-500 dark:text-zinc-400 font-medium">Core</span>
-                  <span className="hidden sm:inline-block text-[9px] px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded-md font-semibold tracking-wide ml-1">
-                    PRO
-                  </span>
-                </h1>
-              </div>
-              <span
-                className={`inline-block w-2 h-2 rounded-full ml-0.5 ${firebaseUser ? 'bg-emerald-500' : isOnline ? 'bg-blue-500' : 'bg-amber-500'}`}
-                title={firebaseUser ? 'Firebase Firestore Conectado (Nuvem em Tempo Real)' : isOnline ? 'Firebase Disponível' : 'Modo Local Ativo'}
-              />
-            </div>
-
-            {/* Streak & Notification for mobile header */}
-            <div className="flex items-center gap-2 sm:hidden">
-              <NotificationCenter
-                notifications={notifications}
-                onMarkAllRead={handleMarkAllRead}
-                onMarkRead={handleMarkRead}
-                onDeleteNotification={handleDeleteNotification}
-                onClearAll={handleClearAllNotifications}
-                onSendTestNotification={handleSendTestNotification}
-              />
-              <button
-                onClick={() => setIsStreakModalOpen(true)}
-                className={`flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer ${
-                  streak > 0
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
-                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A]'
-                }`}
-              >
-                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
-                <span>{streak}</span>
-              </button>
-
-              <button
-                onClick={firebaseUser ? handleGoogleLogout : handleGoogleLogin}
-                className={`flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer ${
-                  firebaseUser
-                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
-                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A]'
-                }`}
-                title={firebaseUser ? `Conectado ao Firebase (${firebaseUser.displayName || currentUser.name}). Toque para desconectar.` : 'Conectar ao Firebase com o Google'}
-              >
-                {isSyncingFirebase ? (
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                ) : (
-                  <Cloud className={`w-3.5 h-3.5 ${firebaseUser ? 'text-emerald-500' : ''}`} />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="flex flex-col sm:flex-row items-center justify-between w-full sm:w-auto gap-3">
-            <div className="flex items-center gap-1 bg-zinc-100/90 dark:bg-[#1A1A1E] p-1 rounded-xl border border-zinc-200/80 dark:border-[#27272A] w-full sm:w-auto justify-between sm:justify-start">
-              <button
-                onClick={prevMonth}
-                className="p-1.5 hover:bg-white dark:hover:bg-[#27272A] rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer transition-all flex-shrink-0"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-
-              {/* Régua de meses com animação de seleção */}
-              <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5 px-0.5 max-w-[200px] xs:max-w-[240px] sm:max-w-[340px] md:max-w-[420px] lg:max-w-md xl:max-w-lg select-none">
-                {MONTHS.map((m, idx) => {
-                  const isSelected = currentMonth === idx;
-                  const abbrev = m.substring(0, 3);
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => selectMonth(idx)}
-                      className={`relative px-2 py-1 text-[11px] font-semibold rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
-                        isSelected
-                          ? 'text-white dark:text-zinc-950 font-bold'
-                          : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
-                      }`}
-                    >
-                      {isSelected && (
-                        <motion.div
-                          layoutId="activeMonthIndicator"
-                          className="absolute inset-0 bg-zinc-900 dark:bg-zinc-100 rounded-md -z-10 shadow-xs"
-                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
-                        />
-                      )}
-                      {abbrev}
-                    </button>
-                  );
-                })}
-              </div>
-
-              <button
-                onClick={nextMonth}
-                className="p-1.5 hover:bg-white dark:hover:bg-[#27272A] rounded-lg text-zinc-500 dark:text-zinc-400 cursor-pointer transition-all flex-shrink-0"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-
-              <div className="h-4 w-[1px] bg-zinc-200 dark:bg-[#27272A] mx-1 flex-shrink-0" />
-
-              <button
-                onClick={resetToToday}
-                className="text-[10px] bg-white dark:bg-[#27272A] px-2 py-1 rounded-lg hover:bg-zinc-50 text-zinc-700 dark:text-zinc-300 font-bold transition-all cursor-pointer flex-shrink-0 shadow-xs border border-zinc-200/50 dark:border-transparent"
-              >
-                Hoje
-              </button>
-
-              <span className="text-[11px] font-bold font-mono text-zinc-700 dark:text-zinc-300 px-1.5 flex-shrink-0">
-                {currentYear}
-              </span>
-            </div>
-
-            {/* Desktop Actions Only */}
-            <div className="hidden sm:flex items-center gap-2.5">
-              {firebaseUser ? (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  <Cloud className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                  <span className="truncate max-w-[120px]">{firebaseUser.displayName || currentUser.name}</span>
-                  <button
-                    onClick={handleGoogleLogout}
-                    title="Desconectar Firebase"
-                    className="p-0.5 hover:bg-emerald-200/50 dark:hover:bg-emerald-900/50 rounded-md transition-colors cursor-pointer text-emerald-700 dark:text-emerald-300 ml-0.5"
-                  >
-                    <LogOut className="w-3 h-3" />
-                  </button>
-                </div>
-              ) : (
-                <button
-                  onClick={handleGoogleLogin}
-                  disabled={isSyncingFirebase}
-                  title="Conectar com o Google para sincronizar em tempo real com o Firebase Firestore"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                >
-                  {isSyncingFirebase ? (
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Cloud className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
-                  )}
-                  <span>{isSyncingFirebase ? 'Sincronizando...' : 'Conectar Firebase'}</span>
-                </button>
-              )}
-
-              {/* FLAME STREAK DIARIO METEORS */}
-              <button
-                onClick={() => setIsStreakModalOpen(true)}
-                title="Clique para ver níveis, medalhas e resumo"
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
-                  streak > 0
-                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15'
-                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A] hover:bg-zinc-200/70 dark:hover:bg-[#27272A]'
-                }`}
-              >
-                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
-                <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
-              </button>
-
-              {/* PWA INSTALL TRIGGER */}
-              {deferredPrompt && (
-                <button
-                  onClick={triggerInstallApp}
-                  className="flex items-center gap-1.5 px-3 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                  title="Instalar FintechCore como aplicativo"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>Instalar App</span>
-                </button>
-              )}
-
-              <NotificationCenter
-                notifications={notifications}
-                onMarkAllRead={handleMarkAllRead}
-                onMarkRead={handleMarkRead}
-                onDeleteNotification={handleDeleteNotification}
-                onClearAll={handleClearAllNotifications}
-                onSendTestNotification={handleSendTestNotification}
-              />
-
-              {/* LIGHT/DARK MODE TOGGLE */}
-              <button
-                onClick={toggleTheme}
-                className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#1A1A1E] dark:hover:bg-[#27272A] border border-zinc-200/80 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-600 dark:text-zinc-300 transition-colors"
-                title="Alternar tema"
-              >
-                {isDarkMode ? <Sun className="w-4 h-4 text-zinc-200" /> : <Moon className="w-4 h-4 text-zinc-700" />}
-              </button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* CENTER STAGE CONTAINER */}
-      <main className="max-w-7xl mx-auto px-4 md:px-6 mt-5">
-        <div className="flex flex-col lg:flex-row gap-6 items-start">
-          
-          {/* DESKTOP SIDEBAR MENU LATERAL */}
-          <aside className="hidden lg:block w-72 flex-shrink-0 bg-white border border-zinc-200/80 dark:bg-[#1A1A1E] dark:border-[#27272A] p-5 rounded-2xl shadow-[0_1px_3px_rgba(0,0,0,0.03)] self-start sticky top-24 space-y-4">
-            {renderSidebarContent()}
-          </aside>
-
-          {/* MAIN STAGE CONTENTS */}
-          <div className="flex-1 w-full space-y-6">
-            
-            {/* ROW 1: MOBILE ADAPTATIVE SHEETS */}
-            <div className={mobileTabActive === 'dashboard' ? 'block' : 'hidden md:block'}>
-              <div className="space-y-4">
-                {/* NUDGING DAILY FOCUS FEEDBACK */}
-                <NudgeBanner streak={streak} registrouHoje={loggedToday} />
-
-                {/* PREMIUM METRIC CARDS GRID */}
-                <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
-                  <MetricCard
-                    id="card-saldo-real"
-                    title="Disponível Hoje"
-                    value={formatCurrency(saldoRealAcumulado)}
-                    subValue="Limite diário de gastos"
-                    icon={Wallet}
-                    isActive={subpainelAberto === 'saldo-real'}
-                    onClick={() => handleSubPanelToggle('saldo-real')}
-                    sparklineType="wave"
-                    trend={{ value: 'Em conta', neutral: true }}
-                  />
-                  <MetricCard
-                    id="card-saldo"
-                    title="Projeção Mês"
-                    value={formatCurrency(saldoProjetadoFimDoMes)}
-                    subValue="Regra orçamentária 50-30-20"
-                    icon={TrendingUp}
-                    isActive={subpainelAberto === 'saldo'}
-                    onClick={() => handleSubPanelToggle('saldo')}
-                    sparklineType={saldoProjetadoFimDoMes >= 0 ? 'up' : 'down'}
-                    trend={{
-                      value: saldoProjetadoFimDoMes >= 0 ? 'Positivo' : 'Negativo',
-                      isPositive: saldoProjetadoFimDoMes >= 0
-                    }}
-                  />
-                  <MetricCard
-                    id="card-receitas"
-                    title="Receitas"
-                    value={`+ ${formatCurrency(totalReceitasMes)}`}
-                    subValue="Entradas do período"
-                    icon={ArrowUpCircle}
-                    isActive={subpainelAberto === 'receitas'}
-                    onClick={() => handleSubPanelToggle('receitas')}
-                    sparklineType="up"
-                    trend={{ value: 'Entradas', isPositive: true }}
-                  />
-                  <MetricCard
-                    id="card-despesas"
-                    title="Despesas"
-                    value={`- ${formatCurrency(totalDespesasMes)}`}
-                    subValue="Saídas do período"
-                    icon={ArrowDownCircle}
-                    isActive={subpainelAberto === 'despesas'}
-                    onClick={() => handleSubPanelToggle('despesas')}
-                    sparklineType="down"
-                    trend={{ value: 'Saídas', isPositive: false }}
-                  />
-                  <MetricCard
-                    id="card-metas"
-                    title="Metas de Sonhos"
-                    value={`${dreamsProgressRatio.toFixed(0)}%`}
-                    subValue="Progresso acumulado"
-                    icon={Rocket}
-                    isActive={subpainelAberto === 'metas'}
-                    onClick={() => handleSubPanelToggle('metas')}
-                    sparklineType="progress"
-                    progressPercent={dreamsProgressRatio}
-                    trend={{ value: `${projects.length} ativas`, neutral: true }}
-                  />
-                </section>
-
-            {/* CREDIT CARD BILLING STATEMENTS EXPANSION */}
-            {activeAccount && activeAccount.tipo === 'credito' && (
-              <CreditCardBills
-                activeAccount={activeAccount}
-                transactions={transactions}
-                checkingAccounts={accounts.filter(a => a.tipo !== 'credito')}
-                onAddTransaction={handleAddTransaction}
-                accountBalances={accountBalances}
-              />
-            )}
-
-            {/* SUBPANELS RICH EXPANSION container */}
-            <div id="container-subpaineis" className="w-full">
-              <SubPanels
-                activeType={subpainelAberto}
-                transactions={transactions}
-                projects={projects}
-                onAddProject={handleAddProject}
-                onDeleteProject={handleDeleteProject}
-                saldoReal={saldoRealAcumulado}
-                currentMonth={currentMonth}
-                currentYear={currentYear}
-              />
-            </div>
+      {/* Receitas */}
+      <div className="p-5 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xs space-y-4">
+        <div className="flex items-center justify-between border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+          <div className="flex items-center gap-2">
+            <ArrowUpCircle className="w-4 h-4 text-emerald-500" />
+            <h2 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">
+              Categorias de Receitas ({categoriasReceita.length})
+            </h2>
           </div>
         </div>
 
-        {/* ACCOUNT REGISTRATION MODAL */}
-        {isAddAccountModalOpen && (
-          <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-            <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
-              <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-3">
-                <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
-                Cadastrar Nova Conta / Cartão
-              </h3>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (novaCatNome.trim()) {
+              handleAddCategory(novaCatNome.trim(), 'receita');
+              setNovaCatNome('');
+            }
+          }}
+          className="flex gap-2"
+        >
+          <input
+            type="text"
+            placeholder="Nova categoria de receita..."
+            value={novaCatTipo === 'receita' ? novaCatNome : ''}
+            onChange={(e) => {
+              setNovaCatTipo('receita');
+              setNovaCatNome(e.target.value);
+            }}
+            className="flex-1 bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-[#DDD5D0] focus:outline-none focus:ring-1 focus:ring-[#BCABA8]"
+          />
+          <button
+            type="submit"
+            className="px-3 py-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold cursor-pointer transition-all shadow-xs"
+          >
+            Adicionar
+          </button>
+        </form>
 
-              <form onSubmit={(e) => {
-                e.preventDefault();
-                const target = e.target as HTMLFormElement;
-                const nome = (target.elements.namedItem('nome') as HTMLInputElement).value;
-                const tipo = (target.elements.namedItem('tipo') as HTMLSelectElement).value as any;
-                const saldoInicial = parseFloat((target.elements.namedItem('saldoInicial') as HTMLInputElement).value) || 0;
-                const cor = (target.elements.namedItem('cor') as HTMLSelectElement).value;
-                const limiteCredito = parseFloat((target.elements.namedItem('limiteCredito') as HTMLInputElement)?.value) || 0;
-                const diaFechamento = parseInt((target.elements.namedItem('diaFechamento') as HTMLInputElement)?.value) || 5;
-                const diaVencimento = parseInt((target.elements.namedItem('diaVencimento') as HTMLInputElement)?.value) || 12;
-
-                if (!nome.trim()) return;
-
-                const newAcc: BankAccount = {
-                  id: safeRandomUUID(),
-                  nome: nome.trim(),
-                  tipo,
-                  saldoInicial: tipo === 'credito' ? 0 : saldoInicial,
-                  cor,
-                  limiteCredito: tipo === 'credito' ? limiteCredito : undefined,
-                  diaFechamento: tipo === 'credito' ? diaFechamento : undefined,
-                  diaVencimento: tipo === 'credito' ? diaVencimento : undefined
-                };
-
-                setAccounts(prev => [...prev, newAcc]);
-                setIsAddAccountModalOpen(false);
-                showToast(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
-              }} className="space-y-3.5">
-                <div>
-                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                    Nome da Conta / Cartão
-                  </label>
-                  <input
-                    type="text"
-                    name="nome"
-                    required
-                    placeholder="Ex: Inter, Santander, Itaú..."
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                      Tipo de Conta
-                    </label>
-                    <select
-                      name="tipo"
-                      required
-                      onChange={(e) => {
-                        const limitDiv = document.getElementById('credit-card-fields');
-                        const balanceLabel = document.getElementById('initial-balance-label');
-                        const balanceInput = document.getElementById('initial-balance-input') as HTMLInputElement;
-                        if (limitDiv && balanceLabel && balanceInput) {
-                          if (e.target.value === 'credito') {
-                            limitDiv.style.display = 'block';
-                            balanceLabel.style.display = 'none';
-                            balanceInput.style.display = 'none';
-                            balanceInput.required = false;
-                          } else {
-                            limitDiv.style.display = 'none';
-                            balanceLabel.style.display = 'block';
-                            balanceInput.style.display = 'block';
-                            balanceInput.required = true;
-                          }
-                        }
-                      }}
-                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
-                    >
-                      <option value="corrente">Conta Corrente</option>
-                      <option value="poupanca">Conta Poupança</option>
-                      <option value="carteira">Dinheiro em Carteira</option>
-                      <option value="credito">Cartão de Crédito</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                      Cor Visual
-                    </label>
-                    <select
-                      name="cor"
-                      required
-                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
-                    >
-                      <option value="bg-zinc-700">Preto Grafite</option>
-                      <option value="bg-red-600">Vermelho Santander</option>
-                      <option value="bg-emerald-600">Verde Esmeralda</option>
-                      <option value="bg-blue-600">Azul Royal</option>
-                      <option value="bg-orange-500">Laranja Inter</option>
-                      <option value="bg-purple-600">Roxo Nubank</option>
-                    </select>
-                  </div>
-                </div>
-
-                <div>
-                  <label id="initial-balance-label" className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                    Saldo Inicial (R$)
-                  </label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    name="saldoInicial"
-                    id="initial-balance-input"
-                    defaultValue="0"
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
-                  />
-                </div>
-
-                {/* CREDIT CARD FIELDS */}
-                <div id="credit-card-fields" style={{ display: 'none' }} className="space-y-3">
-                  <div>
-                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                      Limite de Crédito (R$)
-                    </label>
-                    <input
-                      type="number"
-                      step="50"
-                      name="limiteCredito"
-                      placeholder="Ex: 5000"
-                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
-                    />
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                        Dia Fechamento
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        name="diaFechamento"
-                        defaultValue="5"
-                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
-                        Dia Vencimento
-                      </label>
-                      <input
-                        type="number"
-                        min="1"
-                        max="31"
-                        name="diaVencimento"
-                        defaultValue="12"
-                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
-                      />
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
-                  <button
-                    type="button"
-                    onClick={() => setIsAddAccountModalOpen(false)}
-                    className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#323238] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
-                  >
-                    Cancelar
-                  </button>
-                  <button
-                    type="submit"
-                    className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
-                  >
-                    Salvar
-                  </button>
-                </div>
-              </form>
+        <div className="flex flex-wrap gap-2 pt-2">
+          {categoriasReceita.map(cat => (
+            <div
+              key={cat}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-zinc-100 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/50 text-xs font-semibold text-zinc-800 dark:text-[#DDD5D0]"
+            >
+              <span>{cat}</span>
+              {categoriasReceita.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => handleDeleteCategory(cat, 'receita')}
+                  className="text-zinc-400 hover:text-rose-500 transition-colors cursor-pointer"
+                  title="Remover categoria"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              )}
             </div>
-          </div>
-        )}
+          ))}
+        </div>
+      </div>
+    </div>
+  );
 
-        {/* ROW 2: TRANSACTIONS ADDITION AND LEDGER HISTORIES */}
-        <div className={mobileTabActive === 'transacoes' ? 'block' : 'hidden md:block'}>
+  // Render view for Personal AI Advisor
+  const renderIAView = () => (
+    <div className="p-6 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xs space-y-4">
+      <div className="flex items-center gap-3 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+        <div className="w-10 h-10 rounded-xl bg-teal-500/10 text-teal-500 flex items-center justify-center font-bold">
+          <Bot className="w-6 h-6" />
+        </div>
+        <div>
+          <h2 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">
+            Assistente Financeiro Inteligente
+          </h2>
+          <p className="text-xs text-zinc-500 dark:text-[#988E96]">
+            Utilize o botão flutuante no canto inferior direito para conversar com seu consultor em tempo real.
+          </p>
+        </div>
+      </div>
+      <p className="text-xs text-zinc-600 dark:text-[#988E96] leading-relaxed">
+        O seu consultor IA monitora automaticamente seu fluxo de caixa, alerta quando os gastos se aproximam dos limites da regra 50-30-20 e sugere lançamentos automáticos com base no seu padrão financeiro.
+      </p>
+    </div>
+  );
+
+  // Main content switcher
+  const renderMainContent = () => {
+    if (activeNav === 'transacoes') {
+      return (
+        <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <TransactionForm
               categoriasDespesa={categoriasDespesa}
@@ -1693,21 +1560,437 @@ export default function App() {
             </div>
           </div>
         </div>
+      );
+    }
 
-        {/* ROW 3: VISUAL METRICS ESTATÍSTICA DE CARGA */}
-        <div className={mobileTabActive === 'planejador' ? 'block' : 'hidden md:block'}>
+    if (activeNav === 'sonhos') {
+      return renderSonhosView();
+    }
+
+    if (activeNav === 'contas') {
+      return renderContasView();
+    }
+
+    if (activeNav === 'categorias') {
+      return renderCategoriasView();
+    }
+
+    if (activeNav === 'ia') {
+      return renderIAView();
+    }
+
+    // Default: activeNav === 'dashboard'
+    return (
+      <div className="space-y-6">
+        {dashboardTab === 'geral' && (
+          <>
+            {/* Nudge Daily Focus */}
+            <NudgeBanner streak={streak} registrouHoje={loggedToday} />
+
+            {/* 5 Premium Metric Cards Grid */}
+            <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+              <MetricCard
+                id="card-saldo-real"
+                title="Disponível Hoje"
+                value={formatCurrency(saldoRealAcumulado)}
+                subValue="Limite diário de gastos"
+                icon={Wallet}
+                isActive={subpainelAberto === 'saldo-real'}
+                onClick={() => handleSubPanelToggle('saldo-real')}
+                sparklineType="wave"
+                trend={{ value: 'Em conta', neutral: true }}
+              />
+              <MetricCard
+                id="card-saldo"
+                title="Projeção Mês"
+                value={formatCurrency(saldoProjetadoFimDoMes)}
+                subValue="Regra orçamentária 50-30-20"
+                icon={TrendingUp}
+                isActive={subpainelAberto === 'saldo'}
+                onClick={() => handleSubPanelToggle('saldo')}
+                sparklineType={saldoProjetadoFimDoMes >= 0 ? 'up' : 'down'}
+                trend={{
+                  value: saldoProjetadoFimDoMes >= 0 ? 'Positivo' : 'Negativo',
+                  isPositive: saldoProjetadoFimDoMes >= 0
+                }}
+              />
+              <MetricCard
+                id="card-receitas"
+                title="Receitas"
+                value={`+ ${formatCurrency(totalReceitasMes)}`}
+                subValue="Entradas do período"
+                icon={ArrowUpCircle}
+                isActive={subpainelAberto === 'receitas'}
+                onClick={() => handleSubPanelToggle('receitas')}
+                sparklineType="up"
+                trend={{ value: 'Entradas', isPositive: true }}
+              />
+              <MetricCard
+                id="card-despesas"
+                title="Despesas"
+                value={`- ${formatCurrency(totalDespesasMes)}`}
+                subValue="Saídas do período"
+                icon={ArrowDownCircle}
+                isActive={subpainelAberto === 'despesas'}
+                onClick={() => handleSubPanelToggle('despesas')}
+                sparklineType="down"
+                trend={{ value: 'Saídas', isPositive: false }}
+              />
+              <MetricCard
+                id="card-metas"
+                title="Metas de Sonhos"
+                value={`${dreamsProgressRatio.toFixed(0)}%`}
+                subValue="Progresso acumulado"
+                icon={Rocket}
+                isActive={subpainelAberto === 'metas'}
+                onClick={() => handleSubPanelToggle('metas')}
+                sparklineType="progress"
+                progressPercent={dreamsProgressRatio}
+                trend={{ value: `${projects.length} ativas`, neutral: true }}
+              />
+            </section>
+
+            {/* SubPanels Rich Expansion */}
+            <div id="container-subpaineis" className="w-full">
+              <SubPanels
+                activeType={subpainelAberto}
+                transactions={transactions}
+                projects={projects}
+                onAddProject={handleAddProject}
+                onDeleteProject={handleDeleteProject}
+                saldoReal={saldoRealAcumulado}
+                currentMonth={currentMonth}
+                currentYear={currentYear}
+              />
+            </div>
+
+            {/* Quick 2-Column: Form + Ledger */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+              <TransactionForm
+                categoriasDespesa={categoriasDespesa}
+                categoriasReceita={categoriasReceita}
+                onAddTransaction={handleAddTransaction}
+                onAddCategory={handleAddCategory}
+                accounts={accounts}
+                selectedAccountId={selectedAccountId}
+              />
+              <div className="lg:col-span-2">
+                <TransactionTable
+                  transactions={transactions}
+                  onDeleteTransaction={handleDeleteTransaction}
+                  onUpdateTransaction={handleUpdateTransaction}
+                  categorias={[...new Set([...categoriasDespesa, ...categoriasReceita])]}
+                  categoriasDespesa={categoriasDespesa}
+                  categoriasReceita={categoriasReceita}
+                  currentMonth={currentMonth}
+                  currentYear={currentYear}
+                  accounts={accounts}
+                  selectedAccountId={selectedAccountId}
+                  onOpenImportModal={() => setIsImportModalOpen(true)}
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {dashboardTab === 'graficos' && (
           <FinancialCharts
             transactions={transactions}
             categorias={categoriasDespesa}
             currentMonth={currentMonth}
             currentYear={currentYear}
             selectedAccountId={selectedAccountId}
+            showCalendar={false}
           />
-        </div>
+        )}
 
-          </div> {/* end of flex-1 w-full space-y-6 */}
-        </div> {/* end of flex flex-col lg:flex-row gap-6 items-start */}
-      </main>
+        {dashboardTab === 'calendario' && (
+          <ExpenseCalendar
+            transactions={selectedAccountId && selectedAccountId !== 'consolidado' ? transactions.filter(t => t.accountId === selectedAccountId) : transactions}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            periodoFiltro="mes"
+          />
+        )}
+
+        {dashboardTab === 'cartoes' && (
+          <div className="space-y-6">
+            {accounts.filter(a => a.tipo === 'credito').length === 0 ? (
+              <div className="p-8 text-center bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl">
+                <CreditCard className="w-8 h-8 mx-auto text-[#988E96] mb-2" />
+                <p className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">Nenhum cartão de crédito cadastrado</p>
+                <p className="text-xs text-[#988E96] mt-1">Cadastre seu cartão Santander SX ou outros na barra lateral.</p>
+                <button
+                  onClick={() => setIsAddAccountModalOpen(true)}
+                  className="mt-4 px-4 py-2 bg-[#32323F] dark:bg-[#4C4E5D] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold"
+                >
+                  Cadastrar Cartão
+                </button>
+              </div>
+            ) : (
+              accounts.filter(a => a.tipo === 'credito').map(cardAcc => (
+                <CreditCardBills
+                  key={cardAcc.id}
+                  activeAccount={cardAcc}
+                  transactions={transactions}
+                  checkingAccounts={accounts.filter(a => a.tipo !== 'credito')}
+                  onAddTransaction={handleAddTransaction}
+                  accountBalances={accountBalances}
+                />
+              ))
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleSubPanelToggle = (type: SubPainelType) => {
+    setSubpainelAberto((prev) => (prev === type ? null : type));
+    // Slide beautifully down to view if activated
+    if (subpainelAberto !== type) {
+      setTimeout(() => {
+        const sub = document.getElementById('container-subpaineis');
+        if (sub) sub.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }, 100);
+    }
+  };
+
+  return (
+    <div className="bg-zinc-100 dark:bg-[#252530] text-zinc-900 dark:text-[#DDD5D0] h-screen w-screen overflow-hidden flex font-sans antialiased relative">
+      {/* TOAST SYSTEM ALERTS STREAM */}
+      <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2.5 w-full max-w-sm px-6">
+        {toasts.map((t) => (
+          <div
+            key={t.id}
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-[#32323F] border-zinc-200/80 dark:border-[#4C4E5D]/60 ${
+              t.type === 'sucesso'
+                ? 'text-emerald-600 dark:text-emerald-400'
+                : t.type === 'erro'
+                ? 'text-rose-600 dark:text-rose-400'
+                : 'text-zinc-700 dark:text-[#DDD5D0]'
+            }`}
+          >
+            <div className={`w-2 h-2 rounded-full ${t.type === 'sucesso' ? 'bg-emerald-500' : t.type === 'erro' ? 'bg-rose-500' : 'bg-zinc-400'} animate-ping`} />
+            <span>{t.msg}</span>
+          </div>
+        ))}
+      </div>
+
+      {/* DESKTOP SIDEBAR MENU LATERAL PERSISTENTE */}
+      <aside className="hidden lg:flex w-64 xl:w-72 h-screen flex-shrink-0 bg-white dark:bg-[#32323F] border-r border-zinc-200/80 dark:border-[#4C4E5D]/60 flex-col justify-between shadow-xs z-30">
+        {renderSidebarNavigation(false)}
+      </aside>
+
+      {/* MAIN VIEWPORT STAGE */}
+      <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden bg-zinc-100/70 dark:bg-[#252530]">
+        {/* HEADER BAR */}
+        <header className="h-16 flex-shrink-0 bg-white/95 border-b border-zinc-200/80 dark:bg-[#32323F]/95 dark:border-[#4C4E5D]/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 shadow-xs">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsMobileSidebarOpen(true)}
+              className="lg:hidden p-2 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] active:scale-95 transition-all flex items-center justify-center"
+              title="Abrir Menu de Navegação"
+            >
+              <Menu className="w-5 h-5" />
+            </button>
+
+            <div>
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-zinc-900 dark:text-[#DDD5D0] flex items-center gap-1.5">
+                  {activeNav === 'dashboard' && 'Dashboard Financeiro'}
+                  {activeNav === 'transacoes' && 'Lançamentos & Extrato'}
+                  {activeNav === 'sonhos' && 'Metas & Sonhos'}
+                  {activeNav === 'contas' && 'Contas & Cartões'}
+                  {activeNav === 'categorias' && 'Categorias'}
+                  {activeNav === 'ia' && 'Assistente IA'}
+                </h1>
+                <span
+                  className={`inline-block w-2 h-2 rounded-full ${firebaseUser ? 'bg-emerald-500' : isOnline ? 'bg-blue-500' : 'bg-amber-500'}`}
+                  title={firebaseUser ? 'Firebase Firestore Conectado (Nuvem em Tempo Real)' : isOnline ? 'Firebase Disponível' : 'Modo Local Ativo'}
+                />
+              </div>
+              <p className="hidden sm:block text-[10px] text-zinc-500 dark:text-[#988E96]">
+                {selectedAccountId === 'consolidado' ? 'Visão Consolidada de todas as contas' : `Conta selecionada: ${accounts.find(a => a.id === selectedAccountId)?.nome || ''}`}
+              </p>
+            </div>
+          </div>
+
+          {/* Month ruler and quick actions */}
+          <div className="flex items-center gap-2 sm:gap-3">
+            {/* Month Ruler */}
+            <div className="flex items-center gap-1 bg-zinc-100/90 dark:bg-[#252530] p-1 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60">
+              <button
+                onClick={prevMonth}
+                className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all flex-shrink-0"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5 px-0.5 max-w-[120px] xs:max-w-[180px] sm:max-w-[280px] md:max-w-[360px] select-none">
+                {MONTHS.map((m, idx) => {
+                  const isSelected = currentMonth === idx;
+                  const abbrev = m.substring(0, 3);
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => selectMonth(idx)}
+                      className={`relative px-2 py-1 text-[11px] font-semibold rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
+                        isSelected
+                          ? 'text-white dark:text-[#DDD5D0] font-bold'
+                          : 'text-zinc-500 dark:text-[#988E96] hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                      }`}
+                    >
+                      {isSelected && (
+                        <motion.div
+                          layoutId="activeMonthIndicator"
+                          className="absolute inset-0 bg-[#32323F] dark:bg-[#4C4E5D] rounded-md -z-10 shadow-xs"
+                          transition={{ type: 'spring', stiffness: 380, damping: 30 }}
+                        />
+                      )}
+                      {abbrev}
+                    </button>
+                  );
+                })}
+              </div>
+
+              <button
+                onClick={nextMonth}
+                className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all flex-shrink-0"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+
+              <div className="h-3.5 w-[1px] bg-zinc-200 dark:bg-[#4C4E5D]/60 mx-0.5 flex-shrink-0" />
+
+              <button
+                onClick={resetToToday}
+                className="text-[10px] bg-white dark:bg-[#4C4E5D]/40 px-2 py-1 rounded-lg hover:bg-zinc-50 text-zinc-700 dark:text-[#DDD5D0] font-bold transition-all cursor-pointer flex-shrink-0 shadow-xs border border-zinc-200/50 dark:border-transparent"
+              >
+                Hoje
+              </button>
+
+              <span className="text-[11px] font-bold font-mono text-zinc-700 dark:text-[#DDD5D0] px-1 flex-shrink-0">
+                {currentYear}
+              </span>
+            </div>
+
+            {/* Notification Center */}
+            <NotificationCenter
+              notifications={notifications}
+              onMarkAllRead={handleMarkAllRead}
+              onMarkRead={handleMarkRead}
+              onDeleteNotification={handleDeleteNotification}
+              onClearAll={handleClearAllNotifications}
+              onSendTestNotification={handleSendTestNotification}
+            />
+
+            {/* Streak Modal Trigger */}
+            <button
+              onClick={() => setIsStreakModalOpen(true)}
+              title="Clique para ver níveis, medalhas e resumo"
+              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
+                streak > 0
+                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15'
+                  : 'bg-zinc-100 dark:bg-[#252530] text-zinc-500 dark:text-[#988E96] border-zinc-200/80 dark:border-[#4C4E5D]/60'
+              }`}
+            >
+              <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
+              <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
+            </button>
+
+            {/* PWA Install */}
+            {deferredPrompt && (
+              <button
+                onClick={triggerInstallApp}
+                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                title="Instalar FintechCore como aplicativo"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Instalar</span>
+              </button>
+            )}
+
+            {/* Light/Dark Toggle */}
+            <button
+              onClick={toggleTheme}
+              className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors"
+              title="Alternar tema"
+            >
+              {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-700" />}
+            </button>
+          </div>
+        </header>
+
+        {/* TOP MENU TABS FOR DASHBOARD - Exclusive Tabs separating Overview, Charts, Calendar, and Invoices */}
+        {activeNav === 'dashboard' && (
+          <div className="bg-white/85 dark:bg-[#32323F]/90 border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 px-4 sm:px-6 py-2.5 flex items-center justify-between flex-shrink-0 z-10">
+            <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
+              <button
+                onClick={() => setDashboardTab('geral')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  dashboardTab === 'geral'
+                    ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                }`}
+              >
+                <LayoutDashboard className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Visão Geral</span>
+              </button>
+
+              <button
+                onClick={() => setDashboardTab('graficos')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  dashboardTab === 'graficos'
+                    ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                }`}
+              >
+                <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
+                <span>Gráficos & Relatórios</span>
+              </button>
+
+              <button
+                onClick={() => setDashboardTab('calendario')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  dashboardTab === 'calendario'
+                    ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                }`}
+              >
+                <Calendar className="w-3.5 h-3.5 text-amber-400" />
+                <span>Calendário Financeiro</span>
+              </button>
+
+              <button
+                onClick={() => setDashboardTab('cartoes')}
+                className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
+                  dashboardTab === 'cartoes'
+                    ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                }`}
+              >
+                <CreditCard className="w-3.5 h-3.5 text-rose-400" />
+                <span>Faturas de Cartão</span>
+              </button>
+            </div>
+
+            <div className="hidden md:flex items-center gap-2 text-xs">
+              <span className="text-[#988E96] text-[11px]">Disponível:</span>
+              <span className="font-mono font-bold text-zinc-900 dark:text-[#DDD5D0] bg-zinc-100 dark:bg-[#252530] px-2.5 py-1 rounded-lg border border-zinc-200/80 dark:border-[#4C4E5D]/50">
+                {formatCurrency(saldoRealAcumulado)}
+              </span>
+            </div>
+          </div>
+        )}
+
+        {/* MAIN STAGE CONTENT - Viewport container with internal contained scroll */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar pb-20 md:pb-6">
+          <div className="max-w-7xl mx-auto">
+            {renderMainContent()}
+          </div>
+        </main>
+      </div>
 
       {/* MOBILE DRAWER SIDEBAR */}
       {isMobileSidebarOpen && (
@@ -1717,83 +2000,203 @@ export default function App() {
             animate={{ x: 0 }}
             exit={{ x: '-100%' }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-80 max-w-[85vw] bg-white dark:bg-[#1A1A1E] border-r border-zinc-200 dark:border-[#27272A] h-full p-5 shadow-2xl flex flex-col justify-between"
+            className="w-80 max-w-[85vw] bg-white dark:bg-[#32323F] border-r border-zinc-200 dark:border-[#4C4E5D]/60 h-full p-0 shadow-2xl flex flex-col justify-between"
           >
-            <div className="flex-1 overflow-y-auto pr-1">
-              <div className="flex justify-between items-center mb-4">
-                <span className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                  🏦 Menu de Contas
-                </span>
-                <button
-                  onClick={() => setIsMobileSidebarOpen(false)}
-                  className="p-1.5 hover:bg-zinc-100 dark:hover:bg-[#27272A] border border-zinc-200 dark:border-[#27272A] rounded-xl cursor-pointer text-zinc-500 active:scale-95 transition-all text-xs font-bold"
-                >
-                  X
-                </button>
-              </div>
-              {renderSidebarContent()}
-            </div>
-
-            {/* Mobile Actions and Config Drawer Section */}
-            <div className="space-y-3.5 border-t border-zinc-100 dark:border-[#27272A] pt-4 mt-auto">
-              <p className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
-                Ações & Ajustes
-              </p>
-              
-              {currentUser && (
-                <div className="flex items-center gap-2 px-3 py-2 bg-zinc-100 dark:bg-[#27272A] border border-zinc-200/80 dark:border-[#323238] rounded-xl text-xs font-bold text-zinc-800 dark:text-zinc-200">
-                  <User className="w-3.5 h-3.5 shrink-0 text-zinc-500" />
-                  <span className="truncate">{currentUser.name}</span>
-                </div>
-              )}
-
-              <div>
-                {/* Theme Switch */}
-                <button
-                  onClick={toggleTheme}
-                  className="w-full flex items-center justify-center gap-2 p-2.5 bg-zinc-50 dark:bg-[#27272A] hover:bg-zinc-100 dark:hover:bg-[#323238] border border-zinc-200 dark:border-[#323238] rounded-xl cursor-pointer text-zinc-700 dark:text-zinc-300 transition-all text-xs font-bold active:scale-95"
-                >
-                  {isDarkMode ? (
-                    <>
-                      <Sun className="w-3.5 h-3.5 text-zinc-200 shrink-0" />
-                      <span>Modo Claro</span>
-                    </>
-                  ) : (
-                    <>
-                      <Moon className="w-3.5 h-3.5 text-zinc-700 shrink-0" />
-                      <span>Modo Escuro</span>
-                    </>
-                  )}
-                </button>
-              </div>
-
-              {/* Install PWA Option */}
-              {deferredPrompt && (
-                <button
-                  onClick={triggerInstallApp}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95 border border-zinc-700/20"
-                >
-                  <Download className="w-3.5 h-3.5 shrink-0" />
-                  <span>Instalar Aplicativo</span>
-                </button>
-              )}
-
-              <div className="text-[9px] text-zinc-400 text-center pt-1.5">
-                Toque fora ou no X para fechar
-              </div>
-            </div>
+            {renderSidebarNavigation(true)}
           </motion.div>
           {/* Backdrop click closer */}
           <div className="flex-1" onClick={() => setIsMobileSidebarOpen(false)} />
         </div>
       )}
 
+      {/* ACCOUNT REGISTRATION MODAL */}
+      {isAddAccountModalOpen && (
+        <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
+          <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0] mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+              <Wallet className="w-4 h-4 text-zinc-700 dark:text-[#BCABA8]" />
+              Cadastrar Nova Conta / Cartão
+            </h3>
+
+            <form onSubmit={(e) => {
+              e.preventDefault();
+              const target = e.target as HTMLFormElement;
+              const nome = (target.elements.namedItem('nome') as HTMLInputElement).value;
+              const tipo = (target.elements.namedItem('tipo') as HTMLSelectElement).value as any;
+              const saldoInicial = parseFloat((target.elements.namedItem('saldoInicial') as HTMLInputElement).value) || 0;
+              const cor = (target.elements.namedItem('cor') as HTMLSelectElement).value;
+              const limiteCredito = parseFloat((target.elements.namedItem('limiteCredito') as HTMLInputElement)?.value) || 0;
+              const diaFechamento = parseInt((target.elements.namedItem('diaFechamento') as HTMLInputElement)?.value) || 5;
+              const diaVencimento = parseInt((target.elements.namedItem('diaVencimento') as HTMLInputElement)?.value) || 12;
+
+              if (!nome.trim()) return;
+
+              const newAcc: BankAccount = {
+                id: safeRandomUUID(),
+                nome: nome.trim(),
+                tipo,
+                saldoInicial: tipo === 'credito' ? 0 : saldoInicial,
+                cor,
+                limiteCredito: tipo === 'credito' ? limiteCredito : undefined,
+                diaFechamento: tipo === 'credito' ? diaFechamento : undefined,
+                diaVencimento: tipo === 'credito' ? diaVencimento : undefined
+              };
+
+              setAccounts(prev => [...prev, newAcc]);
+              setIsAddAccountModalOpen(false);
+              showToast(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
+            }} className="space-y-3.5">
+              <div>
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                  Nome da Conta / Cartão
+                </label>
+                <input
+                  type="text"
+                  name="nome"
+                  required
+                  placeholder="Ex: Inter, Santander, Itaú..."
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                    Tipo de Conta
+                  </label>
+                  <select
+                    name="tipo"
+                    required
+                    onChange={(e) => {
+                      const limitDiv = document.getElementById('credit-card-fields');
+                      const balanceLabel = document.getElementById('initial-balance-label');
+                      const balanceInput = document.getElementById('initial-balance-input') as HTMLInputElement;
+                      if (limitDiv && balanceLabel && balanceInput) {
+                        if (e.target.value === 'credito') {
+                          limitDiv.style.display = 'block';
+                          balanceLabel.style.display = 'none';
+                          balanceInput.style.display = 'none';
+                          balanceInput.required = false;
+                        } else {
+                          limitDiv.style.display = 'none';
+                          balanceLabel.style.display = 'block';
+                          balanceInput.style.display = 'block';
+                          balanceInput.required = true;
+                        }
+                      }
+                    }}
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
+                  >
+                    <option value="corrente">Conta Corrente</option>
+                    <option value="poupanca">Conta Poupança</option>
+                    <option value="carteira">Dinheiro em Carteira</option>
+                    <option value="credito">Cartão de Crédito</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                    Cor Visual
+                  </label>
+                  <select
+                    name="cor"
+                    required
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
+                  >
+                    <option value="bg-zinc-700">Preto Grafite</option>
+                    <option value="bg-red-600">Vermelho Santander</option>
+                    <option value="bg-emerald-600">Verde Esmeralda</option>
+                    <option value="bg-blue-600">Azul Royal</option>
+                    <option value="bg-orange-500">Laranja Inter</option>
+                    <option value="bg-purple-600">Roxo Nubank</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label id="initial-balance-label" className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                  Saldo Inicial (R$)
+                </label>
+                <input
+                  type="number"
+                  step="0.01"
+                  name="saldoInicial"
+                  id="initial-balance-input"
+                  defaultValue="0"
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium font-mono"
+                />
+              </div>
+
+              {/* CREDIT CARD FIELDS */}
+              <div id="credit-card-fields" style={{ display: 'none' }} className="space-y-3">
+                <div>
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                    Limite de Crédito (R$)
+                  </label>
+                  <input
+                    type="number"
+                    step="50"
+                    name="limiteCredito"
+                    placeholder="Ex: 5000"
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium font-mono"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                      Dia Fechamento
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      name="diaFechamento"
+                      defaultValue="5"
+                      className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
+                      Dia Vencimento
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      max="31"
+                      name="diaVencimento"
+                      defaultValue="12"
+                      className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#4C4E5D]/50">
+                <button
+                  type="button"
+                  onClick={() => setIsAddAccountModalOpen(false)}
+                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#4C4E5D]/40 dark:hover:bg-[#4C4E5D] text-zinc-700 dark:text-[#DDD5D0] rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="flex-1 px-4 py-2 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
+                >
+                  Salvar
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* ACCOUNT EDITING MODAL */}
       {editingAccount && (
         <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-3">
-              <Wallet className="w-4 h-4 text-zinc-700 dark:text-zinc-300" />
+          <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0] mb-4 flex items-center gap-2 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-3">
+              <Wallet className="w-4 h-4 text-zinc-700 dark:text-[#BCABA8]" />
               Editar Conta / Cartão
             </h3>
 
@@ -1831,7 +2234,7 @@ export default function App() {
               showToast(`Conta "${nome}" atualizada com sucesso!`, 'sucesso');
             }} className="space-y-3.5">
               <div>
-                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                   Nome da Conta / Cartão
                 </label>
                 <input
@@ -1840,20 +2243,20 @@ export default function App() {
                   required
                   defaultValue={editingAccount.nome}
                   placeholder="Ex: Inter, Santander, Itaú..."
-                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                 />
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                     Tipo de Conta
                   </label>
                   <select
                     name="tipo"
                     required
                     defaultValue={editingAccount.tipo}
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
                     <option value="corrente">Conta Corrente</option>
                     <option value="poupanca">Conta Poupança</option>
@@ -1863,14 +2266,14 @@ export default function App() {
                 </div>
 
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                     Cor Visual
                   </label>
                   <select
                     name="cor"
                     required
                     defaultValue={editingAccount.cor}
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
                     <option value="bg-zinc-700">Preto Grafite</option>
                     <option value="bg-red-600">Vermelho Santander</option>
@@ -1884,7 +2287,7 @@ export default function App() {
 
               {editingAccount.tipo !== 'credito' && (
                 <div>
-                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                  <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                     Saldo Inicial (R$)
                   </label>
                   <input
@@ -1892,7 +2295,7 @@ export default function App() {
                     step="0.01"
                     name="saldoInicial"
                     defaultValue={editingAccount.saldoInicial}
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium font-mono"
                   />
                 </div>
               )}
@@ -1901,7 +2304,7 @@ export default function App() {
               {editingAccount.tipo === 'credito' && (
                 <div className="space-y-3">
                   <div>
-                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                    <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                       Limite de Crédito (R$)
                     </label>
                     <input
@@ -1910,12 +2313,12 @@ export default function App() {
                       name="limiteCredito"
                       defaultValue={editingAccount.limiteCredito || 5000}
                       placeholder="Ex: 5000"
-                      className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium font-mono"
+                      className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium font-mono"
                     />
                   </div>
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                         Dia Fechamento
                       </label>
                       <input
@@ -1924,11 +2327,11 @@ export default function App() {
                         max="31"
                         name="diaFechamento"
                         defaultValue={editingAccount.diaFechamento || 5}
-                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                        className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                       />
                     </div>
                     <div>
-                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-zinc-400 mb-1">
+                      <label className="block text-[10px] uppercase font-bold text-zinc-500 dark:text-[#988E96] mb-1">
                         Dia Vencimento
                       </label>
                       <input
@@ -1937,24 +2340,24 @@ export default function App() {
                         max="31"
                         name="diaVencimento"
                         defaultValue={editingAccount.diaVencimento || 12}
-                        className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                        className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                       />
                     </div>
                   </div>
                 </div>
               )}
 
-              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
+              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#4C4E5D]/50">
                 <button
                   type="button"
                   onClick={() => setEditingAccount(null)}
-                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#323238] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
+                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#4C4E5D]/40 dark:hover:bg-[#4C4E5D] text-zinc-700 dark:text-[#DDD5D0] rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="flex-1 px-4 py-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-900 rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
+                  className="flex-1 px-4 py-2 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all cursor-pointer text-center shadow-xs"
                 >
                   Salvar
                 </button>
@@ -1972,39 +2375,61 @@ export default function App() {
       />
 
       {/* SYSTEM METERS BOTTOM NAVIGATION BAR (Exclusively mobile tab bar) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#121214]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#27272A] z-40 flex justify-around py-2 md:hidden shadow-lg">
+      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#32323F]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#4C4E5D]/60 z-40 flex justify-around py-2 lg:hidden shadow-lg">
         <button
-          onClick={() => setMobileTabActive('dashboard')}
+          onClick={() => {
+            setActiveNav('dashboard');
+            setDashboardTab('geral');
+          }}
           className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            mobileTabActive === 'dashboard'
-              ? 'text-zinc-900 dark:text-white font-bold'
-              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+            activeNav === 'dashboard' && dashboardTab === 'geral'
+              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
+              : 'text-zinc-400 dark:text-[#988E96]'
           }`}
         >
-          <Wallet className="w-4.5 h-4.5" />
-          <span className="text-[10px]">Dashboard</span>
+          <LayoutDashboard className="w-4 h-4 text-emerald-400" />
+          <span className="text-[10px]">Visão Geral</span>
         </button>
         <button
-          onClick={() => setMobileTabActive('transacoes')}
+          onClick={() => {
+            setActiveNav('dashboard');
+            setDashboardTab('graficos');
+          }}
           className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            mobileTabActive === 'transacoes'
-              ? 'text-zinc-900 dark:text-white font-bold'
-              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
+            activeNav === 'dashboard' && dashboardTab === 'graficos'
+              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
+              : 'text-zinc-400 dark:text-[#988E96]'
           }`}
         >
-          <ArrowUpCircle className="w-4.5 h-4.5" />
-          <span className="text-[10px]">Lançamentos</span>
-        </button>
-        <button
-          onClick={() => setMobileTabActive('planejador')}
-          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            mobileTabActive === 'planejador'
-              ? 'text-zinc-900 dark:text-white font-bold'
-              : 'text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300'
-          }`}
-        >
-          <TrendingUp className="w-4.5 h-4.5" />
+          <TrendingUp className="w-4 h-4 text-blue-400" />
           <span className="text-[10px]">Gráficos</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveNav('dashboard');
+            setDashboardTab('calendario');
+          }}
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
+            activeNav === 'dashboard' && dashboardTab === 'calendario'
+              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
+              : 'text-zinc-400 dark:text-[#988E96]'
+          }`}
+        >
+          <Calendar className="w-4 h-4 text-amber-400" />
+          <span className="text-[10px]">Calendário</span>
+        </button>
+        <button
+          onClick={() => {
+            setActiveNav('transacoes');
+          }}
+          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
+            activeNav === 'transacoes'
+              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
+              : 'text-zinc-400 dark:text-[#988E96]'
+          }`}
+        >
+          <Receipt className="w-4 h-4 text-rose-400" />
+          <span className="text-[10px]">Extrato</span>
         </button>
       </nav>
 

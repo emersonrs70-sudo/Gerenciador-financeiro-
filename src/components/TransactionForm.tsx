@@ -153,15 +153,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4 self-start">
-      <div className="flex bg-zinc-100/90 dark:bg-[#141416] p-1 rounded-xl border border-zinc-200/80 dark:border-[#27272A]">
+    <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-5 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-4 self-start">
+      <div className="flex bg-zinc-100/90 dark:bg-[#252530] p-1 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/50">
         <button
           type="button"
           onClick={() => setModo('despesa')}
           className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             modo === 'despesa'
-              ? 'bg-white dark:bg-[#27272A] text-rose-600 dark:text-rose-400 shadow-xs'
-              : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
+              ? 'bg-white dark:bg-[#4C4E5D] text-rose-600 dark:text-rose-300 shadow-xs'
+              : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96] dark:hover:text-[#DDD5D0]'
           }`}
         >
           Despesa
@@ -171,7 +171,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           onClick={() => setModo('receita')}
           className={`flex-1 py-1.5 text-xs font-bold rounded-lg transition-all cursor-pointer ${
             modo === 'receita'
-              ? 'bg-white dark:bg-[#27272A] text-emerald-600 dark:text-emerald-400 shadow-xs'
+              ? 'bg-white dark:bg-[#4C4E5D] text-emerald-600 dark:text-emerald-400 shadow-xs'
               : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-300'
           }`}
         >
@@ -179,7 +179,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         </button>
       </div>
 
-      <h2 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-2.5">
+      <h2 className="text-sm font-bold text-zinc-900 dark:text-white flex items-center gap-2 border-b border-zinc-100 dark:border-[#4C4E5D]/60 pb-2.5">
         <ListTodo className={`w-4 h-4 ${modo === 'despesa' ? 'text-rose-500' : 'text-emerald-500'}`} />
         {modo === 'despesa' ? 'Nova Despesa' : 'Nova Receita'}
       </h2>
@@ -192,7 +192,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           <select
             value={accountId}
             onChange={(e) => setAccountId(e.target.value)}
-            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
+            className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
           >
             {accounts.map((acc) => (
               <option key={acc.id} value={acc.id}>
@@ -212,7 +212,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={descricao}
             onChange={(e) => setDescricao(e.target.value)}
             placeholder="Ex: Supermercado, Aluguel, Freelance"
-            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium placeholder:text-zinc-400"
+            className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium placeholder:text-zinc-400"
           />
         </div>
 
@@ -227,7 +227,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             value={valor}
             onChange={(e) => setValor(e.target.value)}
             placeholder="0.00"
-            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-mono font-bold"
+            className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-mono font-bold"
           />
         </div>
 
@@ -240,7 +240,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             required
             value={data}
             onChange={(e) => setData(e.target.value)}
-            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
+            className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
           />
         </div>
 
@@ -263,7 +263,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             <select
               value={categoria}
               onChange={(e) => setCategoria(e.target.value)}
-              className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
+              className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium"
             >
               {activeCategorias.map((cat) => (
                 <option key={cat} value={cat}>
@@ -278,7 +278,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 placeholder="Ex: Viagens, Pets"
                 value={novaCategoriaNome}
                 onChange={(e) => setNovaCategoriaNome(e.target.value)}
-                className="flex-1 bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                className="flex-1 bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
               />
               <button
                 type="button"
@@ -300,7 +300,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               <select
                 value={tipoGasto}
                 onChange={(e) => setTipoGasto(e.target.value as 'variavel' | 'fixo')}
-                className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
               >
                 <option value="variavel">Lançamento Único (Variável)</option>
                 <option value="fixo">Lançamento Fixo (Recorrente Mensal)</option>
@@ -316,7 +316,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                   type="month"
                   value={validadeFixo}
                   onChange={(e) => setValidadeFixo(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 />
               </div>
             )}

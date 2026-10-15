@@ -13,6 +13,7 @@ interface FinancialChartsProps {
   currentMonth: number;
   currentYear: number;
   selectedAccountId?: string;
+  showCalendar?: boolean;
 }
 
 export const FinancialCharts: React.FC<FinancialChartsProps> = ({
@@ -20,7 +21,8 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   categorias,
   currentMonth,
   currentYear,
-  selectedAccountId = 'consolidado'
+  selectedAccountId = 'consolidado',
+  showCalendar = false
 }) => {
   const [periodoFiltro, setPeriodoFiltro] = useState<'7dias' | '15dias' | 'mes' | '3meses' | 'ano'>('mes');
 
@@ -190,7 +192,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       {/* SECTION: TWO-COLUMN EXECUTIVE DASHBOARD CHARTS (Matching reference image) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-stretch">
         {/* LEFT CHART: MONTHLY REVENUE / FLUXO FINANCEIRO (Wider col - 2/3) */}
-        <div className="lg:col-span-2 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="lg:col-span-2 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 mb-4">
             <div>
               <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
@@ -203,14 +205,14 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
             </div>
 
             {/* Segmented Period Tabs */}
-            <div className="flex bg-zinc-100/90 dark:bg-[#141416] p-1 rounded-xl text-xs font-semibold border border-zinc-200/80 dark:border-[#27272A] self-stretch sm:self-auto justify-between">
+            <div className="flex bg-zinc-100/90 dark:bg-[#252530] p-1 rounded-xl text-xs font-semibold border border-zinc-200/80 dark:border-[#4C4E5D]/60 self-stretch sm:self-auto justify-between">
               {(['7dias', '15dias', 'mes', '3meses', 'ano'] as const).map((mode) => (
                 <button
                   key={mode}
                   onClick={() => setPeriodoFiltro(mode)}
                   className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer text-[11px] ${
                     periodoFiltro === mode
-                      ? 'bg-white dark:bg-[#27272A] text-zinc-900 dark:text-white shadow-xs font-bold'
+                      ? 'bg-white dark:bg-[#4C4E5D] text-zinc-900 dark:text-white shadow-xs font-bold'
                       : 'text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200'
                   }`}
                 >
@@ -223,17 +225,17 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           <div className="h-64 sm:h-72 w-full mt-2">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={lineData} margin={{ top: 15, right: 15, left: -20, bottom: 5 }}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272A" opacity={0.6} />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#4C4E5D" opacity={0.6} />
                 <XAxis
                   dataKey="lbl"
                   tick={{ fontSize: 10, fill: '#71717A' }}
-                  stroke="#27272A"
-                  axisLine={{ stroke: '#27272A' }}
+                  stroke="#4C4E5D"
+                  axisLine={{ stroke: '#4C4E5D' }}
                   tickLine={false}
                 />
                 <YAxis
                   tick={{ fontSize: 10, fill: '#71717A' }}
-                  stroke="#27272A"
+                  stroke="#4C4E5D"
                   axisLine={false}
                   tickLine={false}
                   tickFormatter={(v) => `R$${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
@@ -241,8 +243,8 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                 <Tooltip
                   formatter={(val: number) => [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`]}
                   contentStyle={{
-                    backgroundColor: '#1A1A1E',
-                    borderColor: '#27272A',
+                    backgroundColor: '#32323F',
+                    borderColor: '#4C4E5D',
                     borderRadius: '12px',
                     color: '#FFFFFF',
                     fontSize: '11px',
@@ -273,7 +275,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
             </ResponsiveContainer>
           </div>
 
-          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-[#27272A] pt-3 mt-2">
+          <div className="flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400 border-t border-zinc-100 dark:border-[#4C4E5D]/60 pt-3 mt-2">
             <div className="flex items-center gap-4">
               <span className="flex items-center gap-1.5">
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 inline-block" />
@@ -291,7 +293,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         </div>
 
         {/* RIGHT CHART: PROJECT PROGRESS BY DEPT. / GASTOS POR CATEGORIA (Matching reference image) */}
-        <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
+        <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-5 sm:p-6 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between">
           <div>
             <h3 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-2">
               <BarChart2 className="w-4 h-4 text-zinc-400" />
@@ -313,19 +315,19 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                   data={categoryBarData}
                   margin={{ top: 15, right: 10, left: -25, bottom: 5 }}
                 >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#27272A" opacity={0.6} />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#4C4E5D" opacity={0.6} />
                   <XAxis
                     dataKey="name"
                     tick={{ fontSize: 9, fill: '#71717A' }}
-                    stroke="#27272A"
-                    axisLine={{ stroke: '#27272A' }}
+                    stroke="#4C4E5D"
+                    axisLine={{ stroke: '#4C4E5D' }}
                     tickLine={false}
                     interval={0}
                     tickFormatter={(name) => name.length > 7 ? `${name.substring(0, 7)}.` : name}
                   />
                   <YAxis
                     tick={{ fontSize: 10, fill: '#71717A' }}
-                    stroke="#27272A"
+                    stroke="#4C4E5D"
                     axisLine={false}
                     tickLine={false}
                     tickFormatter={(v) => `${v}%`}
@@ -336,8 +338,8 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                       'Percentual'
                     ]}
                     contentStyle={{
-                      backgroundColor: '#1A1A1E',
-                      borderColor: '#27272A',
+                      backgroundColor: '#32323F',
+                      borderColor: '#4C4E5D',
                       borderRadius: '12px',
                       color: '#FFFFFF',
                       fontSize: '11px',
@@ -357,7 +359,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
             )}
           </div>
 
-          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 border-t border-zinc-100 dark:border-[#27272A] pt-3 mt-2 flex justify-between">
+          <div className="text-[11px] text-zinc-400 dark:text-zinc-500 border-t border-zinc-100 dark:border-[#4C4E5D]/60 pt-3 mt-2 flex justify-between">
             <span>Total: R$ {totalDespesas.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
             <span>Top 5 Categorias</span>
           </div>
@@ -365,12 +367,14 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       </div>
 
       {/* COMPACT INTERACTIVE EXPENSE CALENDAR */}
-      <ExpenseCalendar
-        transactions={filteredByAccount}
-        currentMonth={currentMonth}
-        currentYear={currentYear}
-        periodoFiltro={periodoFiltro}
-      />
+      {showCalendar && (
+        <ExpenseCalendar
+          transactions={filteredByAccount}
+          currentMonth={currentMonth}
+          currentYear={currentYear}
+          periodoFiltro={periodoFiltro}
+        />
+      )}
     </div>
   );
 };

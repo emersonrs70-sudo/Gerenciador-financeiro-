@@ -361,10 +361,10 @@ SALDO EM 31/07 8.213,26`;
         initial={{ opacity: 0, scale: 0.96 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.96 }}
-        className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl sm:rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[92vh] overflow-hidden"
+        className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl sm:rounded-3xl w-full max-w-5xl shadow-2xl flex flex-col max-h-[96vh] sm:max-h-[92vh] overflow-hidden"
       >
         {/* MODAL HEADER */}
-        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/60">
+        <div className="flex items-center justify-between px-4 py-3 sm:px-6 sm:py-4 border-b border-zinc-100 dark:border-[#4C4E5D]/60 bg-zinc-50/50 dark:bg-[#252530]/60">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl sm:rounded-2xl bg-zinc-900/10 dark:bg-white/10 text-zinc-900 dark:text-white flex items-center justify-center shrink-0">
               <Sparkles className="w-4 h-4 sm:w-5 sm:h-5 text-zinc-700 dark:text-zinc-300" />
@@ -374,7 +374,7 @@ SALDO EM 31/07 8.213,26`;
                 <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white tracking-tight truncate">
                   Importar Extrato Bancário
                 </h2>
-                <span className="text-[9px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 dark:bg-[#27272A] dark:text-zinc-300 whitespace-nowrap">
+                <span className="text-[9px] sm:text-[11px] font-semibold px-2 py-0.5 rounded-full bg-zinc-100 text-zinc-600 dark:bg-[#4C4E5D] dark:text-zinc-300 whitespace-nowrap">
                   Santander • OFX • CSV • PDF
                 </span>
               </div>
@@ -385,7 +385,7 @@ SALDO EM 31/07 8.213,26`;
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-[#27272A] dark:hover:text-zinc-200 transition-colors shrink-0 ml-2 cursor-pointer"
+            className="p-1.5 sm:p-2 rounded-xl text-zinc-400 hover:text-zinc-600 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D] dark:hover:text-zinc-200 transition-colors shrink-0 ml-2 cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -397,7 +397,7 @@ SALDO EM 31/07 8.213,26`;
           {!hasParsed ? (
             <div className="space-y-5">
               {/* TARGET ACCOUNT SELECTOR */}
-              <div className="bg-zinc-50/80 dark:bg-[#141416] p-4 rounded-2xl border border-zinc-200/80 dark:border-[#27272A] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="bg-zinc-50/80 dark:bg-[#252530] p-4 rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 <div className="flex items-center gap-2">
                   <Layers className="w-4 h-4 text-zinc-600 dark:text-zinc-400" />
                   <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
@@ -407,7 +407,7 @@ SALDO EM 31/07 8.213,26`;
                 <select
                   value={targetAccountId}
                   onChange={(e) => setTargetAccountId(e.target.value)}
-                  className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none"
+                  className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl px-3 py-2 text-xs font-semibold text-zinc-800 dark:text-zinc-100 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none"
                 >
                   {accounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
@@ -418,7 +418,7 @@ SALDO EM 31/07 8.213,26`;
               </div>
 
               {/* TABS: UPLOAD FILE vs PASTE TEXT */}
-              <div className="flex gap-2 border-b border-zinc-100 dark:border-[#27272A] pb-2">
+              <div className="flex gap-2 border-b border-zinc-100 dark:border-[#4C4E5D]/60 pb-2">
                 <button
                   onClick={() => setActiveTab('upload')}
                   className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
@@ -451,11 +451,11 @@ SALDO EM 31/07 8.213,26`;
                   onDrop={handleDrop}
                   className={`border-2 border-dashed rounded-3xl p-8 sm:p-12 text-center transition-all ${
                     isDragging
-                      ? 'border-zinc-900 dark:border-zinc-300 bg-zinc-50 dark:bg-[#141416]'
-                      : 'border-zinc-300 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/40'
+                      ? 'border-zinc-900 dark:border-zinc-300 bg-zinc-50 dark:bg-[#252530]'
+                      : 'border-zinc-300 dark:border-[#4C4E5D]/60 bg-zinc-50/50 dark:bg-[#252530]/40'
                   }`}
                 >
-                  <div className="w-16 h-16 rounded-3xl bg-zinc-100 dark:bg-[#27272A] text-zinc-800 dark:text-zinc-200 mx-auto flex items-center justify-center mb-4">
+                  <div className="w-16 h-16 rounded-3xl bg-zinc-100 dark:bg-[#4C4E5D] text-zinc-800 dark:text-zinc-200 mx-auto flex items-center justify-center mb-4">
                     <Upload className="w-8 h-8" />
                   </div>
                   <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100 mb-1">
@@ -466,7 +466,7 @@ SALDO EM 31/07 8.213,26`;
                   </p>
 
                   {isProcessing ? (
-                    <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-zinc-100/80 dark:bg-[#222226] rounded-2xl border border-zinc-200 dark:border-[#27272A]">
+                    <div className="flex flex-col items-center justify-center gap-3 py-6 px-4 bg-zinc-100/80 dark:bg-[#3B3B49] rounded-2xl border border-zinc-200 dark:border-[#4C4E5D]/60">
                       <Loader2 className="w-8 h-8 text-zinc-900 dark:text-zinc-100 animate-spin" />
                       <p className="text-xs font-bold text-zinc-800 dark:text-zinc-200 animate-pulse">
                         {processingStatus || 'Processando extrato bancário...'}
@@ -499,7 +499,7 @@ SALDO EM 31/07 8.213,26`;
                     </div>
                   )}
 
-                  <div className="mt-8 pt-6 border-t border-zinc-200/80 dark:border-[#27272A] flex justify-center">
+                  <div className="mt-8 pt-6 border-t border-zinc-200/80 dark:border-[#4C4E5D]/60 flex justify-center">
                     <button
                       onClick={loadExampleSantander}
                       className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline flex items-center gap-1.5 cursor-pointer"
@@ -548,7 +548,7 @@ SALDO EM 31/07 8.213,26`;
                     value={pastedText}
                     onChange={(e) => setPastedText(e.target.value)}
                     placeholder="Exemplo:&#10;03/08 PIX RECEBIDO Francisco Edson dos Santo - 200,00&#10;PIX ENVIADO S de Lima Costa Panificad - 19,00-&#10;DEBITO AUT. TELEFONE CELULAR CLARO MOVEL - 27,01-&#10;05/08 PIX ENVIADO TOP LANCHES LTDA - 25,00-"
-                    className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-4 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none resize-y"
+                    className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-4 text-xs font-mono text-zinc-800 dark:text-zinc-200 focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 outline-none resize-y"
                   />
                   <div className="flex justify-end">
                     <button
@@ -645,7 +645,7 @@ SALDO EM 31/07 8.213,26`;
 
               {/* SUMMARY METRIC CARDS */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-                <div className="bg-zinc-50 dark:bg-[#141416] p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200/80 dark:border-[#27272A]">
+                <div className="bg-zinc-50 dark:bg-[#252530] p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60">
                   <span className="text-[9px] sm:text-[10px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider block">Identificados</span>
                   <span className="text-sm sm:text-xl font-black text-zinc-900 dark:text-white font-mono">
                     {totalItems} <span className="text-[10px] sm:text-xs font-normal text-zinc-400">({selectedItems.length} sel.)</span>
@@ -669,7 +669,7 @@ SALDO EM 31/07 8.213,26`;
                 <div className={`p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border ${
                   duplicateCount > 0
                     ? 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800/50'
-                    : 'bg-zinc-50 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A]'
+                    : 'bg-zinc-50 dark:bg-[#252530] border-zinc-200/80 dark:border-[#4C4E5D]/60'
                 }`}>
                   <span className="text-[9px] sm:text-[10px] font-bold text-amber-600 dark:text-amber-400 uppercase tracking-wider block">
                     Duplicatas
@@ -681,12 +681,12 @@ SALDO EM 31/07 8.213,26`;
               </div>
 
               {/* ACTION TOOLBAR & FILTER TABS */}
-              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 bg-zinc-50 dark:bg-[#141416] p-2.5 sm:p-3 rounded-2xl border border-zinc-200/80 dark:border-[#27272A]">
+              <div className="flex flex-col sm:flex-row justify-between items-stretch sm:items-center gap-2.5 bg-zinc-50 dark:bg-[#252530] p-2.5 sm:p-3 rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60">
                 <div className="flex items-center gap-1.5 overflow-x-auto pb-1 sm:pb-0 scrollbar-none">
                   <button
                     onClick={() => setFilterMode('todos')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                      filterMode === 'todos' ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
+                      filterMode === 'todos' ? 'bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#4C4E5D]'
                     }`}
                   >
                     Todos ({totalItems})
@@ -718,7 +718,7 @@ SALDO EM 31/07 8.213,26`;
                   <button
                     onClick={() => setFilterMode('despesas')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                      filterMode === 'despesas' ? 'bg-rose-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
+                      filterMode === 'despesas' ? 'bg-rose-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#4C4E5D]'
                     }`}
                   >
                     Despesas
@@ -726,29 +726,29 @@ SALDO EM 31/07 8.213,26`;
                   <button
                     onClick={() => setFilterMode('receitas')}
                     className={`px-3 py-1.5 rounded-xl text-xs font-semibold transition-all shrink-0 cursor-pointer ${
-                      filterMode === 'receitas' ? 'bg-emerald-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#27272A]'
+                      filterMode === 'receitas' ? 'bg-emerald-600 text-white shadow-xs' : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200/60 dark:hover:bg-[#4C4E5D]'
                     }`}
                   >
                     Receitas
                   </button>
                 </div>
 
-                <div className="flex items-center gap-2 justify-between sm:justify-end pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-200 dark:border-[#27272A]">
+                <div className="flex items-center gap-2 justify-between sm:justify-end pt-1 sm:pt-0 border-t sm:border-t-0 border-zinc-200 dark:border-[#4C4E5D]/60">
                   <button
                     onClick={selectAllValid}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#27272A] transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D] transition-colors cursor-pointer"
                   >
                     Marcar Válidas
                   </button>
                   <button
                     onClick={unselectAll}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#27272A] transition-colors cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#4C4E5D] transition-colors cursor-pointer"
                   >
                     Desmarcar Todas
                   </button>
                   <button
                     onClick={() => setHasParsed(false)}
-                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#27272A] transition-colors flex items-center gap-1 cursor-pointer"
+                    className="px-2.5 py-1 rounded-lg text-xs font-semibold text-zinc-500 hover:bg-zinc-200/60 dark:hover:bg-[#4C4E5D] transition-colors flex items-center gap-1 cursor-pointer"
                   >
                     <RefreshCw className="w-3 h-3" />
                     <span>Novo</span>
@@ -773,8 +773,8 @@ SALDO EM 31/07 8.213,26`;
                         key={item.id}
                         className={`p-3 rounded-2xl border transition-all ${
                           item.selected
-                            ? 'border-zinc-400 dark:border-zinc-500 bg-white dark:bg-[#1A1A1E] shadow-xs'
-                            : 'border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/40 opacity-75'
+                            ? 'border-zinc-400 dark:border-zinc-500 bg-white dark:bg-[#32323F] shadow-xs'
+                            : 'border-zinc-200/80 dark:border-[#4C4E5D]/60 bg-zinc-50/50 dark:bg-[#252530]/40 opacity-75'
                         } ${item.isDuplicate ? 'bg-amber-50/50 dark:bg-amber-950/20 border-amber-300 dark:border-amber-800' : ''}`}
                       >
                         {/* Card Top Row: Checkbox, Date, Tag, Amount */}
@@ -815,7 +815,7 @@ SALDO EM 31/07 8.213,26`;
                             type="text"
                             value={item.descricao}
                             onChange={(e) => updateItemDescription(item.id, e.target.value)}
-                            className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200 dark:border-[#27272A] rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"
+                            className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200 dark:border-[#4C4E5D]/60 rounded-lg px-2 py-1 text-xs font-bold text-zinc-900 dark:text-white focus:outline-none focus:ring-1 focus:ring-zinc-400"
                             placeholder="Descrição da transação"
                           />
 
@@ -844,7 +844,7 @@ SALDO EM 31/07 8.213,26`;
                                   key={sug}
                                   type="button"
                                   onClick={() => updateItemCategory(item.id, sug)}
-                                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-[#27272A] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
+                                  className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-zinc-100 dark:bg-[#4C4E5D] text-zinc-700 dark:text-zinc-300 hover:bg-zinc-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
                                 >
                                   {sug}
                                 </button>
@@ -861,7 +861,7 @@ SALDO EM 31/07 8.213,26`;
                                 className={`w-full py-1.5 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
                                   needsReview
                                     ? 'bg-amber-50 dark:bg-amber-950/50 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
-                                    : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
+                                    : 'bg-white dark:bg-[#32323F] border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-800 dark:text-zinc-200'
                                 }`}
                               >
                                 {availableCats.map((cat) => (
@@ -888,10 +888,10 @@ SALDO EM 31/07 8.213,26`;
               </div>
 
               {/* DESKTOP VIEW: TABLE (Visible on screens >= md) */}
-              <div className="hidden md:block border border-zinc-200/80 dark:border-[#27272A] rounded-2xl overflow-hidden max-h-[48vh] overflow-y-auto">
+              <div className="hidden md:block border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl overflow-hidden max-h-[48vh] overflow-y-auto">
                 <div className="overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse min-w-[760px]">
-                    <thead className="bg-zinc-100 dark:bg-[#141416] sticky top-0 z-10 text-[11px] font-black text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-[#27272A]">
+                    <thead className="bg-zinc-100 dark:bg-[#252530] sticky top-0 z-10 text-[11px] font-black text-zinc-600 dark:text-zinc-400 border-b border-zinc-200/80 dark:border-[#4C4E5D]/60">
                       <tr>
                         <th className="py-2.5 px-3 w-10 text-center">
                           <input
@@ -908,7 +908,7 @@ SALDO EM 31/07 8.213,26`;
                         <th className="py-2.5 px-3 w-10 text-center"></th>
                       </tr>
                     </thead>
-                    <tbody className="divide-y divide-zinc-100 dark:divide-[#27272A]/60">
+                    <tbody className="divide-y divide-zinc-100 dark:divide-[#4C4E5D]/40/60">
                       {displayedItems.map((item) => {
                         const availableCats = item.tipoItem === 'despesa' ? categoriasDespesa : categoriasReceita;
                         const needsReview = item.requerAprovacao || !item.categoriaSugeridaConfiavel;
@@ -941,7 +941,7 @@ SALDO EM 31/07 8.213,26`;
                                   type="text"
                                   value={item.descricao}
                                   onChange={(e) => updateItemDescription(item.id, e.target.value)}
-                                  className="font-bold text-zinc-900 dark:text-zinc-100 bg-transparent hover:bg-zinc-100 dark:hover:bg-[#27272A] px-1.5 py-0.5 rounded border border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:bg-white dark:focus:bg-[#1A1A1E] focus:border-zinc-400 focus:outline-none flex-1 min-w-[200px]"
+                                  className="font-bold text-zinc-900 dark:text-zinc-100 bg-transparent hover:bg-zinc-100 dark:hover:bg-[#4C4E5D] px-1.5 py-0.5 rounded border border-transparent hover:border-zinc-300 dark:hover:border-zinc-700 focus:bg-white dark:focus:bg-[#1A1A1E] focus:border-zinc-400 focus:outline-none flex-1 min-w-[200px]"
                                   title="Clique para editar a descrição"
                                 />
                                 {item.tipoItem === 'despesa' ? (
@@ -978,7 +978,7 @@ SALDO EM 31/07 8.213,26`;
                                   className={`w-full py-1 px-2 rounded-xl text-xs font-bold outline-none border transition-all cursor-pointer ${
                                     needsReview
                                       ? 'bg-amber-50 dark:bg-amber-950/40 border-amber-300 dark:border-amber-700 text-amber-900 dark:text-amber-200 ring-2 ring-amber-400/30'
-                                      : 'bg-white dark:bg-[#1A1A1E] border-zinc-200/80 dark:border-[#27272A] text-zinc-800 dark:text-zinc-200'
+                                      : 'bg-white dark:bg-[#32323F] border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-800 dark:text-zinc-200'
                                   }`}
                                 >
                                   {availableCats.map(cat => (
@@ -995,7 +995,7 @@ SALDO EM 31/07 8.213,26`;
                                         key={sug}
                                         type="button"
                                         onClick={() => updateItemCategory(item.id, sug)}
-                                        className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-900 hover:text-white dark:bg-[#27272A] dark:text-zinc-300 dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
+                                        className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-zinc-100 hover:bg-zinc-900 hover:text-white dark:bg-[#4C4E5D] dark:text-zinc-300 dark:hover:bg-white dark:hover:text-black transition-all cursor-pointer"
                                         title={`Definir como ${sug}`}
                                       >
                                         {sug}
@@ -1031,7 +1031,7 @@ SALDO EM 31/07 8.213,26`;
         </div>
 
         {/* MODAL FOOTER */}
-        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-zinc-100 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416]/60 flex flex-col sm:flex-row justify-between items-center gap-2.5 sm:gap-3">
+        <div className="px-4 py-3 sm:px-6 sm:py-4 border-t border-zinc-100 dark:border-[#4C4E5D]/60 bg-zinc-50/50 dark:bg-[#252530]/60 flex flex-col sm:flex-row justify-between items-center gap-2.5 sm:gap-3">
           <div className="text-[11px] sm:text-xs text-zinc-400 dark:text-zinc-400 text-center sm:text-left w-full sm:w-auto">
             {hasParsed ? (
               <span>
@@ -1045,7 +1045,7 @@ SALDO EM 31/07 8.213,26`;
           <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
             <button
               onClick={onClose}
-              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#27272A] transition-colors text-center cursor-pointer"
+              className="flex-1 sm:flex-initial px-4 py-2 rounded-xl text-xs font-semibold text-zinc-600 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D] transition-colors text-center cursor-pointer"
             >
               Cancelar
             </button>

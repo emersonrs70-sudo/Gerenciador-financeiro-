@@ -1,5 +1,19 @@
 @import "tailwindcss";
 
+@theme {
+  --color-gunmetal: #32323F;
+  --color-gunmetal-dark: #252530;
+  --color-gunmetal-surface: #3B3B49;
+  --color-davys: #4C4E5D;
+  --color-davys-light: #5B5D6E;
+  --color-taupe: #988E96;
+  --color-taupe-light: #B4ABB2;
+  --color-silverpink: #BCABA8;
+  --color-silverpink-light: #CEBFBC;
+  --color-timberwolf: #DDD5D0;
+  --color-timberwolf-light: #EDE7E4;
+}
+
 @variant dark (&:where(.dark, .dark *));
 
 @layer base {
@@ -7,13 +21,13 @@
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #F8F8FA;
-    color: #18181B;
+    background-color: #F3EFEF;
+    color: #32323F;
   }
 
   .dark body {
-    background-color: #121214;
-    color: #F4F4F5;
+    background-color: #252530;
+    color: #DDD5D0;
   }
 
   .font-mono {

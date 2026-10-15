@@ -100,12 +100,12 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
       {/* Trigger Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 bg-white dark:bg-[#1A1A1E] hover:bg-zinc-50 dark:hover:bg-[#222226] border border-zinc-200/80 dark:border-[#27272A] rounded-xl hover:shadow-2xs cursor-pointer text-zinc-600 dark:text-zinc-300 transition-all font-bold"
+        className="relative p-2.5 bg-white dark:bg-[#32323F] hover:bg-zinc-50 dark:hover:bg-[#222226] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl hover:shadow-2xs cursor-pointer text-zinc-600 dark:text-zinc-300 transition-all font-bold"
         title="Central de Notificações"
       >
         <Bell className="w-4 h-4" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#1A1A1E] animate-bounce">
+          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#32323F] animate-bounce">
             {unreadCount}
           </span>
         )}
@@ -119,10 +119,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 8, scale: 0.95 }}
             transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl shadow-xl z-50 overflow-hidden"
+            className="fixed sm:absolute left-4 right-4 sm:left-auto sm:right-0 top-[72px] sm:top-auto sm:mt-2 w-auto sm:w-96 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl shadow-xl z-50 overflow-hidden"
           >
             {/* Popover Header */}
-            <div className="p-4 border-b border-zinc-100 dark:border-[#27272A] bg-zinc-50 dark:bg-[#141416] flex justify-between items-center">
+            <div className="p-4 border-b border-zinc-100 dark:border-[#4C4E5D]/60 bg-zinc-50 dark:bg-[#252530] flex justify-between items-center">
               <div>
                 <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-zinc-500" />
@@ -155,7 +155,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             </div>
 
             {/* Browser Permission Controls */}
-            <div className="px-4 py-3 bg-zinc-50 dark:bg-[#141416] border-b border-zinc-100 dark:border-[#27272A] flex items-center justify-between gap-2">
+            <div className="px-4 py-3 bg-zinc-50 dark:bg-[#252530] border-b border-zinc-100 dark:border-[#4C4E5D]/60 flex items-center justify-between gap-2">
               <div className="flex items-center gap-1.5">
                 {permission === 'granted' ? (
                   <Bell className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
@@ -182,7 +182,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
               ) : (
                 <button
                   onClick={onSendTestNotification}
-                  className="px-2.5 py-1 bg-zinc-200 dark:bg-[#27272A] hover:bg-zinc-300 dark:hover:bg-[#38383E] text-zinc-700 dark:text-zinc-300 font-extrabold text-[9px] uppercase tracking-wide rounded-lg transition-colors cursor-pointer"
+                  className="px-2.5 py-1 bg-zinc-200 dark:bg-[#4C4E5D] hover:bg-zinc-300 dark:hover:bg-[#5B5D6E] text-zinc-700 dark:text-zinc-300 font-extrabold text-[9px] uppercase tracking-wide rounded-lg transition-colors cursor-pointer"
                 >
                   Testar Envio
                 </button>
@@ -190,7 +190,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
             </div>
 
             {/* List Body */}
-            <div className="max-h-64 overflow-y-auto divide-y divide-zinc-100 dark:divide-[#27272A] scrollbar-thin">
+            <div className="max-h-64 overflow-y-auto divide-y divide-zinc-100 dark:divide-[#4C4E5D]/40 scrollbar-thin">
               {notifications.length === 0 ? (
                 <div className="p-6 text-center text-zinc-400 dark:text-zinc-500 space-y-1.5">
                   <Bell className="w-6 h-6 mx-auto stroke-1.5 text-zinc-300 dark:text-zinc-700" />
@@ -208,7 +208,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       animate={{ opacity: 1, height: 'auto' }}
                       exit={{ opacity: 0, height: 0 }}
                       className={`p-3 transition-colors relative group flex gap-2.5 ${
-                        n.lida ? 'bg-white dark:bg-[#1A1A1E] opacity-60' : 'bg-zinc-50/70 dark:bg-[#141416]/70'
+                        n.lida ? 'bg-white dark:bg-[#32323F] opacity-60' : 'bg-zinc-50/70 dark:bg-[#252530]/70'
                       }`}
                     >
                       <div className={`w-7 h-7 rounded-lg border flex items-center justify-center shrink-0 ${getBgColor(n.tipo)}`}>
@@ -233,7 +233,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         {!n.lida && (
                           <button
                             onClick={() => onMarkRead(n.id)}
-                            className="p-1 bg-white dark:bg-[#27272A] border border-zinc-200 dark:border-[#38383E] hover:text-emerald-500 text-zinc-400 rounded-md transition-all shadow-xs cursor-pointer"
+                            className="p-1 bg-white dark:bg-[#4C4E5D] border border-zinc-200 dark:border-[#5B5D6E] hover:text-emerald-500 text-zinc-400 rounded-md transition-all shadow-xs cursor-pointer"
                             title="Marcar como lida"
                           >
                             <Check className="w-3 h-3" />
@@ -241,7 +241,7 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                         )}
                         <button
                           onClick={() => onDeleteNotification(n.id)}
-                          className="p-1 bg-white dark:bg-[#27272A] border border-zinc-200 dark:border-[#38383E] hover:text-rose-500 text-zinc-400 rounded-md transition-all shadow-xs cursor-pointer"
+                          className="p-1 bg-white dark:bg-[#4C4E5D] border border-zinc-200 dark:border-[#5B5D6E] hover:text-rose-500 text-zinc-400 rounded-md transition-all shadow-xs cursor-pointer"
                           title="Remover"
                         >
                           <Trash2 className="w-3 h-3" />

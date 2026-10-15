@@ -190,7 +190,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
-      <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-scale-up">
+      <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-3xl w-full max-w-xl max-h-[90vh] overflow-y-auto shadow-2xl relative animate-scale-up">
         
         {/* CLOSE BUTTON */}
         <button
@@ -267,7 +267,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
                     className={`p-3 rounded-xl border text-center transition-all ${
                       isCompleted 
                         ? 'bg-amber-500/10 border-amber-500/30 shadow-2xs hover:-translate-y-0.5' 
-                        : 'bg-zinc-50 dark:bg-[#141416] border-zinc-200/80 dark:border-[#27272A] opacity-60'
+                        : 'bg-zinc-50 dark:bg-[#252530] border-zinc-200/80 dark:border-[#4C4E5D]/60 opacity-60'
                     }`}
                   >
                     <div className="flex justify-center mb-1">
@@ -300,7 +300,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
             </h4>
             
             {streakHistory.length === 0 ? (
-              <div className="text-center p-6 bg-zinc-50 dark:bg-[#141416] rounded-2xl border border-dashed border-zinc-200 dark:border-[#27272A] text-zinc-500 dark:text-zinc-400">
+              <div className="text-center p-6 bg-zinc-50 dark:bg-[#252530] rounded-2xl border border-dashed border-zinc-200 dark:border-[#4C4E5D]/60 text-zinc-500 dark:text-zinc-400">
                 <HelpCircle className="w-8 h-8 text-zinc-400 dark:text-zinc-600 mx-auto mb-2" />
                 <p className="text-xs font-bold">Nenhuma atividade registrada na ofensiva ainda.</p>
                 <p className="text-[11px] mt-1 text-zinc-400">Adicione uma receita ou despesa hoje para iniciar!</p>
@@ -310,7 +310,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
                 {streakHistory.map((day) => (
                   <div
                     key={day.dateStr}
-                    className="p-3.5 bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col gap-2"
+                    className="p-3.5 bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl hover:border-zinc-300 dark:hover:border-zinc-700 transition-all flex flex-col gap-2"
                   >
                     {/* Date and mini-badge */}
                     <div className="flex items-center justify-between">
@@ -346,7 +346,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
 
                     {/* Transactions list */}
                     {day.transactions.length > 0 && (
-                      <div className="border-t border-zinc-200/60 dark:border-[#27272A] pt-2 flex flex-wrap gap-1.5">
+                      <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex flex-wrap gap-1.5">
                         {day.transactions.map((t) => (
                           <span
                             key={t.id}
@@ -369,7 +369,7 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
           </div>
 
           {/* MOTIVATIONAL QUOTE FOOTER */}
-          <div className="text-center pt-2 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium leading-relaxed border-t border-zinc-100 dark:border-[#27272A]">
+          <div className="text-center pt-2 text-[11px] text-zinc-400 dark:text-zinc-500 font-medium leading-relaxed border-t border-zinc-100 dark:border-[#4C4E5D]/60">
             "A constância nos pequenos hábitos diários constrói impérios financeiros duradouros."
           </div>
 

@@ -39,16 +39,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
       onClick={onClick}
       className={`w-full text-left p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between ${
         isActive
-          ? 'bg-zinc-50/80 dark:bg-[#222226] border-zinc-900 dark:border-zinc-200 ring-2 ring-zinc-900/10 dark:ring-white/10 shadow-sm'
-          : 'bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] hover:border-zinc-300 dark:hover:border-[#38383E] shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-sm'
+          ? 'bg-zinc-100/90 dark:bg-[#32323F] border-[#4C4E5D] dark:border-[#BCABA8] ring-2 ring-[#BCABA8]/25 shadow-sm'
+          : 'bg-white dark:bg-[#32323F]/80 border border-zinc-200/80 dark:border-[#4C4E5D]/60 hover:border-[#4C4E5D] dark:hover:border-[#988E96]/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-sm'
       }`}
     >
       {/* Top Header: Label + Three dots */}
       <div className="flex items-center justify-between w-full">
-        <span className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 tracking-normal truncate">
+        <span className="text-xs font-semibold text-zinc-500 dark:text-[#988E96] tracking-normal truncate">
           {title}
         </span>
-        <div className="text-zinc-400 dark:text-zinc-500 opacity-60 group-hover:opacity-100 transition-opacity">
+        <div className="text-zinc-400 dark:text-[#988E96] opacity-60 group-hover:opacity-100 transition-opacity">
           <MoreHorizontal className="w-4 h-4" />
         </div>
       </div>

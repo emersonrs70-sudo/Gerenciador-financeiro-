@@ -1,0 +1,6 @@
+{
+  "summary": "Plano arquitetural e visual de repaginação completa da interface: implantação de menu lateral persistente com ícones e textos, menu superior com abas dedicadas para eliminar rolagem vertical (Visão Geral, Gráficos & Relatórios, Calendário Financeiro e Faturas), contenção de altura de tela (viewport-fit) e aplicação estrita da nova paleta de cores corporativa (#32323F, #4C4E5D, #988E96, #BCABA8, #DDD5D0).",
+  "updatedAt": "2026-10-15T08:49:11.583784282Z",
+  "requestFeedback": true,
+  "userFacing": true
+}

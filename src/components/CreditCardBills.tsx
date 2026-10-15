@@ -115,9 +115,9 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
   };
 
   return (
-    <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-5 shadow-xs space-y-5">
+    <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-5 shadow-xs space-y-5">
       {/* CARD HEADER DETAILS */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-100 dark:border-[#27272A] pb-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-zinc-100 dark:border-[#4C4E5D]/50 pb-4">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-zinc-900 dark:bg-zinc-100 flex items-center justify-center text-white dark:text-zinc-950 shadow-xs">
             <CreditCard className="w-5 h-5" />
@@ -153,7 +153,7 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
           <span>Total Gasto: R$ {spent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
           <span>Disponível: {((available / limit) * 100).toFixed(0)}%</span>
         </div>
-        <div className="w-full h-2 bg-zinc-100 dark:bg-[#141416] rounded-full overflow-hidden border border-zinc-200/50 dark:border-[#27272A]">
+        <div className="w-full h-2 bg-zinc-100 dark:bg-[#252530] rounded-full overflow-hidden border border-zinc-200/50 dark:border-[#4C4E5D]/60">
           <div 
             className="h-full bg-zinc-800 dark:bg-zinc-200 transition-all duration-500"
             style={{ width: `${Math.min((spent / limit) * 100, 100)}%` }}
@@ -197,9 +197,9 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
             return (
               <div 
                 key={month} 
-                className="border border-zinc-200/80 dark:border-[#27272A] rounded-xl bg-zinc-50/50 dark:bg-[#141416] p-3.5 space-y-3"
+                className="border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl bg-zinc-50/50 dark:bg-[#252530] p-3.5 space-y-3"
               >
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/60 dark:border-[#27272A] pb-2">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-zinc-200/60 dark:border-[#4C4E5D]/60 pb-2">
                   <div className="flex items-center gap-2">
                     <Calendar className="w-4 h-4 text-zinc-400" />
                     <div>
@@ -276,8 +276,8 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
 
       {payModalOpen && (
         <div className="fixed inset-0 bg-zinc-950/70 backdrop-blur-xs flex items-center justify-center p-4 z-50 animate-in fade-in duration-200">
-          <div className="bg-white dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
-            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-1.5 border-b border-zinc-100 dark:border-[#27272A] pb-2">
+          <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl p-6 w-full max-w-sm shadow-xl animate-in zoom-in-95 duration-200">
+            <h3 className="text-sm font-bold text-zinc-900 dark:text-white mb-3 flex items-center gap-1.5 border-b border-zinc-100 dark:border-[#4C4E5D]/60 pb-2">
               <Landmark className="w-4 h-4 text-zinc-500" />
               Pagar Fatura - {formatMonthName(selectedBillMonth)}
             </h3>
@@ -298,7 +298,7 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
                   required
                   value={sourceAccountId}
                   onChange={(e) => setSourceAccountId(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 >
                   {checkingAccounts.map(acc => (
                     <option key={acc.id} value={acc.id}>
@@ -317,15 +317,15 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
                   required
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
-                  className="w-full bg-zinc-50 dark:bg-[#141416] border border-zinc-200/80 dark:border-[#27272A] text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                  className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
                 />
               </div>
 
-              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#27272A]">
+              <div className="flex gap-2.5 pt-3 border-t border-zinc-100 dark:border-[#4C4E5D]/60">
                 <button
                   type="button"
                   onClick={() => setPayModalOpen(false)}
-                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#27272A] dark:hover:bg-[#38383E] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
+                  className="flex-1 px-4 py-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold transition-all cursor-pointer text-center"
                 >
                   Cancelar
                 </button>
