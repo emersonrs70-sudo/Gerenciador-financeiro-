@@ -287,6 +287,131 @@ export function cleanBankDescription(desc: string): string {
     .trim();
 }
 
+// Result of cleaning introductory presentation and junk from statement text
+export interface CleanStatementResult {
+  cleanedText: string;
+  removedLinesCount: number;
+  detectedPeriod?: string;
+}
+
+/**
+ * Intelligent cleaner that identifies where real transactions begin in Brazilian bank statements
+ * and strips away document presentations, corporate headers, branch addresses, customer metadata,
+ * marketing banners, and legal ombudsman footers.
+ */
+export function cleanStatementIntroAndJunk(rawText: string): CleanStatementResult {
+  if (!rawText || !rawText.trim()) {
+    return { cleanedText: '', removedLinesCount: 0 };
+  }
+
+  const lines = rawText.split(/\r?\n/);
+
+  // 1. Detect month / year reference before stripping (e.g. "julho/2026", "julho de 2026", "07/2026", "08/2026")
+  let detectedPeriod: string | undefined = undefined;
+  const periodMatch = rawText.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)[\/\s]+(20\d{2})/i)
+    || rawText.match(/(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(20\d{2})/i)
+    || rawText.match(/\b(0[1-9]|1[0-2])\/(20\d{2})\b/)
+    || rawText.match(/\b(0[1-9]|1[0-2])\/(2[4-9])\b/);
+
+  if (periodMatch) {
+    detectedPeriod = periodMatch[0].trim();
+  }
+
+  // 2. Identify where transaction movements actually start
+  // In Brazilian statements, transactions start after:
+  // - "Movimentação" / "Lançamentos" / "Extrato de Conta"
+  // - Table column header like "Data Descrição ... Movimento Saldo"
+  // - "SALDO EM DD/MM" (opening balance)
+  // - Or the first line that directly has DD/MM date with transaction text and currency
+  const sectionStartRegex = /^(?:MOVIMENTA[CÇ][AÃ]O|MOVIMENTA[CÇ][OÕ]ES|LAN[CÇ]AMENTOS|HIST[OÓ]RICO|EXTRATO\s+DE\s+CONTA)/i;
+  const tableHeaderRegex = /^(?:DATA\s+(?:DESCRI[CÇ][AÃ]O|HIST[OÓ]RICO|DOCTO|DOCUMENTO|LAN[CÇ]AMENTO))/i;
+  const initialBalanceRegex = /^SALDO\s+EM\s+\d{2}\/\d{2}/i;
+  const directTxRegex = /^\d{2}\/\d{2}(?:\/\d{2,4})?\s+[A-Za-z]/;
+
+  let startIndex = -1;
+
+  for (let i = 0; i < lines.length; i++) {
+    const trimmed = lines[i].trim();
+    if (!trimmed) continue;
+
+    if (sectionStartRegex.test(trimmed)) {
+      startIndex = i;
+      break;
+    }
+    if (tableHeaderRegex.test(trimmed)) {
+      startIndex = i;
+      break;
+    }
+    if (initialBalanceRegex.test(trimmed)) {
+      startIndex = i;
+      break;
+    }
+    if (directTxRegex.test(trimmed) && /\d{1,3}(?:\.\d{3})*,\d{2}/.test(trimmed)) {
+      startIndex = i;
+      break;
+    }
+  }
+
+  const candidateLines = startIndex !== -1 ? lines.slice(startIndex) : lines;
+  const initialRemovedCount = startIndex !== -1 ? startIndex : 0;
+
+  // Filter out any repeated header/presentation junk lines from the remaining text
+  const isJunkOrPresentation = (l: string): boolean => {
+    const t = l.trim().toUpperCase();
+    if (!t) return false;
+
+    if (t.startsWith('--- NOVA PAGINA') || t.startsWith('PAGINA:') || t.startsWith('PÁGINA:')) return true;
+    if (/^P[AÁ]GINA\s+\d+\s+DE\s+\d+/i.test(t)) return true;
+
+    if (t.includes('BANCO SANTANDER') || t.includes('BANCO BRADESCO') || t.includes('BANCO DO BRASIL') || t.includes('ITAU UNIBANCO')) return true;
+    if (t.includes('PRESIDENTE JUSCELINO KUBITSCHEK') || t.includes('CIDADE DE DEUS') || t.includes('AV. PAULISTA')) return true;
+    if (t.startsWith('CNPJ:') || t.startsWith('CPF:') || t.startsWith('AGÊNCIA:') || t.startsWith('AGENCIA:')) return true;
+    if (t.startsWith('TITULAR:') || t.startsWith('NOME:') || t.startsWith('ENDEREÇO:') || t.startsWith('ENDERECO:')) return true;
+    if (t.startsWith('CONTA CORRENTE:') || t.startsWith('CONTA:') || t.startsWith('TIPO DE CONTA:')) return true;
+
+    if (t.startsWith('FALE CONOSCO') || t.startsWith('SAC ') || t.startsWith('OUVIDORIA')) return true;
+    if (t.startsWith('CENTRAL DE ATENDIMENTO') || t.startsWith('CANAIS DIGITAIS')) return true;
+    if (t.startsWith('PACOTE DE SERVIÇOS') || t.startsWith('PACOTE DE SERVICOS')) return true;
+    if (t.startsWith('ÍNDICES ECONÔMICOS') || t.startsWith('INDICES ECONOMICOS')) return true;
+    if (t.startsWith('PROTEJA-SE') || t.startsWith('DISPONÍVEL NO INTERNET BANKING') || t.startsWith('DISPONIVEL NO INTERNET BANKING')) return true;
+    if (t.startsWith('SE VOCÊ NÃO TEM LIMITE') || t.startsWith('SE VOCE NAO TEM LIMITE')) return true;
+    if (t.startsWith('BALP_UY_') || t.startsWith('EXTRATO_PF_')) return true;
+    if (t.startsWith('RESUMO DE APLICAÇÕES') || t.startsWith('RESUMO DE APLICACOES')) return true;
+    if (t.startsWith('SALDOS POR PERÍODO') || t.startsWith('SALDOS POR PERIODO')) return true;
+    if (t.startsWith('TOTAL DE CRÉDITOS') || t.startsWith('TOTAL DE DÉBITOS') || t.startsWith('TOTAL DE CREDITO')) return true;
+    if (t.startsWith('LIMITE SANTANDER') || t.startsWith('PROVISÃO DE ENCARGOS') || t.startsWith('PROVISAO DE ENCARGOS')) return true;
+    if (t.startsWith('DATA DE EMISSÃO') || t.startsWith('DATA DE EMISSAO') || t.startsWith('EMISSÃO:') || t.startsWith('EMISSAO:')) return true;
+    if (t.startsWith('EXTRATO REFERENTE') || t.startsWith('RESUMO DA CONTA') || t.startsWith('RESUMO -')) return true;
+
+    // Discard column headers if repeated
+    if (/^DATA\s+(?:DESCRI[CÇ][AÃ]O|HIST[OÓ]RICO).*?(?:VALOR|MOVIMENTO|SALDO)/i.test(t)) return true;
+    if (/^MOVIMENTA[CÇ][AÃ]O$/i.test(t) || /^LAN[CÇ]AMENTOS$/i.test(t)) return true;
+
+    return false;
+  };
+
+  const finalLines: string[] = [];
+  let otherRemovedCount = 0;
+
+  for (const line of candidateLines) {
+    if (isJunkOrPresentation(line)) {
+      otherRemovedCount++;
+    } else {
+      finalLines.push(line);
+    }
+  }
+
+  // Prepend period indicator so month / year is always preserved for the parser
+  const periodHeader = detectedPeriod ? `Período: ${detectedPeriod}\n` : '';
+  const cleanedText = periodHeader + finalLines.join('\n').trim();
+
+  return {
+    cleanedText,
+    removedLinesCount: initialRemovedCount + otherRemovedCount,
+    detectedPeriod
+  };
+}
+
 // Specialized Santander statement text & PDF parser
 export function parseSantanderStatement(
   text: string,
@@ -340,10 +465,25 @@ export function parseSantanderStatement(
   const isJunkLine = (l: string) => {
     const upper = l.toUpperCase();
     return (
+      upper.startsWith('PERÍODO') ||
+      upper.startsWith('PERIODO') ||
+      upper.startsWith('REFERÊNCIA') ||
+      upper.startsWith('REFERENCIA') ||
+      upper.startsWith('DATA DE EMISSÃO') ||
+      upper.startsWith('DATA DE EMISSAO') ||
+      upper.startsWith('EMISSÃO:') ||
+      upper.startsWith('EMISSAO:') ||
+      upper.startsWith('ENDEREÇO') ||
+      upper.startsWith('ENDERECO') ||
+      upper.includes('JUSCELINO KUBITSCHEK') ||
+      upper.includes('CIDADE DE DEUS') ||
+      upper.includes('BANCO SANTANDER') ||
+      upper.includes('BANCO BRADESCO') ||
+      upper.includes('BANCO DO BRASIL') ||
+      upper.includes('ITAU UNIBANCO') ||
       upper.startsWith('EXTRATO CONSOLIDADO') ||
       upper.startsWith('EXTRATO DE CONTA') ||
       upper.startsWith('EXTRATO CONTA') ||
-      upper.startsWith('BANCO SANTANDER') ||
       upper.startsWith('PAGINA:') ||
       upper.startsWith('PÁGINA:') ||
       upper.startsWith('--- NOVA PAGINA') ||
@@ -352,6 +492,7 @@ export function parseSantanderStatement(
       upper.startsWith('BALP_UY_') ||
       upper.startsWith('EXTRATO_PF_') ||
       upper.startsWith('RESUMO -') ||
+      upper.startsWith('RESUMO DA CONTA') ||
       upper.startsWith('DATA DESCRIÇÃO') ||
       upper.startsWith('DATA HISTÓRICO') ||
       upper.startsWith('DATA DOCTO') ||
@@ -427,15 +568,17 @@ export function parseSantanderStatement(
         !line.toUpperCase().includes('SALDO') &&
         !line.match(/^\d+$/) &&
         line.length > 2 &&
-        line.length < 120
+        line.length < 80 &&
+        !isJunkLine(line)
       ) {
         // Strip date from prefix if present
         let cleanLinePart = line;
         if (dateMatch) {
           cleanLinePart = cleanLinePart.replace(dateMatch[0], '').trim();
         }
-        if (cleanLinePart.length > 1) {
-          bufferedPrefix = (bufferedPrefix ? `${bufferedPrefix} ` : '') + cleanLinePart;
+        if (cleanLinePart.length > 1 && !isJunkLine(cleanLinePart)) {
+          // Do not accumulate endless lines - retain only the immediate merchant name part
+          bufferedPrefix = cleanLinePart;
         }
       }
       continue;
@@ -759,20 +902,37 @@ export function parseAnyBankStatement(
   categoriesDespesa: string[] = ['Alimentação', 'Transporte', 'Moradia', 'Saúde', 'Lazer', 'Outros'],
   categoriesReceita: string[] = ['Salário', 'Outras Receitas']
 ): ParsedItem[] {
-  // 1. Try Santander Specialized Parser
-  let items = parseSantanderStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  // First, clean introductory document presentation, marketing banners and non-transaction headers
+  const { cleanedText } = cleanStatementIntroAndJunk(text);
+  const textToParse = cleanedText && cleanedText.length > 20 ? cleanedText : text;
+
+  // 1. Try Santander Specialized Parser on cleaned text
+  let items = parseSantanderStatement(textToParse, existingTransactions, categoriesDespesa, categoriesReceita);
   if (items.length > 0) {
     return items;
   }
 
-  // 2. Try Universal Brazilian Bank Statement Parser
-  items = parseUniversalBankStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  // 2. Try Universal Brazilian Bank Statement Parser on cleaned text
+  items = parseUniversalBankStatement(textToParse, existingTransactions, categoriesDespesa, categoriesReceita);
   if (items.length > 0) {
     return items;
   }
 
-  // 3. Try Relaxed Multi-line Fragment Parser
-  items = parseRelaxedStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  // 3. Try Relaxed Multi-line Fragment Parser on cleaned text
+  items = parseRelaxedStatement(textToParse, existingTransactions, categoriesDespesa, categoriesReceita);
+  if (items.length > 0) {
+    return items;
+  }
+
+  // Safe fallback to raw text if cleaned version yielded nothing
+  if (textToParse !== text) {
+    items = parseSantanderStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+    if (items.length > 0) return items;
+    items = parseUniversalBankStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+    if (items.length > 0) return items;
+    items = parseRelaxedStatement(text, existingTransactions, categoriesDespesa, categoriesReceita);
+  }
+
   return items;
 }
 

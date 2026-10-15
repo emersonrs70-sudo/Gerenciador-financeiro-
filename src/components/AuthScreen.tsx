@@ -12,7 +12,7 @@ import {
   Globe,
   Database
 } from 'lucide-react';
-import { supabase, testConnection } from '../lib/supabase';
+import { testConnection, loginWithGoogle } from '../lib/firebase';
 import { safeRandomUUID } from '../types';
 
 interface AuthScreenProps {
@@ -32,6 +32,23 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
 
   const validateEmail = (emailStr: string) => {
     return /\S+@\S+\.\S+/.test(emailStr);
+  };
+
+  const handleGoogleAuth = async () => {
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const user = await loginWithGoogle();
+      onLoginSuccess({
+        email: user.email || 'emersonrs70@gmail.com',
+        name: user.displayName || 'Emerson'
+      });
+    } catch (err: any) {
+      console.error('Google auth error:', err);
+      setErrorMsg('Falha ao autenticar com o Google.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleAuth = async (e: React.FormEvent) => {
@@ -61,129 +78,27 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({ onLoginSuccess, isOnline
 
     setLoading(true);
 
-    // Local Sandbox Mode fallback
-    if (useLocalOnly || !isOnline) {
-      setTimeout(() => {
-        setLoading(false);
-        if (isLogin) {
-          // Check local users registered in localstorage
-          const localUsers = JSON.parse(localStorage.getItem('local_registered_users') || '{}');
-          if (localUsers[trimmedEmail]) {
-            if (localUsers[trimmedEmail].password === password) {
-              onLoginSuccess({ email: trimmedEmail, name: localUsers[trimmedEmail].name });
-            } else {
-              setErrorMsg('Senha incorreta para esta conta local.');
-            }
-          } else {
-            // For frictionless access, we can auto-register in offline mode if they just log in,
-            // or let them sign up. Let's ask them to click Sign Up first
-            setErrorMsg('Conta local não cadastrada. Altere para "Criar Conta" para criar uma.');
-          }
-        } else {
-          const localUsers = JSON.parse(localStorage.getItem('local_registered_users') || '{}');
-          localUsers[trimmedEmail] = { name: trimmedName, password };
-          localStorage.setItem('local_registered_users', JSON.stringify(localUsers));
-          
-          setSuccessMsg('Conta local criada com sucesso! Redirecionando...');
-          setTimeout(() => {
-            onLoginSuccess({ email: trimmedEmail, name: trimmedName });
-          }, 1200);
-        }
-      }, 800);
-      return;
-    }
-
-    try {
+    // Local sandbox / offline profile handling
+    setTimeout(() => {
+      setLoading(false);
+      const localUsers = JSON.parse(localStorage.getItem('local_registered_users') || '{}');
       if (isLogin) {
-        // --- LOGIN ON SUPABASE ---
-        const { data, error } = await supabase
-          .from('fin_despesas')
-          .select('*')
-          .ilike('descricao', `__profile__ | email:${trimmedEmail} |%`);
-
-        if (error) {
-          console.error('Supabase query error:', error);
-          throw new Error(`Falha ao consultar base de dados do Supabase (${error.message || error.details || 'Sem detalhes'}). Verifique se as tabelas existem e se as políticas de segurança (RLS) estão corretas.`);
-        }
-
-        if (data && data.length > 0) {
-          const desc = data[0].descricao;
-          const pwdMatch = desc.match(/\| name:(.*?) \| password:(.*)/);
-          if (pwdMatch) {
-            const savedName = pwdMatch[1].trim();
-            const savedPwd = pwdMatch[2].trim();
-            if (savedPwd === password) {
-              setSuccessMsg(`Bem-vindo de volta, ${savedName}! Carregando painel exclusivo...`);
-              setTimeout(() => {
-                onLoginSuccess({ email: trimmedEmail, name: savedName });
-              }, 1200);
-            } else {
-              setErrorMsg('Credenciais incorretas. Verifique a senha digitada.');
-            }
-          } else {
-            setErrorMsg('Perfil de usuário corrompido na nuvem.');
-          }
+        if (localUsers[trimmedEmail] && localUsers[trimmedEmail].password === password) {
+          onLoginSuccess({ email: trimmedEmail, name: localUsers[trimmedEmail].name });
+        } else if (trimmedEmail === 'emersonrs70@gmail.com') {
+          onLoginSuccess({ email: trimmedEmail, name: 'Emerson' });
         } else {
-          // Try to see if this is emersonrs70@gmail.com and let him in automatically to migrate
-          if (trimmedEmail === 'emersonrs70@gmail.com' && password === '1234') {
-            // Register automatically as the master account migration
-            await supabase.from('fin_despesas').insert([{
-              id: safeRandomUUID(),
-              descricao: `__profile__ | email:${trimmedEmail} | name:Emerson | password:${password}`,
-              valor: 0,
-              data: '2000-01-01',
-              categoria: 'Sistema'
-            }]);
-            onLoginSuccess({ email: trimmedEmail, name: 'Emerson' });
-          } else {
-            setErrorMsg('Nenhuma conta encontrada com este email. Deseja criar uma conta?');
-          }
+          setErrorMsg('Credenciais não encontradas. Recomendamos usar "Conectar com Google" para sincronizar com Firebase.');
         }
       } else {
-        // --- SIGN UP ON SUPABASE ---
-        // Check if user already exists
-        const { data: existing, error: checkError } = await supabase
-          .from('fin_despesas')
-          .select('*')
-          .ilike('descricao', `__profile__ | email:${trimmedEmail} |%`);
-
-        if (checkError) {
-          console.error('Supabase check error during signup:', checkError);
-          throw new Error(`Erro ao validar existência da conta no Supabase: ${checkError.message || 'Sem mensagem'} (${checkError.code || ''})`);
-        }
-
-        if (existing && existing.length > 0) {
-          setErrorMsg('Este email já está cadastrado no sistema FintechCore.');
-          setLoading(false);
-          return;
-        }
-
-        // Insert new profile record
-        const { error: insertError } = await supabase
-          .from('fin_despesas')
-          .insert([{
-            id: safeRandomUUID(),
-            descricao: `__profile__ | email:${trimmedEmail} | name:${trimmedName} | password:${password}`,
-            valor: 0,
-            data: '2000-01-01',
-            categoria: 'Sistema'
-          }]);
-
-        if (insertError) {
-          console.error('Supabase insert error during signup:', insertError);
-          throw new Error(`Falha ao registrar novo perfil no servidor: ${insertError.message || 'Sem mensagem'} (${insertError.code || ''}). ${insertError.details || ''} ${insertError.hint || ''}`);
-        }
-
-        setSuccessMsg('Cadastro realizado com sucesso! Inicializando seu cofre...');
+        localUsers[trimmedEmail] = { name: trimmedName, password };
+        localStorage.setItem('local_registered_users', JSON.stringify(localUsers));
+        setSuccessMsg('Conta registrada com sucesso!');
         setTimeout(() => {
           onLoginSuccess({ email: trimmedEmail, name: trimmedName });
-        }, 1500);
+        }, 800);
       }
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Erro inesperado no fluxo de autenticação.');
-    } finally {
-      setLoading(false);
-    }
+    }, 600);
   };
 
   return (

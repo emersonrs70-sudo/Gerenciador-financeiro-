@@ -1,6 +1,7 @@
 import * as pdfjsLib from 'pdfjs-dist/legacy/build/pdf.mjs';
 import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs';
 import * as fflate from 'fflate';
+import { cleanStatementIntroAndJunk } from './statementParser';
 
 // Configure PDF.js fake worker in-process on main thread
 // This completely avoids Web Worker instantiation issues, iframe CORS/sandbox blocks,
@@ -395,6 +396,8 @@ export async function extractTextFromPdf(file: File | ArrayBuffer): Promise<stri
     return pageTexts.join('\n\n--- NOVA PAGINA ---\n\n');
   };
 
+  let extracted = '';
+
   // Attempt PDF.js first with a safety timeout of 3.5s
   try {
     const timeoutPromise = new Promise<string>((_, reject) => {
@@ -403,18 +406,26 @@ export async function extractTextFromPdf(file: File | ArrayBuffer): Promise<stri
 
     const result = await Promise.race([pdfjsAttempt(), timeoutPromise]);
     if (result && result.trim().length > 20) {
-      return result;
+      extracted = result;
     }
   } catch (err: any) {
     console.info('PDF.js engine skipped or timed out, switching to pure JS extractor:', err?.message || err);
   }
 
   // Pure JS fallback with fflate (runs in <15ms, zero worker overhead, zero uncaught stream errors)
-  const fallbackText = pureJsExtractPdf(originalBuffer);
-  if (fallbackText && fallbackText.trim().length > 15) {
-    return fallbackText;
+  if (!extracted) {
+    const fallbackText = pureJsExtractPdf(originalBuffer);
+    if (fallbackText && fallbackText.trim().length > 15) {
+      extracted = fallbackText;
+    }
   }
 
   // If text is still empty, throw friendly Portuguese explanation
-  throw new Error('O arquivo PDF parece ser uma imagem escaneada sem camada de texto selecionável. Caso queira, utilize a aba "Copiar e Colar" para colar o texto do extrato.');
+  if (!extracted || extracted.trim().length < 15) {
+    throw new Error('O arquivo PDF parece ser uma imagem escaneada sem camada de texto selecionável. Caso queira, utilize a aba "Copiar e Colar" para colar o texto do extrato.');
+  }
+
+  // Automatically clean presentation, headers, addresses, account data and keep only relevant transaction lines
+  const cleanResult = cleanStatementIntroAndJunk(extracted);
+  return cleanResult.cleanedText && cleanResult.cleanedText.length > 20 ? cleanResult.cleanedText : extracted;
 }

@@ -1,0 +1,203 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User profile information",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "User email address"
+        },
+        "name": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Display name of the user"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Creation timestamp ISO string"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Last update timestamp ISO string"
+        }
+      },
+      "required": ["email", "name"]
+    },
+    "Transaction": {
+      "title": "Transaction",
+      "description": "Financial income or expense transaction",
+      "type": "object",
+      "properties": {
+        "descricao": {
+          "type": "string",
+          "maxLength": 250,
+          "description": "Description of the transaction"
+        },
+        "valor": {
+          "type": "number",
+          "description": "Monetary value of the transaction"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Date of transaction in YYYY-MM-DD format"
+        },
+        "categoria": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Category name"
+        },
+        "tipoItem": {
+          "type": "string",
+          "enum": ["despesa", "receita"],
+          "description": "Expense or income"
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Associated bank account ID"
+        },
+        "faturaMes": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Invoice month reference for credit card purchases"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID who owns this transaction"
+        },
+        "created_at": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Creation timestamp ISO string"
+        }
+      },
+      "required": ["descricao", "valor", "data", "categoria", "tipoItem", "userId"]
+    },
+    "Project": {
+      "title": "Project",
+      "description": "Financial goal or dream project",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "maxLength": 120,
+          "description": "Project title or goal name"
+        },
+        "valor": {
+          "type": "number",
+          "description": "Target monetary goal"
+        },
+        "dataAlvo": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Target date in YYYY-MM-DD format"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["nome", "valor", "dataAlvo", "userId"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "Custom transaction category",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Category name"
+        },
+        "tipo": {
+          "type": "string",
+          "enum": ["despesa", "receita"],
+          "description": "Category type"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        }
+      },
+      "required": ["nome", "tipo", "userId"]
+    },
+    "BankAccount": {
+      "title": "BankAccount",
+      "description": "Bank account or credit card configuration",
+      "type": "object",
+      "properties": {
+        "nome": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Bank or account name"
+        },
+        "tipo": {
+          "type": "string",
+          "enum": ["corrente", "credito", "poupanca", "investimento"],
+          "description": "Account type"
+        },
+        "saldoInicial": {
+          "type": "number",
+          "description": "Starting balance"
+        },
+        "cor": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Badge color CSS class"
+        },
+        "limiteCredito": {
+          "type": "number",
+          "description": "Credit limit for credit cards"
+        },
+        "diaFechamento": {
+          "type": "number",
+          "description": "Closing day of billing cycle"
+        },
+        "diaVencimento": {
+          "type": "number",
+          "description": "Payment due day"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        }
+      },
+      "required": ["nome", "tipo", "saldoInicial", "userId"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile documents"
+    },
+    "/users/{userId}/transactions/{transactionId}": {
+      "schema": "Transaction",
+      "description": "User financial transactions"
+    },
+    "/users/{userId}/projects/{projectId}": {
+      "schema": "Project",
+      "description": "User financial goals and dreams"
+    },
+    "/users/{userId}/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "User custom categories"
+    },
+    "/users/{userId}/accounts/{accountId}": {
+      "schema": "BankAccount",
+      "description": "User bank accounts"
+    }
+  }
+}

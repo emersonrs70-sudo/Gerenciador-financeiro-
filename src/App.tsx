@@ -2,15 +2,24 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
-  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles
+  ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles,
+  Cloud, RefreshCw, LogIn, LogOut
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
 } from './types';
 import {
-  supabase, testConnection, DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
+  auth, db, testConnection, loginWithGoogle, logoutUser,
+  DEFAULT_CATEGORIES_DESPESA, DEFAULT_CATEGORIES_RECEITA,
   DEFAULT_DESPESAS, DEFAULT_RECEITAS, DEFAULT_PROJETOS, getLocal, saveLocal
-} from './lib/supabase';
+} from './lib/firebase';
+import {
+  migrateLocalDataToFirestore, subscribeToUserFinance,
+  addTransactionToFirestore, batchAddTransactionsToFirestore,
+  deleteTransactionFromFirestore, updateTransactionInFirestore,
+  addProjectToFirestore, deleteProjectFromFirestore
+} from './lib/dataSync';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
 import { MetricCard } from './components/MetricCard';
 import { SubPanels } from './components/SubPanels';
@@ -136,8 +145,10 @@ export default function App() {
   const [mobileTabActive, setMobileTabActive] = useState<'dashboard' | 'transacoes' | 'planejador'>('dashboard');
   const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
 
-  // Supabase connection status
+  // Firebase Cloud & Network status
   const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(() => auth.currentUser);
+  const [isSyncingFirebase, setIsSyncingFirebase] = useState<boolean>(false);
 
   // PWA install prompt handler
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -261,264 +272,144 @@ export default function App() {
     );
   };
 
-  // 1. Initial Data Fetching from Supabase, mirroring to local storage
+  // 1. Initial Data Fetching and Firebase Authentication Listener
   useEffect(() => {
-    async function initData() {
-      // Set initial HTML Dark Mode class matching isDarkMode state
-      if (isDarkMode) {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-
-      const connected = await testConnection();
-      setIsOnline(connected);
-
-      if (!currentUser) return;
-
-      let fetchedDespesas: Transaction[] = [];
-      let fetchedReceitas: Transaction[] = [];
-      let fetchedProjetos: Project[] = [];
-      let fetchedCategoriasDespesa: string[] = [...DEFAULT_CATEGORIES_DESPESA];
-      let fetchedCategoriasReceita: string[] = [...DEFAULT_CATEGORIES_RECEITA];
-
-      const cachedCategoriasDespesa = getLocal<string[]>(`local_categorias_despesa_${currentUser.email}`, DEFAULT_CATEGORIES_DESPESA);
-      const cachedCategoriasReceita = getLocal<string[]>(`local_categorias_receita_${currentUser.email}`, DEFAULT_CATEGORIES_RECEITA);
-
-      if (connected) {
-        try {
-          // Fetch despesas first
-          const { data: despData } = await supabase.from('fin_despesas').select('*');
-          if (despData) {
-            fetchedDespesas = despData
-              .filter(d => {
-                const desc = d.descricao || '';
-                if (desc.startsWith('__profile__ |')) return false;
-                const match = desc.match(/(.*?) \| user:(.*)/);
-                if (match) {
-                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
-                }
-                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
-              })
-              .map(d => parseTransactionFromDb(d, 'despesa'));
-          }
-
-          // Fetch receitas
-          const { data: recData } = await supabase.from('fin_receitas').select('*');
-          if (recData) {
-            fetchedReceitas = recData
-              .filter(r => {
-                const desc = r.descricao || '';
-                const match = desc.match(/(.*?) \| user:(.*)/);
-                if (match) {
-                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
-                }
-                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
-              })
-              .map(r => parseTransactionFromDb(r, 'receita'));
-          }
-
-          // Fetch custom categories
-          const { data: catData } = await supabase.from('fin_categorias').select('nome');
-          if (catData && catData.length > 0) {
-            const dbNames = catData.map((c) => c.nome);
-            const newDespesaSet = new Set([...DEFAULT_CATEGORIES_DESPESA]);
-            const newReceitaSet = new Set([...DEFAULT_CATEGORIES_RECEITA]);
-
-            dbNames.forEach((name) => {
-              if (DEFAULT_CATEGORIES_RECEITA.includes(name)) {
-                newReceitaSet.add(name);
-              } else if (DEFAULT_CATEGORIES_DESPESA.includes(name)) {
-                newDespesaSet.add(name);
-              } else {
-                const isCachedReceita = cachedCategoriasReceita.includes(name);
-                const isCachedDespesa = cachedCategoriasDespesa.includes(name);
-                if (isCachedReceita && !isCachedDespesa) {
-                  newReceitaSet.add(name);
-                } else if (isCachedDespesa && !isCachedReceita) {
-                  newDespesaSet.add(name);
-                } else {
-                  const usedInReceitas = fetchedReceitas.some((r) => r.categoria === name);
-                  const usedInDespesas = fetchedDespesas.some((d) => d.categoria === name);
-                  if (usedInReceitas) {
-                    newReceitaSet.add(name);
-                  } else if (usedInDespesas) {
-                    newDespesaSet.add(name);
-                  } else {
-                    newDespesaSet.add(name);
-                  }
-                }
-              }
-            });
-
-            fetchedCategoriasDespesa = [...newDespesaSet];
-            fetchedCategoriasReceita = [...newReceitaSet];
-          }
-
-          // Fetch projects
-          const { data: projData } = await supabase.from('fin_projetos').select('*');
-          if (projData) {
-            fetchedProjetos = projData
-              .filter(p => {
-                const name = p.nome || '';
-                const match = name.match(/(.*?) \| user:(.*)/);
-                if (match) {
-                  return match[2].trim().toLowerCase() === currentUser.email.trim().toLowerCase();
-                }
-                return currentUser.email.trim().toLowerCase() === 'emersonrs70@gmail.com';
-              })
-              .map(p => {
-                const name = p.nome || '';
-                const match = name.match(/(.*?) \| user:(.*)/);
-                return {
-                  ...p,
-                  nome: match ? match[1].trim() : name
-                };
-              });
-          }
-
-          showToast('Sincronizado com Supabase com sucesso!', 'sucesso');
-        } catch (err) {
-          console.error('Err fetching from Supabase tables:', err);
-          showToast('Erro ao sincronizar, usando dados locais.', 'erro');
-        }
-      }
-
-      // If online fetched arrays are empty AND we have no local cache, seed with defaults so the user has an operational starting screen
-      const cachedDespesas = getLocal<Transaction[]>(`local_despesas_${currentUser.email}`, []);
-      const cachedReceitas = getLocal<Transaction[]>(`local_receitas_${currentUser.email}`, []);
-      const cachedProjects = getLocal<Project[]>(`local_projects_${currentUser.email}`, []);
-
-      const hasInitialized = localStorage.getItem(`fintech_initialized_${currentUser.email}`) === 'true';
-      let finalDespesas: Transaction[] = [];
-      let finalReceitas: Transaction[] = [];
-      let finalProjects: Project[] = [];
-      let finalCategoriasDespesa: string[] = [];
-      let finalCategoriasReceita: string[] = [];
-
-      if (!hasInitialized) {
-        if (connected) {
-          if (fetchedDespesas.length === 0 && fetchedReceitas.length === 0 && fetchedProjetos.length === 0) {
-            // Seed to Supabase with proper format
-            const baseTime = Date.now();
-            const despesasToSeed = DEFAULT_DESPESAS.map(({ tipoItem, ...rest }, index) => {
-              let accountId = 'santander';
-              let faturaMes = undefined;
-              if (index === 2 || index === 3) {
-                accountId = 'santander-cartao';
-                faturaMes = '2026-07';
-              }
-              const seedCreatedAt = new Date(baseTime + index * 1000).toISOString();
-              const descWithAcc = `${rest.descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''} [created:${seedCreatedAt}]`;
-              return {
-                id: safeRandomUUID(),
-                descricao: `${descWithAcc} | user:${currentUser.email}`,
-                valor: rest.valor,
-                data: rest.data,
-                categoria: rest.categoria
-              };
-            });
-            const receitasToSeed = DEFAULT_RECEITAS.map(({ tipoItem, ...rest }, index) => {
-              let accountId = 'santander';
-              const seedCreatedAt = new Date(baseTime + (index + despesasToSeed.length) * 1000).toISOString();
-              const descWithAcc = `${rest.descricao} [acc:${accountId}] [created:${seedCreatedAt}]`;
-              return {
-                id: safeRandomUUID(),
-                descricao: `${descWithAcc} | user:${currentUser.email}`,
-                valor: rest.valor,
-                data: rest.data,
-                categoria: rest.categoria
-              };
-            });
-            const projetosToSeed = DEFAULT_PROJETOS.map(p => ({
-              ...p,
-              id: safeRandomUUID(),
-              nome: `${p.nome} | user:${currentUser.email}`
-            }));
-
-            fetchedDespesas = despesasToSeed.map(d => parseTransactionFromDb(d, 'despesa'));
-            fetchedReceitas = receitasToSeed.map(r => parseTransactionFromDb(r, 'receita'));
-            fetchedProjetos = projetosToSeed.map(p => ({ ...p, nome: p.nome.split(' | user:')[0] }));
-            fetchedCategoriasDespesa = [...DEFAULT_CATEGORIES_DESPESA];
-            fetchedCategoriasReceita = [...DEFAULT_CATEGORIES_RECEITA];
-
-            await Promise.all([
-              supabase.from('fin_despesas').insert(despesasToSeed),
-              supabase.from('fin_receitas').insert(receitasToSeed),
-              supabase.from('fin_projetos').insert(projetosToSeed)
-            ]).catch(err => console.warn('Supabase initial seed error:', err));
-          }
-          finalDespesas = fetchedDespesas;
-          finalReceitas = fetchedReceitas;
-          finalProjects = fetchedProjetos;
-          finalCategoriasDespesa = fetchedCategoriasDespesa;
-          finalCategoriasReceita = fetchedCategoriasReceita;
-        } else {
-          // Offline and first load, fallback to defaults with standard random UUIDs
-          const baseTime = Date.now();
-          finalDespesas = cachedDespesas.length > 0 ? cachedDespesas : DEFAULT_DESPESAS.map((d, index) => {
-            let accountId = 'santander';
-            let faturaMes = undefined;
-            if (index === 2 || index === 3) {
-              accountId = 'santander-cartao';
-              faturaMes = '2026-07';
-            }
-            return {
-              ...d,
-              id: safeRandomUUID(),
-              accountId,
-              faturaMes,
-              created_at: new Date(baseTime + index * 1000).toISOString()
-            };
-          });
-          finalReceitas = cachedReceitas.length > 0 ? cachedReceitas : DEFAULT_RECEITAS.map((r, index) => {
-            let accountId = 'santander';
-            return {
-              ...r,
-              id: safeRandomUUID(),
-              accountId,
-              created_at: new Date(baseTime + (index + 10) * 1000).toISOString()
-            };
-          });
-          finalProjects = cachedProjects.length > 0 ? cachedProjects : DEFAULT_PROJETOS.map(p => ({ ...p, id: safeRandomUUID() }));
-          finalCategoriasDespesa = cachedCategoriasDespesa.length > 0 ? cachedCategoriasDespesa : DEFAULT_CATEGORIES_DESPESA;
-          finalCategoriasReceita = cachedCategoriasReceita.length > 0 ? cachedCategoriasReceita : DEFAULT_CATEGORIES_RECEITA;
-        }
-        localStorage.setItem(`fintech_initialized_${currentUser.email}`, 'true');
-      } else {
-        // App is already initialized. We strictly respect the direct state (even if empty lists).
-        if (connected) {
-          finalDespesas = fetchedDespesas;
-          finalReceitas = fetchedReceitas;
-          finalProjects = fetchedProjetos;
-          finalCategoriasDespesa = fetchedCategoriasDespesa;
-          finalCategoriasReceita = fetchedCategoriasReceita;
-        } else {
-          finalDespesas = cachedDespesas;
-          finalReceitas = cachedReceitas;
-          finalProjects = cachedProjects;
-          finalCategoriasDespesa = cachedCategoriasDespesa;
-          finalCategoriasReceita = cachedCategoriasReceita;
-        }
-      }
-
-      const finalTransactions = [...finalDespesas, ...finalReceitas];
-
-      setTransactions(finalTransactions);
-      setCategoriasDespesa(finalCategoriasDespesa);
-      setCategoriasReceita(finalCategoriasReceita);
-      setProjects(finalProjects);
-
-      // Save to local storage for subsequent offline entries
-      saveLocal(`local_despesas_${currentUser.email}`, finalTransactions.filter(t => t.tipoItem === 'despesa'));
-      saveLocal(`local_receitas_${currentUser.email}`, finalTransactions.filter(t => t.tipoItem === 'receita'));
-      saveLocal(`local_projects_${currentUser.email}`, finalProjects);
-      saveLocal(`local_categorias_despesa_${currentUser.email}`, finalCategoriasDespesa);
-      saveLocal(`local_categorias_receita_${currentUser.email}`, finalCategoriasReceita);
+    // Set initial HTML Dark Mode class matching isDarkMode state
+    if (isDarkMode) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
     }
 
-    initData();
-  }, [currentUser]);
+    testConnection().then((connected) => {
+      setIsOnline(connected);
+    });
+
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+      if (user) {
+        setFirebaseUser(user);
+        const userProfile = {
+          email: user.email || 'emersonrs70@gmail.com',
+          name: user.displayName || user.email?.split('@')[0] || 'Emerson'
+        };
+        setCurrentUser(userProfile);
+        saveLocal('fintech_current_user', userProfile);
+        setIsOnline(true);
+        setIsSyncingFirebase(true);
+
+        try {
+          const { migratedCount } = await migrateLocalDataToFirestore(user.uid, user.email || '', (msg) => {
+            showToast(msg, 'info');
+          });
+          if (migratedCount > 0) {
+            showToast(`${migratedCount} registros sincronizados com Firebase Firestore! ☁️`, 'sucesso');
+          }
+        } catch (e) {
+          console.warn('Migration to Firebase error:', e);
+        } finally {
+          setIsSyncingFirebase(false);
+        }
+      } else {
+        setFirebaseUser(null);
+        // Load local cache for personal user
+        const cachedDesp = getLocal<Transaction[]>(`local_despesas_${currentUser.email}`, []);
+        const cachedRec = getLocal<Transaction[]>(`local_receitas_${currentUser.email}`, []);
+        const cachedProj = getLocal<Project[]>(`local_projects_${currentUser.email}`, []);
+        const cachedCatDesp = getLocal<string[]>(`local_categorias_despesa_${currentUser.email}`, DEFAULT_CATEGORIES_DESPESA);
+        const cachedCatRec = getLocal<string[]>(`local_categorias_receita_${currentUser.email}`, DEFAULT_CATEGORIES_RECEITA);
+
+        if (cachedDesp.length === 0 && cachedRec.length === 0 && !localStorage.getItem(`fintech_initialized_${currentUser.email}`)) {
+          // Initialize with default template data
+          const baseTime = Date.now();
+          const initDesp = DEFAULT_DESPESAS.map((d, index) => ({
+            ...d,
+            id: safeRandomUUID(),
+            accountId: (index === 2 || index === 3) ? 'santander-cartao' : 'santander',
+            faturaMes: (index === 2 || index === 3) ? '2026-07' : undefined,
+            created_at: new Date(baseTime + index * 1000).toISOString()
+          }));
+          const initRec = DEFAULT_RECEITAS.map((r, index) => ({
+            ...r,
+            id: safeRandomUUID(),
+            accountId: 'santander',
+            created_at: new Date(baseTime + (index + 10) * 1000).toISOString()
+          }));
+          const initProj = DEFAULT_PROJETOS.map(p => ({ ...p, id: safeRandomUUID() }));
+          setTransactions([...initDesp, ...initRec]);
+          setProjects(initProj);
+          setCategoriasDespesa(DEFAULT_CATEGORIES_DESPESA);
+          setCategoriasReceita(DEFAULT_CATEGORIES_RECEITA);
+          saveLocal(`local_despesas_${currentUser.email}`, initDesp);
+          saveLocal(`local_receitas_${currentUser.email}`, initRec);
+          saveLocal(`local_projects_${currentUser.email}`, initProj);
+          localStorage.setItem(`fintech_initialized_${currentUser.email}`, 'true');
+        } else {
+          setTransactions([...cachedDesp, ...cachedRec]);
+          setProjects(cachedProj);
+          setCategoriasDespesa(cachedCatDesp);
+          setCategoriasReceita(cachedCatRec);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, [isDarkMode]);
+
+  // 2. Real-time Firestore sync subscriber for authenticated user
+  useEffect(() => {
+    if (!firebaseUser) return;
+
+    const unsubscribe = subscribeToUserFinance(firebaseUser.uid, {
+      onTransactions: (liveTransactions) => {
+        if (liveTransactions.length > 0) {
+          setTransactions(liveTransactions);
+          saveLocal(`local_despesas_${currentUser.email}`, liveTransactions.filter(t => t.tipoItem === 'despesa'));
+          saveLocal(`local_receitas_${currentUser.email}`, liveTransactions.filter(t => t.tipoItem === 'receita'));
+        }
+      },
+      onProjects: (liveProjects) => {
+        if (liveProjects.length > 0) {
+          setProjects(liveProjects);
+          saveLocal(`local_projects_${currentUser.email}`, liveProjects);
+        }
+      },
+      onAccounts: (liveAccounts) => {
+        if (liveAccounts.length > 0) {
+          setAccounts(liveAccounts);
+          saveLocal('local_bank_accounts', liveAccounts);
+        }
+      },
+      onError: (err) => {
+        console.warn('Real-time sync notice:', err);
+      }
+    });
+
+    return () => unsubscribe();
+  }, [firebaseUser, currentUser.email]);
+
+  // Google Login and Logout triggers
+  const handleGoogleLogin = async () => {
+    try {
+      setIsSyncingFirebase(true);
+      const user = await loginWithGoogle();
+      showToast(`Bem-vindo, ${user.displayName || 'Usuário'}! Conectado ao Firebase.`, 'sucesso');
+    } catch (err: any) {
+      console.error('Google Sign-in error:', err);
+      showToast('Falha ao autenticar com o Google.', 'erro');
+    } finally {
+      setIsSyncingFirebase(false);
+    }
+  };
+
+  const handleGoogleLogout = async () => {
+    try {
+      await logoutUser();
+      setFirebaseUser(null);
+      showToast('Desconectado do Firebase.', 'info');
+    } catch (err) {
+      console.error('Logout error:', err);
+    }
+  };
 
   // Theme support toggler
   const toggleTheme = () => {
@@ -567,16 +458,6 @@ export default function App() {
 
   // Add category handler
   const handleAddCategory = async (nome: string, tipoItem: 'despesa' | 'receita') => {
-    let success = false;
-    if (isOnline) {
-      try {
-        const { error } = await supabase.from('fin_categorias').insert([{ nome }]);
-        if (!error) success = true;
-      } catch (err) {
-        console.warn('Could not insert category on Supabase, fallback locally:', err);
-      }
-    }
-
     if (tipoItem === 'despesa') {
       const updated = [...categoriasDespesa, nome];
       setCategoriasDespesa(updated);
@@ -612,27 +493,16 @@ export default function App() {
       created_at: new Date().toISOString()
     };
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { tipoItem: _, accountId: _acc, faturaMes: _fat, created_at: _cat, ...dbTransaction } = newTransaction;
-        const serializedDesc = `${descricao} [acc:${accountId}]${faturaMes ? ` [bill:${faturaMes}]` : ''}${newTransaction.created_at ? ` [created:${newTransaction.created_at}]` : ''}`;
-        const dbTransactionWithUser = {
-          ...dbTransaction,
-          descricao: `${serializedDesc} | user:${currentUser!.email}`
-        };
-        const { error } = await supabase.from(table).insert([dbTransactionWithUser]);
-        if (error) {
-          console.warn('Supabase insertion error, proceeding local-only:', error);
-        }
+        await addTransactionToFirestore(firebaseUser.uid, newTransaction);
       } catch (err) {
-        console.warn('Supabase offline or table schema issue, fallback local:', err);
+        console.warn('Firebase transaction insertion error, saving locally:', err);
       }
     }
 
     setTransactions(prev => {
       const updated = [...prev, newTransaction];
-      // Filter and update local caches
       saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
       saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
       return updated;
@@ -677,40 +547,11 @@ export default function App() {
       };
     });
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const despesasToInsert = createdTransactions
-          .filter(t => t.tipoItem === 'despesa')
-          .map(t => {
-            const serializedDesc = `${t.descricao} [acc:${t.accountId}]${t.faturaMes ? ` [bill:${t.faturaMes}]` : ''} [created:${t.created_at}]`;
-            return {
-              id: t.id,
-              descricao: `${serializedDesc} | user:${currentUser!.email}`,
-              valor: t.valor,
-              data: t.data,
-              categoria: t.categoria
-            };
-          });
-
-        const receitasToInsert = createdTransactions
-          .filter(t => t.tipoItem === 'receita')
-          .map(t => {
-            const serializedDesc = `${t.descricao} [acc:${t.accountId}]${t.faturaMes ? ` [bill:${t.faturaMes}]` : ''} [created:${t.created_at}]`;
-            return {
-              id: t.id,
-              descricao: `${serializedDesc} | user:${currentUser!.email}`,
-              valor: t.valor,
-              data: t.data,
-              categoria: t.categoria
-            };
-          });
-
-        await Promise.all([
-          despesasToInsert.length > 0 ? supabase.from('fin_despesas').insert(despesasToInsert) : Promise.resolve(),
-          receitasToInsert.length > 0 ? supabase.from('fin_receitas').insert(receitasToInsert) : Promise.resolve()
-        ]);
+        await batchAddTransactionsToFirestore(firebaseUser.uid, createdTransactions);
       } catch (err) {
-        console.warn('Batch insert Supabase error, fallback local:', err);
+        console.warn('Batch insert Firebase error, fallback local:', err);
       }
     }
 
@@ -733,15 +574,11 @@ export default function App() {
   const handleDeleteTransaction = async (id: string, tipoItem: 'despesa' | 'receita') => {
     if (!window.confirm('Deseja remover este lançamento permanentemente?')) return;
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { error } = await supabase.from(table).delete().eq('id', id);
-        if (error) {
-          console.warn('Supabase delete error:', error);
-        }
+        await deleteTransactionFromFirestore(firebaseUser.uid, id);
       } catch (err) {
-        console.warn('Supabase connectivity issue during delete, fallback local:', err);
+        console.warn('Firebase delete error, fallback local:', err);
       }
     }
 
@@ -760,36 +597,28 @@ export default function App() {
     tipoItem: 'despesa' | 'receita',
     updatedData: { descricao: string; valor: number; data: string; categoria: string; accountId?: string; faturaMes?: string }
   ) => {
-    const accId = updatedData.accountId || 'geral';
-    const fatStr = updatedData.faturaMes || '';
-    const serializedDesc = `${updatedData.descricao} [acc:${accId}]${fatStr ? ` [bill:${fatStr}]` : ''}`;
+    const existing = transactions.find(t => t.id === id);
+    const updatedTransaction: Transaction = {
+      id,
+      descricao: updatedData.descricao,
+      valor: updatedData.valor,
+      data: updatedData.data,
+      categoria: updatedData.categoria,
+      tipoItem,
+      accountId: updatedData.accountId || existing?.accountId || 'santander',
+      faturaMes: updatedData.faturaMes || existing?.faturaMes,
+      created_at: existing?.created_at || new Date().toISOString()
+    };
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const table = tipoItem === 'despesa' ? 'fin_despesas' : 'fin_receitas';
-        const { error } = await supabase
-          .from(table)
-          .update({
-            descricao: `${serializedDesc} | user:${currentUser!.email}`,
-            valor: updatedData.valor,
-            data: updatedData.data,
-            categoria: updatedData.categoria
-          })
-          .eq('id', id);
-        if (error) {
-          console.warn('Supabase update error:', error);
-        }
+        await updateTransactionInFirestore(firebaseUser.uid, updatedTransaction);
       } catch (err) {
-        console.warn('Supabase connectivity issue during update, fallback local:', err);
+        console.warn('Firebase update error, fallback local:', err);
       }
     }
 
-    const updated = transactions.map((t) => {
-      if (t.id === id) {
-        return { ...t, ...updatedData };
-      }
-      return t;
-    });
+    const updated = transactions.map((t) => (t.id === id ? updatedTransaction : t));
     setTransactions(updated);
 
     saveLocal(`local_despesas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'despesa'));
@@ -808,16 +637,11 @@ export default function App() {
       dataAlvo
     };
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const dbProject = {
-          ...newProj,
-          nome: `${nome} | user:${currentUser!.email}`
-        };
-        const { error } = await supabase.from('fin_projetos').insert([dbProject]);
-        if (error) console.warn('Supabase projects insertion error:', error);
+        await addProjectToFirestore(firebaseUser.uid, newProj);
       } catch (err) {
-        console.warn('Could not insert project on Supabase, fallback local:', err);
+        console.warn('Could not insert project on Firebase, fallback local:', err);
       }
     }
 
@@ -832,12 +656,11 @@ export default function App() {
   const handleDeleteProject = async (id: string) => {
     if (!window.confirm('Tem certeza que deseja apagar essa meta do seu planejador de sonhos?')) return;
 
-    if (isOnline) {
+    if (firebaseUser) {
       try {
-        const { error } = await supabase.from('fin_projetos').delete().eq('id', id);
-        if (error) console.warn('Supabase dream deletion error:', error);
+        await deleteProjectFromFirestore(firebaseUser.uid, id);
       } catch (err) {
-        console.warn('Supabase project delete issue, fallback local:', err);
+        console.warn('Firebase project delete issue, fallback local:', err);
       }
     }
 
@@ -1254,6 +1077,41 @@ export default function App() {
         <Sparkles className="w-3.5 h-3.5 text-zinc-600 dark:text-zinc-400" />
         <span>Importar Extrato Bancário</span>
       </button>
+
+      {/* Cloud Sync Status */}
+      <div className="p-3 rounded-xl border border-zinc-200/80 dark:border-[#27272A] bg-zinc-50/50 dark:bg-[#141416] text-xs space-y-1.5">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-1.5">
+            <Cloud className={`w-3.5 h-3.5 ${firebaseUser ? 'text-emerald-500' : 'text-amber-500'}`} />
+            <span className="font-bold text-zinc-800 dark:text-zinc-200">
+              {firebaseUser ? 'Firebase Firestore' : 'Armazenamento'}
+            </span>
+          </div>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-bold ${
+            firebaseUser 
+              ? 'bg-emerald-100 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400' 
+              : 'bg-amber-100 dark:bg-amber-950/60 text-amber-700 dark:text-amber-400'
+          }`}>
+            {firebaseUser ? 'Nuvem Ativa' : 'Local'}
+          </span>
+        </div>
+        <p className="text-[10px] text-zinc-500 dark:text-zinc-400 leading-tight">
+          {firebaseUser 
+            ? `Sincronizando em tempo real com ${firebaseUser.email || currentUser.email}. Multi-aparelhos ativo.`
+            : 'Conecte sua conta Google para sincronizar automaticamente todas as transações no Firebase entre seus aparelhos.'
+          }
+        </p>
+        {!firebaseUser && (
+          <button
+            onClick={handleGoogleLogin}
+            disabled={isSyncingFirebase}
+            className="w-full mt-1.5 py-1.5 px-2 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-lg font-bold text-[11px] flex items-center justify-center gap-1.5 cursor-pointer transition-all active:scale-95"
+          >
+            {isSyncingFirebase ? <RefreshCw className="w-3 h-3 animate-spin" /> : <Cloud className="w-3 h-3 text-amber-400 dark:text-amber-500" />}
+            <span>{isSyncingFirebase ? 'Sincronizando...' : 'Conectar ao Firebase (Google)'}</span>
+          </button>
+        )}
+      </div>
     </div>
   );
 
@@ -1313,8 +1171,8 @@ export default function App() {
                 </h1>
               </div>
               <span
-                className={`inline-block w-2 h-2 rounded-full ml-0.5 ${isOnline ? 'bg-emerald-500' : 'bg-amber-500'}`}
-                title={isOnline ? 'Supabase Conectado' : 'Modo Local Ativo'}
+                className={`inline-block w-2 h-2 rounded-full ml-0.5 ${firebaseUser ? 'bg-emerald-500' : isOnline ? 'bg-blue-500' : 'bg-amber-500'}`}
+                title={firebaseUser ? 'Firebase Firestore Conectado (Nuvem em Tempo Real)' : isOnline ? 'Firebase Disponível' : 'Modo Local Ativo'}
               />
             </div>
 
@@ -1338,6 +1196,22 @@ export default function App() {
               >
                 <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
                 <span>{streak}</span>
+              </button>
+
+              <button
+                onClick={firebaseUser ? handleGoogleLogout : handleGoogleLogin}
+                className={`flex items-center gap-1 px-2 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer ${
+                  firebaseUser
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-600 dark:text-emerald-400'
+                    : 'bg-zinc-100 dark:bg-[#1A1A1E] text-zinc-500 dark:text-zinc-400 border-zinc-200/80 dark:border-[#27272A]'
+                }`}
+                title={firebaseUser ? `Conectado ao Firebase (${firebaseUser.displayName || currentUser.name}). Toque para desconectar.` : 'Conectar ao Firebase com o Google'}
+              >
+                {isSyncingFirebase ? (
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Cloud className={`w-3.5 h-3.5 ${firebaseUser ? 'text-emerald-500' : ''}`} />
+                )}
               </button>
             </div>
           </div>
@@ -1402,11 +1276,32 @@ export default function App() {
 
             {/* Desktop Actions Only */}
             <div className="hidden sm:flex items-center gap-2.5">
-              {currentUser && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-100 dark:bg-[#1A1A1E] border border-zinc-200/80 dark:border-[#27272A] rounded-xl text-xs font-semibold text-zinc-700 dark:text-zinc-300">
-                  <User className="w-3.5 h-3.5 text-zinc-500" />
-                  <span>{currentUser.name}</span>
+              {firebaseUser ? (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-300 dark:border-emerald-800 rounded-xl text-xs font-semibold text-emerald-800 dark:text-emerald-300">
+                  <Cloud className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <span className="truncate max-w-[120px]">{firebaseUser.displayName || currentUser.name}</span>
+                  <button
+                    onClick={handleGoogleLogout}
+                    title="Desconectar Firebase"
+                    className="p-0.5 hover:bg-emerald-200/50 dark:hover:bg-emerald-900/50 rounded-md transition-colors cursor-pointer text-emerald-700 dark:text-emerald-300 ml-0.5"
+                  >
+                    <LogOut className="w-3 h-3" />
+                  </button>
                 </div>
+              ) : (
+                <button
+                  onClick={handleGoogleLogin}
+                  disabled={isSyncingFirebase}
+                  title="Conectar com o Google para sincronizar em tempo real com o Firebase Firestore"
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-white text-white dark:text-zinc-950 rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                >
+                  {isSyncingFirebase ? (
+                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Cloud className="w-3.5 h-3.5 text-amber-400 dark:text-amber-500" />
+                  )}
+                  <span>{isSyncingFirebase ? 'Sincronizando...' : 'Conectar Firebase'}</span>
+                </button>
               )}
 
               {/* FLAME STREAK DIARIO METEORS */}

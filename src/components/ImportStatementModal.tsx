@@ -6,7 +6,8 @@ import {
 } from 'lucide-react';
 import { Transaction, BankAccount, safeRandomUUID, getBillMonthForDate } from '../types';
 import {
-  ParsedItem, parseSantanderStatement, parseAnyBankStatement, parseOFXStatement, parseCSVStatement
+  ParsedItem, parseSantanderStatement, parseAnyBankStatement, parseOFXStatement, parseCSVStatement,
+  cleanStatementIntroAndJunk
 } from '../lib/statementParser';
 import { extractTextFromPdf, isPdfBuffer } from '../lib/pdfTextExtractor';
 
@@ -55,6 +56,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const [isProcessing, setIsProcessing] = useState(false);
   const [processingStatus, setProcessingStatus] = useState<string>('');
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [cleanedInfo, setCleanedInfo] = useState<{ removedCount: number; period?: string } | null>(null);
 
   // Parsed review items
   const [parsedItems, setParsedItems] = useState<ParsedItem[]>([]);
@@ -72,18 +74,31 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
   const processRawText = (text: string, fileType: 'pdf' | 'ofx' | 'csv' | 'text' = 'text') => {
     setIsProcessing(true);
     setErrorMessage(null);
-    setLastExtractedText(text);
+
+    let textToProcess = text;
+    if (fileType !== 'ofx' && fileType !== 'csv') {
+      const cleanRes = cleanStatementIntroAndJunk(text);
+      if (cleanRes.removedLinesCount > 0) {
+        setCleanedInfo({
+          removedCount: cleanRes.removedLinesCount,
+          period: cleanRes.detectedPeriod
+        });
+        textToProcess = cleanRes.cleanedText.length > 20 ? cleanRes.cleanedText : text;
+      }
+    }
+
+    setLastExtractedText(textToProcess);
 
     try {
       let items: ParsedItem[] = [];
 
-      if (fileType === 'ofx' || text.includes('<OFX>') || text.includes('<STMTTRN>')) {
-        items = parseOFXStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
-      } else if (fileType === 'csv' || (text.includes(';') && text.includes('\n'))) {
-        items = parseCSVStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
+      if (fileType === 'ofx' || textToProcess.includes('<OFX>') || textToProcess.includes('<STMTTRN>')) {
+        items = parseOFXStatement(textToProcess, existingTransactions, categoriasDespesa, categoriasReceita);
+      } else if (fileType === 'csv' || (textToProcess.includes(';') && textToProcess.includes('\n'))) {
+        items = parseCSVStatement(textToProcess, existingTransactions, categoriasDespesa, categoriasReceita);
       } else {
         // Multi-tier parser: Santander -> Universal Brazilian Bank -> Relaxed Multi-line
-        items = parseAnyBankStatement(text, existingTransactions, categoriasDespesa, categoriasReceita);
+        items = parseAnyBankStatement(textToProcess, existingTransactions, categoriasDespesa, categoriasReceita);
       }
 
       if (items.length === 0) {
@@ -108,6 +123,7 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
     setIsProcessing(true);
     setProcessingStatus(`Lendo arquivo "${file.name}" (${(file.size / 1024).toFixed(0)} KB)...`);
     setErrorMessage(null);
+    setCleanedInfo(null);
 
     try {
       const arrayBuffer = await file.arrayBuffer();
@@ -115,11 +131,17 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       const isPdf = fileName.endsWith('.pdf') || file.type.toLowerCase().includes('pdf') || isPdfBuffer(arrayBuffer);
 
       if (isPdf) {
-        setProcessingStatus('Extraindo páginas e linhas do PDF...');
+        setProcessingStatus('Extraindo páginas e excluindo dados de apresentação...');
         const extractedText = await extractTextFromPdf(arrayBuffer);
-        setLastExtractedText(extractedText);
+        const cleanRes = cleanStatementIntroAndJunk(extractedText);
+        setCleanedInfo({
+          removedCount: cleanRes.removedLinesCount,
+          period: cleanRes.detectedPeriod
+        });
+        const finalTxt = cleanRes.cleanedText.length > 20 ? cleanRes.cleanedText : extractedText;
+        setLastExtractedText(finalTxt);
         setProcessingStatus('Analisando transações e cruzando dados...');
-        processRawText(extractedText, 'pdf');
+        processRawText(finalTxt, 'pdf');
       } else if (fileName.endsWith('.ofx')) {
         setProcessingStatus('Processando arquivo bancário OFX...');
         const text = new TextDecoder('latin1').decode(arrayBuffer);
@@ -133,8 +155,14 @@ export const ImportStatementModal: React.FC<ImportStatementModalProps> = ({
       } else {
         setProcessingStatus('Processando texto do extrato...');
         const text = new TextDecoder('utf-8').decode(arrayBuffer);
-        setLastExtractedText(text);
-        processRawText(text, 'text');
+        const cleanRes = cleanStatementIntroAndJunk(text);
+        setCleanedInfo({
+          removedCount: cleanRes.removedLinesCount,
+          period: cleanRes.detectedPeriod
+        });
+        const finalTxt = cleanRes.cleanedText.length > 20 ? cleanRes.cleanedText : text;
+        setLastExtractedText(finalTxt);
+        processRawText(finalTxt, 'text');
       }
     } catch (err: any) {
       console.error('Error reading statement file:', err);
@@ -486,17 +514,34 @@ SALDO EM 31/07 8.213,26`;
               {/* TAB 2: PASTE TEXT */}
               {activeTab === 'paste' && (
                 <div className="space-y-4">
-                  <div className="flex justify-between items-center">
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                     <label className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                       Cole aqui o texto do extrato ou da fatura bancária:
                     </label>
-                    <button
-                      onClick={loadExampleSantander}
-                      className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Preencher Exemplo Santander
-                    </button>
+                    <div className="flex items-center gap-3">
+                      {pastedText.trim() && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const res = cleanStatementIntroAndJunk(pastedText);
+                            setPastedText(res.cleanedText);
+                            setCleanedInfo({ removedCount: res.removedLinesCount, period: res.detectedPeriod });
+                          }}
+                          className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline flex items-center gap-1 cursor-pointer"
+                          title="Exclui cabeçalhos, agência, conta, ouvidoria e mensagens institucionais"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          Excluir Apresentação & Cabeçalhos
+                        </button>
+                      )}
+                      <button
+                        onClick={loadExampleSantander}
+                        className="text-xs font-semibold text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:underline flex items-center gap-1 cursor-pointer"
+                      >
+                        <Sparkles className="w-3.5 h-3.5" />
+                        Preencher Exemplo Santander
+                      </button>
+                    </div>
                   </div>
                   <textarea
                     rows={10}
@@ -585,6 +630,19 @@ SALDO EM 31/07 8.213,26`;
           ) : (
             /* PREVIEW AND REVISION SCREEN */
             <div className="space-y-3.5 sm:space-y-4">
+              {/* CLEANED HEADER BANNER */}
+              {cleanedInfo && cleanedInfo.removedCount > 0 && (
+                <div className="flex items-center gap-2.5 px-4 py-2.5 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200/80 dark:border-emerald-900/60 text-emerald-900 dark:text-emerald-200 text-xs">
+                  <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+                  <div className="flex-1">
+                    <span className="font-bold">Apresentação institucional e cabeçalhos excluídos automaticamente: </span>
+                    <span className="text-emerald-700 dark:text-emerald-300">
+                      {cleanedInfo.removedCount} linhas irrelevantes foram filtradas. Somente as movimentações e transações reais foram consideradas{cleanedInfo.period ? ` (${cleanedInfo.period})` : ''}.
+                    </span>
+                  </div>
+                </div>
+              )}
+
               {/* SUMMARY METRIC CARDS */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
                 <div className="bg-zinc-50 dark:bg-[#141416] p-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl border border-zinc-200/80 dark:border-[#27272A]">

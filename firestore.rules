@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Connectivity test path
+    match /test/{testId} {
+      allow get: if true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data) {
+      return data.email is string && data.email.size() > 0 && data.email.size() <= 120
+        && data.name is string && data.name.size() > 0 && data.name.size() <= 100;
+    }
+
+    function isValidTransaction(data, userId) {
+      return data.descricao is string && data.descricao.size() > 0 && data.descricao.size() <= 250
+        && data.valor is number
+        && data.data is string && data.data.size() >= 8 && data.data.size() <= 30
+        && data.categoria is string && data.categoria.size() > 0 && data.categoria.size() <= 80
+        && (data.tipoItem == 'despesa' || data.tipoItem == 'receita')
+        && data.userId == userId;
+    }
+
+    function isValidProject(data, userId) {
+      return data.nome is string && data.nome.size() > 0 && data.nome.size() <= 120
+        && data.valor is number
+        && data.dataAlvo is string && data.dataAlvo.size() >= 8 && data.dataAlvo.size() <= 30
+        && data.userId == userId;
+    }
+
+    function isValidCategory(data, userId) {
+      return data.nome is string && data.nome.size() > 0 && data.nome.size() <= 80
+        && (data.tipo == 'despesa' || data.tipo == 'receita')
+        && data.userId == userId;
+    }
+
+    function isValidBankAccount(data, userId) {
+      return data.nome is string && data.nome.size() > 0 && data.nome.size() <= 80
+        && (data.tipo == 'corrente' || data.tipo == 'credito' || data.tipo == 'poupanca' || data.tipo == 'investimento')
+        && data.saldoInicial is number
+        && data.userId == userId;
+    }
+
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow create, update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
+
+      match /transactions/{transactionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(transactionId) && isValidTransaction(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(transactionId);
+      }
+
+      match /projects/{projectId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(projectId) && isValidProject(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(projectId) && isValidProject(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(projectId);
+      }
+
+      match /categories/{categoryId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(categoryId) && isValidCategory(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(categoryId) && isValidCategory(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(categoryId);
+      }
+
+      match /accounts/{accountId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(accountId) && isValidBankAccount(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(accountId) && isValidBankAccount(incoming(), userId) && incoming().userId == existing().userId;
+        allow delete: if isOwner(userId) && isValidId(accountId);
+      }
+    }
+  }
+}
