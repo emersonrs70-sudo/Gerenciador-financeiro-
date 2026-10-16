@@ -167,7 +167,7 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
           🧾 Faturas por Competência
         </h3>
 
-        <div className="space-y-3">
+        <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
           {sortedBillMonths.map(month => {
             const monthTx = cardTransactions.filter(t => t.faturaMes === month);
             

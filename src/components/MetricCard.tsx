@@ -37,7 +37,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     <button
       id={id}
       onClick={onClick}
-      className={`w-full text-left p-4 sm:p-5 rounded-2xl transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between ${
+      className={`w-full text-left p-3 sm:p-3.5 rounded-2xl transition-all duration-200 cursor-pointer relative overflow-hidden group flex flex-col justify-between ${
         isActive
           ? 'bg-zinc-100/90 dark:bg-[#32323F] border-[#4C4E5D] dark:border-[#BCABA8] ring-2 ring-[#BCABA8]/25 shadow-sm'
           : 'bg-white dark:bg-[#32323F]/80 border border-zinc-200/80 dark:border-[#4C4E5D]/60 hover:border-[#4C4E5D] dark:hover:border-[#988E96]/50 shadow-[0_1px_3px_rgba(0,0,0,0.03)] hover:shadow-sm'
@@ -45,23 +45,23 @@ export const MetricCard: React.FC<MetricCardProps> = ({
     >
       {/* Top Header: Label + Three dots */}
       <div className="flex items-center justify-between w-full">
-        <span className="text-xs font-semibold text-zinc-500 dark:text-[#988E96] tracking-normal truncate">
+        <span className="text-[11px] font-semibold text-zinc-500 dark:text-[#988E96] tracking-normal truncate">
           {title}
         </span>
         <div className="text-zinc-400 dark:text-[#988E96] opacity-60 group-hover:opacity-100 transition-opacity">
-          <MoreHorizontal className="w-4 h-4" />
+          <MoreHorizontal className="w-3.5 h-3.5" />
         </div>
       </div>
 
       {/* Middle: Big Metric Value + Trend Indicator */}
-      <div className="mt-3 flex items-baseline justify-between gap-2 flex-wrap">
-        <span className="text-xl sm:text-2xl font-black text-zinc-900 dark:text-white tracking-tight font-mono tabular-nums">
+      <div className="mt-1.5 flex items-baseline justify-between gap-1.5 flex-wrap">
+        <span className="text-base sm:text-lg font-black text-zinc-900 dark:text-white tracking-tight font-mono tabular-nums">
           {value}
         </span>
 
         {trend && (
           <div
-            className={`flex items-center gap-1 text-[11px] font-bold px-1.5 py-0.5 rounded-md ${
+            className={`flex items-center gap-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-md ${
               trend.neutral
                 ? 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800'
                 : trend.isPositive
@@ -70,9 +70,9 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             }`}
           >
             {trend.neutral ? null : trend.isPositive ? (
-              <TrendingUp className="w-3 h-3" />
+              <TrendingUp className="w-2.5 h-2.5" />
             ) : (
-              <TrendingDown className="w-3 h-3" />
+              <TrendingDown className="w-2.5 h-2.5" />
             )}
             <span>{trend.value}</span>
           </div>
@@ -81,16 +81,16 @@ export const MetricCard: React.FC<MetricCardProps> = ({
 
       {/* SubValue context */}
       {subValue && (
-        <span className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 font-medium truncate block">
+        <span className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-medium truncate block">
           {subValue}
         </span>
       )}
 
       {/* Bottom Sparkline Curve or Progress Track */}
-      <div className="mt-3 pt-1 w-full">
+      <div className="mt-1.5 pt-0.5 w-full">
         {sparklineType === 'progress' ? (
           <div className="w-full">
-            <div className="w-full h-1.5 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+            <div className="w-full h-1 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-zinc-800 dark:bg-zinc-200 rounded-full transition-all duration-500"
                 style={{ width: `${Math.min(Math.max(progressPercent, 5), 100)}%` }}
@@ -98,7 +98,7 @@ export const MetricCard: React.FC<MetricCardProps> = ({
             </div>
           </div>
         ) : (
-          <div className="h-6 w-full opacity-60 group-hover:opacity-100 transition-opacity">
+          <div className="h-4 w-full opacity-60 group-hover:opacity-100 transition-opacity">
             <svg
               className="w-full h-full overflow-visible"
               viewBox="0 0 100 24"

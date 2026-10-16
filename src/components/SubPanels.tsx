@@ -477,7 +477,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
             </button>
           </form>
 
-          <div className="overflow-x-auto rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 bg-zinc-50/30 dark:bg-[#252530]">
+          <div className="overflow-x-auto max-h-56 overflow-y-auto custom-scrollbar rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 bg-zinc-50/30 dark:bg-[#252530]">
             <table className="w-full text-left border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-400 dark:text-zinc-500 text-[10px] uppercase font-bold bg-zinc-50 dark:bg-[#252530]">

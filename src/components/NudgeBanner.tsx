@@ -10,15 +10,15 @@ export const NudgeBanner: React.FC<NudgeBannerProps> = ({ streak, registrouHoje 
   return (
     <div
       id="status-geral-banner"
-      className={`p-4 rounded-2xl border flex flex-col sm:flex-row sm:items-center justify-between gap-3 transition-all ${
+      className={`p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
         !registrouHoje
           ? 'bg-amber-50/60 border-amber-200/80 dark:bg-amber-950/15 dark:border-amber-900/30'
           : 'bg-emerald-50/50 border-emerald-200/80 dark:bg-emerald-950/10 dark:border-emerald-900/30'
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-center gap-2.5">
         <div
-          className={`p-2 rounded-xl mt-0.5 shrink-0 ${
+          className={`p-1.5 rounded-lg shrink-0 ${
             !registrouHoje
               ? 'bg-amber-100/80 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400'
               : 'bg-emerald-100/80 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'

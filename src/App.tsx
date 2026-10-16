@@ -1323,7 +1323,7 @@ export default function App() {
         </div>
 
         {/* Accounts Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1 custom-scrollbar">
           {accounts.map(acc => {
             const isCard = acc.tipo === 'credito';
             const bal = accountBalances[acc.id] ?? 0;
@@ -1422,7 +1422,7 @@ export default function App() {
           </button>
         </form>
 
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
           {categoriasDespesa.map(cat => (
             <div
               key={cat}
@@ -1483,7 +1483,7 @@ export default function App() {
           </button>
         </form>
 
-        <div className="flex flex-wrap gap-2 pt-2">
+        <div className="flex flex-wrap gap-2 pt-2 max-h-56 overflow-y-auto custom-scrollbar pr-1">
           {categoriasReceita.map(cat => (
             <div
               key={cat}
@@ -1533,17 +1533,19 @@ export default function App() {
   const renderMainContent = () => {
     if (activeNav === 'transacoes') {
       return (
-        <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-            <TransactionForm
-              categoriasDespesa={categoriasDespesa}
-              categoriasReceita={categoriasReceita}
-              onAddTransaction={handleAddTransaction}
-              onAddCategory={handleAddCategory}
-              accounts={accounts}
-              selectedAccountId={selectedAccountId}
-            />
-            <div className="lg:col-span-2">
+        <div className="space-y-3.5">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+            <div className="lg:col-span-4">
+              <TransactionForm
+                categoriasDespesa={categoriasDespesa}
+                categoriasReceita={categoriasReceita}
+                onAddTransaction={handleAddTransaction}
+                onAddCategory={handleAddCategory}
+                accounts={accounts}
+                selectedAccountId={selectedAccountId}
+              />
+            </div>
+            <div className="lg:col-span-8">
               <TransactionTable
                 transactions={transactions}
                 onDeleteTransaction={handleDeleteTransaction}
@@ -1581,14 +1583,14 @@ export default function App() {
 
     // Default: activeNav === 'dashboard'
     return (
-      <div className="space-y-6">
+      <div className="space-y-3">
         {dashboardTab === 'geral' && (
           <>
             {/* Nudge Daily Focus */}
             <NudgeBanner streak={streak} registrouHoje={loggedToday} />
 
             {/* 5 Premium Metric Cards Grid */}
-            <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-3.5">
+            <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
               <MetricCard
                 id="card-saldo-real"
                 title="Disponível Hoje"
@@ -1665,16 +1667,18 @@ export default function App() {
             </div>
 
             {/* Quick 2-Column: Form + Ledger */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-              <TransactionForm
-                categoriasDespesa={categoriasDespesa}
-                categoriasReceita={categoriasReceita}
-                onAddTransaction={handleAddTransaction}
-                onAddCategory={handleAddCategory}
-                accounts={accounts}
-                selectedAccountId={selectedAccountId}
-              />
-              <div className="lg:col-span-2">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
+              <div className="lg:col-span-4">
+                <TransactionForm
+                  categoriasDespesa={categoriasDespesa}
+                  categoriasReceita={categoriasReceita}
+                  onAddTransaction={handleAddTransaction}
+                  onAddCategory={handleAddCategory}
+                  accounts={accounts}
+                  selectedAccountId={selectedAccountId}
+                />
+              </div>
+              <div className="lg:col-span-8">
                 <TransactionTable
                   transactions={transactions}
                   onDeleteTransaction={handleDeleteTransaction}
@@ -1701,6 +1705,7 @@ export default function App() {
             currentYear={currentYear}
             selectedAccountId={selectedAccountId}
             showCalendar={false}
+            accounts={accounts}
           />
         )}
 
@@ -1757,13 +1762,13 @@ export default function App() {
   };
 
   return (
-    <div className="bg-zinc-100 dark:bg-[#252530] text-zinc-900 dark:text-[#DDD5D0] h-screen w-screen overflow-hidden flex font-sans antialiased relative">
+    <div className="bg-[#F8F7F4] dark:bg-[#252530] text-zinc-900 dark:text-[#DDD5D0] h-screen w-screen overflow-hidden flex font-sans antialiased relative">
       {/* TOAST SYSTEM ALERTS STREAM */}
       <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 pointer-events-none flex flex-col gap-2.5 w-full max-w-sm px-6">
         {toasts.map((t) => (
           <div
             key={t.id}
-            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-[#32323F] border-zinc-200/80 dark:border-[#4C4E5D]/60 ${
+            className={`flex items-center gap-2 px-4 py-3 rounded-xl shadow-lg border text-xs font-bold transition-all duration-300 transform translate-y-0 opacity-100 pointer-events-auto bg-white dark:bg-[#32323F] border-[#E8E5DC] dark:border-[#4C4E5D]/60 ${
               t.type === 'sucesso'
                 ? 'text-emerald-600 dark:text-emerald-400'
                 : t.type === 'erro'
@@ -1778,14 +1783,14 @@ export default function App() {
       </div>
 
       {/* DESKTOP SIDEBAR MENU LATERAL PERSISTENTE */}
-      <aside className="hidden lg:flex w-64 xl:w-72 h-screen flex-shrink-0 bg-white dark:bg-[#32323F] border-r border-zinc-200/80 dark:border-[#4C4E5D]/60 flex-col justify-between shadow-xs z-30">
+      <aside className="hidden lg:flex w-64 xl:w-72 h-screen flex-shrink-0 bg-[#FDFCFB] dark:bg-[#32323F] border-r border-[#E8E5DC] dark:border-[#4C4E5D]/60 flex-col justify-between shadow-xs z-30">
         {renderSidebarNavigation(false)}
       </aside>
 
       {/* MAIN VIEWPORT STAGE */}
-      <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden bg-zinc-100/70 dark:bg-[#252530]">
+      <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden bg-[#F5F4EE] dark:bg-[#252530]">
         {/* HEADER BAR */}
-        <header className="h-16 flex-shrink-0 bg-white/95 border-b border-zinc-200/80 dark:bg-[#32323F]/95 dark:border-[#4C4E5D]/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 shadow-xs">
+        <header className="h-16 flex-shrink-0 bg-[#FDFCFB]/95 border-b border-[#E8E5DC] dark:bg-[#32323F]/95 dark:border-[#4C4E5D]/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 shadow-xs">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
@@ -1819,7 +1824,7 @@ export default function App() {
           {/* Month ruler and quick actions */}
           <div className="flex items-center gap-2 sm:gap-3">
             {/* Month Ruler */}
-            <div className="flex items-center gap-1 bg-zinc-100/90 dark:bg-[#252530] p-1 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60">
+            <div className="flex items-center gap-1 bg-[#F3F1EB] dark:bg-[#252530] p-1 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/60">
               <button
                 onClick={prevMonth}
                 className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all flex-shrink-0"
@@ -1924,14 +1929,14 @@ export default function App() {
 
         {/* TOP MENU TABS FOR DASHBOARD - Exclusive Tabs separating Overview, Charts, Calendar, and Invoices */}
         {activeNav === 'dashboard' && (
-          <div className="bg-white/85 dark:bg-[#32323F]/90 border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 px-4 sm:px-6 py-2.5 flex items-center justify-between flex-shrink-0 z-10">
+          <div className="bg-[#FDFCFB]/90 dark:bg-[#32323F]/90 border-b border-[#E8E5DC] dark:border-[#4C4E5D]/60 px-4 sm:px-6 py-2.5 flex items-center justify-between flex-shrink-0 z-10">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
               <button
                 onClick={() => setDashboardTab('geral')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'geral'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
-                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-[#F3F1EB] dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
                 }`}
               >
                 <LayoutDashboard className="w-3.5 h-3.5 text-emerald-400" />
@@ -1943,7 +1948,7 @@ export default function App() {
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'graficos'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
-                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-[#F3F1EB] dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
                 }`}
               >
                 <TrendingUp className="w-3.5 h-3.5 text-blue-400" />
@@ -1955,7 +1960,7 @@ export default function App() {
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'calendario'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
-                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-[#F3F1EB] dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
                 }`}
               >
                 <Calendar className="w-3.5 h-3.5 text-amber-400" />
@@ -1967,7 +1972,7 @@ export default function App() {
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'cartoes'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
-                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
+                    : 'text-zinc-600 dark:text-[#988E96] hover:bg-[#F3F1EB] dark:hover:bg-[#4C4E5D]/30 hover:text-zinc-900 dark:hover:text-[#DDD5D0]'
                 }`}
               >
                 <CreditCard className="w-3.5 h-3.5 text-rose-400" />
@@ -1977,7 +1982,7 @@ export default function App() {
 
             <div className="hidden md:flex items-center gap-2 text-xs">
               <span className="text-[#988E96] text-[11px]">Disponível:</span>
-              <span className="font-mono font-bold text-zinc-900 dark:text-[#DDD5D0] bg-zinc-100 dark:bg-[#252530] px-2.5 py-1 rounded-lg border border-zinc-200/80 dark:border-[#4C4E5D]/50">
+              <span className="font-mono font-bold text-zinc-900 dark:text-[#DDD5D0] bg-[#F3F1EB] dark:bg-[#252530] px-2.5 py-1 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
                 {formatCurrency(saldoRealAcumulado)}
               </span>
             </div>
@@ -1985,7 +1990,7 @@ export default function App() {
         )}
 
         {/* MAIN STAGE CONTENT - Viewport container with internal contained scroll */}
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 custom-scrollbar pb-20 md:pb-6">
+        <main className="flex-1 overflow-y-auto p-3 sm:p-4.5 custom-scrollbar pb-8 md:pb-4">
           <div className="max-w-7xl mx-auto">
             {renderMainContent()}
           </div>
@@ -2372,6 +2377,10 @@ export default function App() {
         transactions={transactions}
         saldoReal={saldoRealAcumulado}
         onAddTransaction={handleAddTransaction}
+        accounts={accounts}
+        selectedAccountId={selectedAccountId}
+        categoriasDespesa={categoriasDespesa}
+        categoriasReceita={categoriasReceita}
       />
 
       {/* SYSTEM METERS BOTTOM NAVIGATION BAR (Exclusively mobile tab bar) */}

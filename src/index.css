@@ -12,6 +12,12 @@
   --color-silverpink-light: #CEBFBC;
   --color-timberwolf: #DDD5D0;
   --color-timberwolf-light: #EDE7E4;
+  --color-offwhite: #F8F7F4;
+  --color-offwhite-surface: #FCFBF9;
+  --color-offwhite-card: #FFFFFF;
+  --color-offwhite-muted: #F3F1EB;
+  --color-offwhite-border: #E8E5DC;
+  --color-offwhite-border-subtle: #EFECE5;
 }
 
 @variant dark (&:where(.dark, .dark *));
@@ -21,11 +27,11 @@
     font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    background-color: #F3EFEF;
+    background-color: #F8F7F4;
     color: #32323F;
   }
 
-  .dark body {
+  .dark body, body.dark {
     background-color: #252530;
     color: #DDD5D0;
   }

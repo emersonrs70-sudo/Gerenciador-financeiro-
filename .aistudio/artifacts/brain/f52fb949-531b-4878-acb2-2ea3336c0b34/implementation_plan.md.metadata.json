@@ -1,6 +1,6 @@
 {
-  "summary": "Plano arquitetural e visual de repaginação completa da interface: implantação de menu lateral persistente com ícones e textos, menu superior com abas dedicadas para eliminar rolagem vertical (Visão Geral, Gráficos & Relatórios, Calendário Financeiro e Faturas), contenção de altura de tela (viewport-fit) e aplicação estrita da nova paleta de cores corporativa (#32323F, #4C4E5D, #988E96, #BCABA8, #DDD5D0).",
-  "updatedAt": "2026-10-15T08:49:11.583784282Z",
+  "summary": "Plano de evolução visual e funcional do FintechCore:\n1. Aplicação de tons de branco off-white modernos no modo claro.\n2. Redimensionamento e unificação em abas integradas/colapsáveis dos cards de Extrato do Período e Histórico Geral para eliminar scroll vertical.\n3. Upgrade profundo do assistente inteligente com parsing NLP avançado em PT-BR e balão de prévia interativa para confirmação em 1 clique.\n4. Reestruturação da tela de gráficos em grade 3x2 com Donut de Categorias, Fluxo Financeiro 2-col, Comparativo Mensal, Balanço e Projeção.",
+  "updatedAt": "2026-10-16T15:27:04.088866217Z",
   "requestFeedback": true,
   "userFacing": true
 }
