@@ -26,14 +26,20 @@ export async function migrateLocalDataToFirestore(
     const projectsPath = `users/${userId}/projects`;
     const accountsPath = `users/${userId}/accounts`;
 
-    // Check if Firestore already has transactions for this user
+    // Check which records already exist in Firestore for this user
     const existingSnap = await getDocs(collection(db, transactionsPath));
-    if (!existingSnap.empty) {
-      // User already has records in Firestore, no need to overwrite with seed defaults
-      return { migratedCount: existingSnap.size };
-    }
+    const cloudTransactionIds = new Set<string>();
+    existingSnap.forEach(d => cloudTransactionIds.add(d.id));
 
-    onProgress?.('Identificando dados locais para migração ao Firebase...');
+    const existingProjectsSnap = await getDocs(collection(db, projectsPath));
+    const cloudProjectIds = new Set<string>();
+    existingProjectsSnap.forEach(d => cloudProjectIds.add(d.id));
+
+    const existingAccountsSnap = await getDocs(collection(db, accountsPath));
+    const cloudAccountIds = new Set<string>();
+    existingAccountsSnap.forEach(d => cloudAccountIds.add(d.id));
+
+    onProgress?.('Verificando novos lançamentos locais para sincronização com a nuvem...');
 
     // Gather all local data
     const cachedDespesas = getLocal<Transaction[]>(`local_despesas_${userEmail}`, [])
@@ -46,7 +52,7 @@ export async function migrateLocalDataToFirestore(
     const cachedCatDesp = getLocal<string[]>(`local_categorias_despesa_${userEmail}`, []);
     const cachedCatRec = getLocal<string[]>(`local_categorias_receita_${userEmail}`, []);
 
-    // Deduplicate by ID
+    // Deduplicate local items by ID
     const uniqueTransactionsMap = new Map<string, Transaction>();
     [...cachedDespesas, ...cachedReceitas].forEach(t => {
       if (t && t.id) uniqueTransactionsMap.set(t.id, t);
@@ -62,15 +68,19 @@ export async function migrateLocalDataToFirestore(
       if (a && a.id) uniqueAccountsMap.set(a.id, a);
     });
 
-    const transactionsToMigrate = Array.from(uniqueTransactionsMap.values());
-    const projectsToMigrate = Array.from(uniqueProjectsMap.values());
-    const accountsToMigrate = Array.from(uniqueAccountsMap.values());
+    // Only upload items that do not exist yet in Firestore
+    const transactionsToMigrate = Array.from(uniqueTransactionsMap.values())
+      .filter(t => !cloudTransactionIds.has(t.id));
+    const projectsToMigrate = Array.from(uniqueProjectsMap.values())
+      .filter(p => !cloudProjectIds.has(p.id));
+    const accountsToMigrate = Array.from(uniqueAccountsMap.values())
+      .filter(a => !cloudAccountIds.has(a.id));
 
     let migrated = 0;
 
     // Use batches to write efficiently
     if (transactionsToMigrate.length > 0) {
-      onProgress?.(`Migrando ${transactionsToMigrate.length} transações para o Firebase Firestore...`);
+      onProgress?.(`Enviando ${transactionsToMigrate.length} novos lançamentos locais para a nuvem...`);
       const batch = writeBatch(db);
       for (const t of transactionsToMigrate) {
         const docRef = doc(db, transactionsPath, t.id);

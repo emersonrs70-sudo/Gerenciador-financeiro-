@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { PlusCircle, ListTodo } from 'lucide-react';
+import { PlusCircle, ListTodo, Loader2 } from 'lucide-react';
 import { Category, Transaction, BankAccount, getBillMonthForDate } from '../types';
 
 interface TransactionFormProps {
@@ -61,82 +61,90 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
   const [tipoGasto, setTipoGasto] = useState<'variavel' | 'fixo'>('variavel');
   const [validadeFixo, setValidadeFixo] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!descricao || !valor || !data) return;
+    if (isSubmitting || !descricao.trim() || !valor || !data) return;
 
-    const account = accounts.find(a => a.id === accountId);
-    const catToUse = categoria;
+    setIsSubmitting(true);
+    try {
+      const account = accounts.find(a => a.id === accountId);
+      const catToUse = categoria;
 
-    if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
-      try {
-        const startDate = new Date(data + 'T12:00:00');
-        const [limitYearStr, limitMonthStr] = validadeFixo.split('-');
-        const limitYear = parseInt(limitYearStr, 10);
-        const limitMonth = parseInt(limitMonthStr, 10) - 1; // 0-indexed month
+      if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
+        try {
+          const startDate = new Date(data + 'T12:00:00');
+          const [limitYearStr, limitMonthStr] = validadeFixo.split('-');
+          const limitYear = parseInt(limitYearStr, 10);
+          const limitMonth = parseInt(limitMonthStr, 10) - 1; // 0-indexed month
 
-        let currentYear = startDate.getFullYear();
-        let currentMonth = startDate.getMonth();
-        const targetDay = startDate.getDate();
+          let currentYear = startDate.getFullYear();
+          let currentMonth = startDate.getMonth();
+          const targetDay = startDate.getDate();
 
-        while (true) {
-          if (currentYear > limitYear || (currentYear === limitYear && currentMonth > limitMonth)) {
-            break;
+          while (true) {
+            if (currentYear > limitYear || (currentYear === limitYear && currentMonth > limitMonth)) {
+              break;
+            }
+
+            const d = new Date(currentYear, currentMonth, 1);
+            const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+            const dayToUse = Math.min(targetDay, maxDays);
+            
+            const yyyy = currentYear;
+            const mm = String(currentMonth + 1).padStart(2, '0');
+            const dd = String(dayToUse).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+
+            let faturaMesForDate: string | undefined = undefined;
+            if (account && account.tipo === 'credito') {
+              faturaMesForDate = getBillMonthForDate(dateStr, account.diaFechamento);
+            }
+
+            const formattedMonth = String(currentMonth + 1).padStart(2, '0');
+            const recDescricao = `${descricao.trim()} (${formattedMonth}/${currentYear})`;
+
+            await onAddTransaction(
+              recDescricao,
+              parseFloat(valor),
+              dateStr,
+              catToUse,
+              modo,
+              accountId,
+              faturaMesForDate
+            );
+
+            currentMonth++;
+            if (currentMonth > 11) {
+              currentMonth = 0;
+              currentYear++;
+            }
           }
-
-          const d = new Date(currentYear, currentMonth, 1);
-          const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
-          const dayToUse = Math.min(targetDay, maxDays);
-          
-          const yyyy = currentYear;
-          const mm = String(currentMonth + 1).padStart(2, '0');
-          const dd = String(dayToUse).padStart(2, '0');
-          const dateStr = `${yyyy}-${mm}-${dd}`;
-
-          let faturaMesForDate: string | undefined = undefined;
+        } catch (err) {
+          console.error('Error generating recurring transactions:', err);
+          let faturaMes: string | undefined = undefined;
           if (account && account.tipo === 'credito') {
-            faturaMesForDate = getBillMonthForDate(dateStr, account.diaFechamento);
+            faturaMes = getBillMonthForDate(data, account.diaFechamento);
           }
-
-          const formattedMonth = String(currentMonth + 1).padStart(2, '0');
-          const recDescricao = `${descricao} (${formattedMonth}/${currentYear})`;
-
-          await onAddTransaction(
-            recDescricao,
-            parseFloat(valor),
-            dateStr,
-            catToUse,
-            modo,
-            accountId,
-            faturaMesForDate
-          );
-
-          currentMonth++;
-          if (currentMonth > 11) {
-            currentMonth = 0;
-            currentYear++;
-          }
+          await onAddTransaction(descricao.trim(), parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
         }
-      } catch (err) {
-        console.error('Error generating recurring transactions:', err);
+      } else {
         let faturaMes: string | undefined = undefined;
         if (account && account.tipo === 'credito') {
           faturaMes = getBillMonthForDate(data, account.diaFechamento);
         }
-        await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+        await onAddTransaction(descricao.trim(), parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
       }
-    } else {
-      let faturaMes: string | undefined = undefined;
-      if (account && account.tipo === 'credito') {
-        faturaMes = getBillMonthForDate(data, account.diaFechamento);
-      }
-      await onAddTransaction(descricao, parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
-    }
 
-    // Reset fields
-    setDescricao('');
-    setValor('');
+      // Reset fields
+      setDescricao('');
+      setValor('');
+    } catch (err) {
+      console.error('Error adding transaction:', err);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCriarCategoria = async () => {
@@ -350,14 +358,26 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
 
         <button
           type="submit"
-          className={`w-full text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-xs active:scale-[0.98] flex items-center justify-center gap-1.5 cursor-pointer ${
+          disabled={isSubmitting}
+          className={`w-full text-white text-xs font-bold py-2.5 rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 ${
+            isSubmitting ? 'opacity-60 cursor-not-allowed' : 'cursor-pointer active:scale-[0.98]'
+          } ${
             modo === 'despesa'
               ? 'bg-rose-600 hover:bg-rose-700'
               : 'bg-emerald-600 hover:bg-emerald-700'
           }`}
         >
-          <PlusCircle className="w-4 h-4" />
-          {modo === 'despesa' ? 'Adicionar Despesa' : 'Adicionar Receita'}
+          {isSubmitting ? (
+            <>
+              <Loader2 className="w-4 h-4 animate-spin" />
+              <span>Registrando...</span>
+            </>
+          ) : (
+            <>
+              <PlusCircle className="w-4 h-4" />
+              <span>{modo === 'despesa' ? 'Adicionar Despesa' : 'Adicionar Receita'}</span>
+            </>
+          )}
         </button>
       </form>
     </div>

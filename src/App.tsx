@@ -87,6 +87,41 @@ const MONTHS = [
   'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
 ];
 
+function deduplicateTransactions(list: Transaction[]): Transaction[] {
+  const seenIds = new Set<string>();
+  const seenFingerprints = new Set<string>();
+  const result: Transaction[] = [];
+
+  for (const item of list) {
+    if (!item) continue;
+    
+    // 1. Strict ID deduplication
+    if (item.id && seenIds.has(item.id)) {
+      continue;
+    }
+    if (item.id) {
+      seenIds.add(item.id);
+    }
+
+    // 2. Accidental double-submit fingerprint deduplication:
+    // Identical description, value, date, type, and account created within a tight 5-second window
+    const timestamp = item.created_at ? new Date(item.created_at).getTime() : 0;
+    const timeWindow = timestamp > 0 ? Math.floor(timestamp / 5000) : 0;
+    const fingerprint = `${item.descricao?.trim()}|${item.valor}|${item.data}|${item.tipoItem}|${item.accountId || 'geral'}|${timeWindow}`;
+
+    if (timeWindow > 0 && seenFingerprints.has(fingerprint)) {
+      continue;
+    }
+    if (timeWindow > 0) {
+      seenFingerprints.add(fingerprint);
+    }
+
+    result.push(item);
+  }
+
+  return result;
+}
+
 const DEFAULT_PERSONAL_USER = { email: 'emersonrs70@gmail.com', name: 'Emerson' };
 
 export default function App() {
@@ -352,7 +387,8 @@ export default function App() {
           saveLocal(`local_projects_${currentUser.email}`, initProj);
           localStorage.setItem(`fintech_initialized_${currentUser.email}`, 'true');
         } else {
-          setTransactions([...cachedDesp, ...cachedRec]);
+          const dedupedCached = deduplicateTransactions([...cachedDesp, ...cachedRec]);
+          setTransactions(dedupedCached);
           setProjects(cachedProj);
           setCategoriasDespesa(cachedCatDesp);
           setCategoriasReceita(cachedCatRec);
@@ -370,9 +406,20 @@ export default function App() {
     const unsubscribe = subscribeToUserFinance(firebaseUser.uid, {
       onTransactions: (liveTransactions) => {
         if (liveTransactions.length > 0) {
-          setTransactions(liveTransactions);
-          saveLocal(`local_despesas_${currentUser.email}`, liveTransactions.filter(t => t.tipoItem === 'despesa'));
-          saveLocal(`local_receitas_${currentUser.email}`, liveTransactions.filter(t => t.tipoItem === 'receita'));
+          const deduped = deduplicateTransactions(liveTransactions);
+          // Auto-clean any duplicate Firestore documents if detected
+          if (deduped.length < liveTransactions.length) {
+            const keepIds = new Set(deduped.map(t => t.id));
+            const duplicatesToRemove = liveTransactions.filter(t => !keepIds.has(t.id));
+            duplicatesToRemove.forEach(dup => {
+              if (dup.id) {
+                deleteTransactionFromFirestore(firebaseUser.uid, dup.id).catch(() => {});
+              }
+            });
+          }
+          setTransactions(deduped);
+          saveLocal(`local_despesas_${currentUser.email}`, deduped.filter(t => t.tipoItem === 'despesa'));
+          saveLocal(`local_receitas_${currentUser.email}`, deduped.filter(t => t.tipoItem === 'receita'));
         }
       },
       onProjects: (liveProjects) => {
@@ -546,7 +593,10 @@ export default function App() {
     }
 
     setTransactions(prev => {
-      const updated = [...prev, newTransaction];
+      if (prev.some(t => t.id === newTransaction.id)) {
+        return prev;
+      }
+      const updated = deduplicateTransactions([...prev, newTransaction]);
       saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
       saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
       return updated;
@@ -600,7 +650,10 @@ export default function App() {
     }
 
     setTransactions(prev => {
-      const updated = [...prev, ...createdTransactions];
+      const existingIds = new Set(prev.map(t => t.id));
+      const freshItems = createdTransactions.filter(t => !existingIds.has(t.id));
+      if (freshItems.length === 0) return prev;
+      const updated = deduplicateTransactions([...prev, ...freshItems]);
       saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
       saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
       return updated;

@@ -96,10 +96,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     return 0;
   };
 
-  // Filter based on selected bank account
-  const filteredByAccount = selectedAccountId && selectedAccountId !== 'consolidado'
-    ? transactions.filter(t => t.accountId === selectedAccountId)
-    : transactions;
+  // Filter based on selected bank account with ID deduplication
+  const filteredByAccount = React.useMemo(() => {
+    const raw = selectedAccountId && selectedAccountId !== 'consolidado'
+      ? transactions.filter(t => t.accountId === selectedAccountId)
+      : transactions;
+    const seen = new Set<string>();
+    return raw.filter(t => {
+      if (!t || !t.id) return false;
+      if (seen.has(t.id)) return false;
+      seen.add(t.id);
+      return true;
+    });
+  }, [transactions, selectedAccountId]);
 
   // Compute cumulative running balance chronologically across filtered transactions
   const transactionBalances: { [id: string]: number } = {};
