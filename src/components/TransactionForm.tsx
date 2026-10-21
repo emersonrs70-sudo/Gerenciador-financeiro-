@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { PlusCircle, ListTodo, Loader2 } from 'lucide-react';
-import { Category, Transaction, BankAccount, getBillMonthForDate } from '../types';
+import { PlusCircle, ListTodo, Loader2, RefreshCw } from 'lucide-react';
+import { Category, Transaction, BankAccount, RecurrentRule, getBillMonthForDate } from '../types';
 
 interface TransactionFormProps {
   categoriasDespesa: string[];
@@ -15,6 +15,9 @@ interface TransactionFormProps {
     faturaMes?: string
   ) => Promise<void>;
   onAddCategory: (nome: string, tipoItem: 'despesa' | 'receita') => Promise<void>;
+  onAddRecurrentRule?: (rule: Omit<RecurrentRule, 'id' | 'criadaEm'>) => Promise<void>;
+  recurrentRulesCount?: number;
+  onOpenManageRecurrentModal?: () => void;
   accounts: BankAccount[];
   selectedAccountId?: string;
 }
@@ -24,6 +27,9 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   categoriasReceita,
   onAddTransaction,
   onAddCategory,
+  onAddRecurrentRule,
+  recurrentRulesCount = 0,
+  onOpenManageRecurrentModal,
   accounts = [],
   selectedAccountId
 }) => {
@@ -73,6 +79,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       const catToUse = categoria;
 
       if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
+        // CASE 1: FIXED LIMIT DATE (replicate up to validadeFixo)
         try {
           const startDate = new Date(data + 'T12:00:00');
           const [limitYearStr, limitMonthStr] = validadeFixo.split('-');
@@ -129,7 +136,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           }
           await onAddTransaction(descricao.trim(), parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
         }
+      } else if (tipoGasto === 'fixo' && !validadeFixo) {
+        // CASE 2: CONTINUOUS RECURRING EXPENSE (NO LIMIT DATE)
+        // 1. Generate current month's transaction immediately
+        let faturaMes: string | undefined = undefined;
+        if (account && account.tipo === 'credito') {
+          faturaMes = getBillMonthForDate(data, account.diaFechamento);
+        }
+        await onAddTransaction(descricao.trim(), parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+
+        // 2. Register continuous rule so future months are generated automatically
+        if (onAddRecurrentRule) {
+          const targetDay = parseInt(data.split('-')[2], 10) || new Date().getDate();
+          const currentYearMonth = data.substring(0, 7);
+          await onAddRecurrentRule({
+            descricao: descricao.trim(),
+            valor: parseFloat(valor),
+            diaDoMes: targetDay,
+            categoria: catToUse,
+            tipoItem: modo,
+            accountId: accountId,
+            ativa: true,
+            ultimoMesGerado: currentYearMonth
+          });
+        }
       } else {
+        // CASE 3: STANDARD ONE-OFF TRANSACTION
         let faturaMes: string | undefined = undefined;
         if (account && account.tipo === 'credito') {
           faturaMes = getBillMonthForDate(data, account.diaFechamento);
@@ -140,6 +172,7 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       // Reset fields
       setDescricao('');
       setValor('');
+      setValidadeFixo('');
     } catch (err) {
       console.error('Error adding transaction:', err);
     } finally {
@@ -327,9 +360,21 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         {modo === 'despesa' && (
           <>
             <div>
-              <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
-                Tipo de Gasto
-              </label>
+              <div className="flex justify-between items-center mb-1">
+                <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block">
+                  Tipo de Gasto
+                </label>
+                {onOpenManageRecurrentModal && recurrentRulesCount > 0 && (
+                  <button
+                    type="button"
+                    onClick={onOpenManageRecurrentModal}
+                    className="text-[10px] font-bold text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <RefreshCw className="w-2.5 h-2.5" />
+                    <span>Ver Fixos Ativos ({recurrentRulesCount})</span>
+                  </button>
+                )}
+              </div>
               <select
                 value={tipoGasto}
                 onChange={(e) => setTipoGasto(e.target.value as 'variavel' | 'fixo')}
@@ -341,16 +386,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             </div>
 
             {tipoGasto === 'fixo' && (
-              <div>
-                <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
-                  Mês Limite Recorrência
-                </label>
+              <div className="space-y-1.5 p-2.5 bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-800/40 rounded-xl">
+                <div className="flex justify-between items-center">
+                  <label className="text-[10px] font-bold text-purple-800 dark:text-purple-300 uppercase tracking-wider block">
+                    Mês Limite (Opcional)
+                  </label>
+                  {validadeFixo && (
+                    <button
+                      type="button"
+                      onClick={() => setValidadeFixo('')}
+                      className="text-[10px] text-purple-600 dark:text-purple-400 hover:underline cursor-pointer font-bold"
+                    >
+                      Remover limite
+                    </button>
+                  )}
+                </div>
                 <input
                   type="month"
                   value={validadeFixo}
                   onChange={(e) => setValidadeFixo(e.target.value)}
-                  className="w-full bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
+                  className="w-full bg-white dark:bg-[#252530] border border-purple-200 dark:border-purple-800/60 text-zinc-900 dark:text-white rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-purple-400 font-medium"
                 />
+                <p className="text-[10px] text-purple-700/80 dark:text-purple-300/80 leading-tight">
+                  {validadeFixo
+                    ? `Será lançado até ${validadeFixo.split('-')[1]}/${validadeFixo.split('-')[0]}.`
+                    : 'Sem data limite: o sistema gerará este gasto no início de cada mês automaticamente até você desativar.'}
+                </p>
               </div>
             )}
           </>

@@ -8,7 +8,7 @@ import {
   Layers, CheckCircle2, ChevronDown
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -19,7 +19,8 @@ import {
   migrateLocalDataToFirestore, subscribeToUserFinance,
   addTransactionToFirestore, batchAddTransactionsToFirestore,
   deleteTransactionFromFirestore, updateTransactionInFirestore,
-  addProjectToFirestore, deleteProjectFromFirestore
+  addProjectToFirestore, deleteProjectFromFirestore,
+  saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
@@ -35,6 +36,7 @@ import { NotificationCenter } from './components/NotificationCenter';
 import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
 import { FirebaseDomainModal } from './components/FirebaseDomainModal';
+import { ManageRecurrentModal } from './components/ManageRecurrentModal';
 
 interface Toast {
   id: string;
@@ -160,6 +162,12 @@ export default function App() {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState<boolean>(false);
   const [novaCatNome, setNovaCatNome] = useState<string>('');
   const [novaCatTipo, setNovaCatTipo] = useState<'despesa' | 'receita'>('despesa');
+
+  // Recurring rules state (continuous recurring expenses)
+  const [recurrentRules, setRecurrentRules] = useState<RecurrentRule[]>(() => {
+    return getLocal<RecurrentRule[]>(`local_recurrent_rules_${DEFAULT_PERSONAL_USER.email}`, []);
+  });
+  const [isManageRecurrentModalOpen, setIsManageRecurrentModalOpen] = useState<boolean>(false);
 
   const handleDeleteAccount = (id: string) => {
     if (accounts.length <= 1) {
@@ -392,6 +400,8 @@ export default function App() {
           setProjects(cachedProj);
           setCategoriasDespesa(cachedCatDesp);
           setCategoriasReceita(cachedCatRec);
+          const cachedRules = getLocal<RecurrentRule[]>(`local_recurrent_rules_${currentUser.email}`, []);
+          setRecurrentRules(cachedRules);
         }
       }
     });
@@ -433,6 +443,10 @@ export default function App() {
           setAccounts(liveAccounts);
           saveLocal('local_bank_accounts', liveAccounts);
         }
+      },
+      onRecurrentRules: (liveRules) => {
+        setRecurrentRules(liveRules);
+        saveLocal(`local_recurrent_rules_${currentUser.email}`, liveRules);
       },
       onError: (err) => {
         console.warn('Real-time sync notice:', err);
@@ -724,6 +738,89 @@ export default function App() {
     showToast('Lançamento atualizado com sucesso!', 'sucesso');
   };
 
+  // Add continuous recurring rule
+  const handleAddRecurrentRule = async (ruleData: Omit<RecurrentRule, 'id' | 'criadaEm'>) => {
+    const newRule: RecurrentRule = {
+      ...ruleData,
+      id: safeRandomUUID(),
+      criadaEm: new Date().toISOString()
+    };
+
+    if (firebaseUser) {
+      try {
+        await saveRecurrentRuleToFirestore(firebaseUser.uid, newRule);
+      } catch (err) {
+        console.warn('Firebase recurrent rule save error:', err);
+      }
+    }
+
+    setRecurrentRules(prev => {
+      const updated = [...prev.filter(r => r.id !== newRule.id), newRule];
+      saveLocal(`local_recurrent_rules_${currentUser.email}`, updated);
+      return updated;
+    });
+
+    showToast(`Lançamento fixo "${newRule.descricao}" configurado para repetir todo início de mês! 🔁`, 'sucesso');
+  };
+
+  // Toggle active/paused for continuous recurring rule
+  const handleToggleRecurrentRule = async (ruleId: string) => {
+    const rule = recurrentRules.find(r => r.id === ruleId);
+    if (!rule) return;
+
+    const updatedRule: RecurrentRule = {
+      ...rule,
+      ativa: !rule.ativa
+    };
+
+    if (firebaseUser) {
+      try {
+        await saveRecurrentRuleToFirestore(firebaseUser.uid, updatedRule);
+      } catch (err) {
+        console.warn('Firebase recurrent rule toggle error:', err);
+      }
+    }
+
+    setRecurrentRules(prev => {
+      const updated = prev.map(r => r.id === ruleId ? updatedRule : r);
+      saveLocal(`local_recurrent_rules_${currentUser.email}`, updated);
+      return updated;
+    });
+
+    showToast(
+      updatedRule.ativa
+        ? `Lançamento fixo "${rule.descricao}" reativado!`
+        : `Lançamento fixo "${rule.descricao}" pausado!`,
+      'info'
+    );
+  };
+
+  // Delete continuous recurring rule
+  const handleDeleteRecurrentRule = async (ruleId: string) => {
+    const rule = recurrentRules.find(r => r.id === ruleId);
+    if (!rule) return;
+
+    if (!window.confirm(`Deseja remover a regra de lançamento fixo de "${rule.descricao}"? As transações já geradas anteriormente serão mantidas.`)) {
+      return;
+    }
+
+    if (firebaseUser) {
+      try {
+        await deleteRecurrentRuleFromFirestore(firebaseUser.uid, ruleId);
+      } catch (err) {
+        console.warn('Firebase recurrent rule delete error:', err);
+      }
+    }
+
+    setRecurrentRules(prev => {
+      const updated = prev.filter(r => r.id !== ruleId);
+      saveLocal(`local_recurrent_rules_${currentUser.email}`, updated);
+      return updated;
+    });
+
+    showToast(`Regra de "${rule.descricao}" excluída com sucesso!`, 'info');
+  };
+
   // Add dream/project planner handler
   const handleAddProject = async (nome: string, valor: number, dataAlvo: string) => {
     const projectId = safeRandomUUID();
@@ -772,6 +869,86 @@ export default function App() {
 
   const currentYear = dataAncorada.getFullYear();
   const currentMonth = dataAncorada.getMonth();
+
+  // Automated monthly generation of active continuous recurring expenses
+  useEffect(() => {
+    if (recurrentRules.length === 0) return;
+
+    const currentYearMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    const newTransactionsToCreate: Transaction[] = [];
+    const updatedRules: RecurrentRule[] = [];
+
+    for (const rule of recurrentRules) {
+      if (!rule.ativa) {
+        updatedRules.push(rule);
+        continue;
+      }
+
+      // Check if a transaction for this rule already exists in current month/year
+      const alreadyHasInMonth = transactions.some(t => {
+        if (!t.data || t.data.substring(0, 7) !== currentYearMonth) return false;
+        return (
+          t.descricao.toLowerCase().includes(rule.descricao.toLowerCase()) &&
+          Math.abs(t.valor - rule.valor) < 0.01 &&
+          t.tipoItem === rule.tipoItem
+        );
+      });
+
+      if (!alreadyHasInMonth) {
+        const maxDays = new Date(currentYear, currentMonth + 1, 0).getDate();
+        const dayToUse = Math.min(rule.diaDoMes || 1, maxDays);
+        const mm = String(currentMonth + 1).padStart(2, '0');
+        const dd = String(dayToUse).padStart(2, '0');
+        const dateStr = `${currentYear}-${mm}-${dd}`;
+
+        const account = accounts.find(a => a.id === rule.accountId);
+        let faturaMesForDate: string | undefined = undefined;
+        if (account && account.tipo === 'credito') {
+          faturaMesForDate = getBillMonthForDate(dateStr, account.diaFechamento);
+        }
+
+        const newTx: Transaction = {
+          id: safeRandomUUID(),
+          descricao: `${rule.descricao} (${mm}/${currentYear})`,
+          valor: rule.valor,
+          data: dateStr,
+          categoria: rule.categoria,
+          tipoItem: rule.tipoItem,
+          accountId: rule.accountId,
+          faturaMes: faturaMesForDate,
+          created_at: new Date().toISOString()
+        };
+
+        newTransactionsToCreate.push(newTx);
+        updatedRules.push({
+          ...rule,
+          ultimoMesGerado: currentYearMonth
+        });
+      } else {
+        updatedRules.push(rule);
+      }
+    }
+
+    if (newTransactionsToCreate.length > 0) {
+      if (firebaseUser) {
+        batchAddTransactionsToFirestore(firebaseUser.uid, newTransactionsToCreate).catch(console.warn);
+      }
+      setTransactions(prev => {
+        const updated = deduplicateTransactions([...prev, ...newTransactionsToCreate]);
+        saveLocal(`local_despesas_${currentUser.email}`, updated.filter(t => t.tipoItem === 'despesa'));
+        saveLocal(`local_receitas_${currentUser.email}`, updated.filter(t => t.tipoItem === 'receita'));
+        return updated;
+      });
+
+      setRecurrentRules(updatedRules);
+      saveLocal(`local_recurrent_rules_${currentUser.email}`, updatedRules);
+      if (firebaseUser) {
+        updatedRules.forEach(r => saveRecurrentRuleToFirestore(firebaseUser.uid, r).catch(console.warn));
+      }
+
+      showToast(`${newTransactionsToCreate.length} lançamento(s) fixo(s) gerado(s) automaticamente para ${MONTHS[currentMonth]}! 📅`, 'sucesso');
+    }
+  }, [currentMonth, currentYear, recurrentRules.length, firebaseUser]);
 
   // --- MULTIBANCO ACCOUNT CALCULATORS ---
   const getAccountBalances = () => {
@@ -1594,6 +1771,9 @@ export default function App() {
                 categoriasReceita={categoriasReceita}
                 onAddTransaction={handleAddTransaction}
                 onAddCategory={handleAddCategory}
+                onAddRecurrentRule={handleAddRecurrentRule}
+                recurrentRulesCount={recurrentRules.filter(r => r.ativa).length}
+                onOpenManageRecurrentModal={() => setIsManageRecurrentModalOpen(true)}
                 accounts={accounts}
                 selectedAccountId={selectedAccountId}
               />
@@ -1727,6 +1907,9 @@ export default function App() {
                   categoriasReceita={categoriasReceita}
                   onAddTransaction={handleAddTransaction}
                   onAddCategory={handleAddCategory}
+                  onAddRecurrentRule={handleAddRecurrentRule}
+                  recurrentRulesCount={recurrentRules.filter(r => r.ativa).length}
+                  onOpenManageRecurrentModal={() => setIsManageRecurrentModalOpen(true)}
                   accounts={accounts}
                   selectedAccountId={selectedAccountId}
                 />
@@ -2521,6 +2704,16 @@ export default function App() {
         onClose={() => setDomainModalError({ isOpen: false })}
         errorCode={domainModalError.code}
         errorMessage={domainModalError.message}
+      />
+
+      {/* CONTINUOUS RECURRENT EXPENSES MANAGER MODAL */}
+      <ManageRecurrentModal
+        isOpen={isManageRecurrentModalOpen}
+        onClose={() => setIsManageRecurrentModalOpen(false)}
+        rules={recurrentRules}
+        onToggleRule={handleToggleRecurrentRule}
+        onDeleteRule={handleDeleteRecurrentRule}
+        accounts={accounts}
       />
     </div>
   );

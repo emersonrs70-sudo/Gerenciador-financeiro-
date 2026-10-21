@@ -169,7 +169,9 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
 
         <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
           {sortedBillMonths.map(month => {
-            const monthTx = cardTransactions.filter(t => t.faturaMes === month);
+            const monthTx = cardTransactions
+              .filter(t => t.faturaMes === month)
+              .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
             
             const compras = monthTx.filter(t => t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
             const pagamentos = monthTx.filter(t => t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);

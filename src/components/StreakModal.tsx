@@ -139,7 +139,9 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
     }
 
     return streakDates.map(dateStr => {
-      const dayTrans = transactions.filter(t => t.data === dateStr);
+      const dayTrans = transactions
+        .filter(t => t.data === dateStr)
+        .sort((a, b) => new Date(b.created_at || b.data).getTime() - new Date(a.created_at || a.data).getTime());
       const receitasValue = dayTrans.filter(t => t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
       const despesasValue = dayTrans.filter(t => t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
       const balance = receitasValue - despesasValue;

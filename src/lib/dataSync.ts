@@ -2,7 +2,7 @@ import {
   collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, getLocal, saveLocal } from './firebase';
-import { Transaction, Project, BankAccount } from '../types';
+import { Transaction, Project, BankAccount, RecurrentRule } from '../types';
 
 export interface SyncDataState {
   transactions: Transaction[];
@@ -171,6 +171,7 @@ export function subscribeToUserFinance(
     onTransactions: (items: Transaction[]) => void;
     onProjects: (items: Project[]) => void;
     onAccounts: (items: BankAccount[]) => void;
+    onRecurrentRules?: (items: RecurrentRule[]) => void;
     onError: (err: any) => void;
   }
 ): () => void {
@@ -248,10 +249,40 @@ export function subscribeToUserFinance(
     }
   );
 
+  const unsubRecurrentRules = onSnapshot(
+    collection(db, `users/${userId}/recurrent_rules`),
+    (snapshot) => {
+      const list: RecurrentRule[] = [];
+      snapshot.forEach((d) => {
+        const data = d.data();
+        list.push({
+          id: d.id,
+          descricao: data.descricao,
+          valor: data.valor,
+          diaDoMes: data.diaDoMes,
+          categoria: data.categoria,
+          tipoItem: data.tipoItem,
+          accountId: data.accountId,
+          ativa: data.ativa !== false,
+          criadaEm: data.criadaEm,
+          ultimoMesGerado: data.ultimoMesGerado
+        });
+      });
+      if (callbacks.onRecurrentRules) {
+        callbacks.onRecurrentRules(list);
+      }
+    },
+    (err) => {
+      callbacks.onError(err);
+      handleFirestoreError(err, OperationType.LIST, `users/${userId}/recurrent_rules`);
+    }
+  );
+
   return () => {
     unsubTransactions();
     unsubProjects();
     unsubAccounts();
+    unsubRecurrentRules();
   };
 }
 
@@ -348,6 +379,35 @@ export async function deleteProjectFromFirestore(userId: string, projectId: stri
   const path = `users/${userId}/projects/${projectId}`;
   try {
     await deleteDoc(doc(db, `users/${userId}/projects`, projectId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+export async function saveRecurrentRuleToFirestore(userId: string, rule: RecurrentRule): Promise<void> {
+  const path = `users/${userId}/recurrent_rules/${rule.id}`;
+  try {
+    await setDoc(doc(db, `users/${userId}/recurrent_rules`, rule.id), {
+      id: rule.id,
+      descricao: rule.descricao,
+      valor: rule.valor,
+      diaDoMes: rule.diaDoMes,
+      categoria: rule.categoria,
+      tipoItem: rule.tipoItem,
+      accountId: rule.accountId,
+      ativa: rule.ativa,
+      criadaEm: rule.criadaEm,
+      ultimoMesGerado: rule.ultimoMesGerado || ''
+    });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteRecurrentRuleFromFirestore(userId: string, ruleId: string): Promise<void> {
+  const path = `users/${userId}/recurrent_rules/${ruleId}`;
+  try {
+    await deleteDoc(doc(db, `users/${userId}/recurrent_rules`, ruleId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }

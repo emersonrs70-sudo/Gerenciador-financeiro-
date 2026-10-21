@@ -173,17 +173,17 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     return m === currentMonth && y === currentYear;
   });
 
-  // Sort chronological for ledger
+  // Sort descending (newest first, older last) for ledger
   const ledgerTransactions = [...currentMonthTransactions].sort((a, b) => {
     const timeA = new Date(a.data).getTime();
     const timeB = new Date(b.data).getTime();
-    if (timeA !== timeB) return timeA - timeB;
+    if (timeA !== timeB) return timeB - timeA;
 
     const createdA = getCreatedTime(a);
     const createdB = getCreatedTime(b);
-    if (createdA !== createdB) return createdA - createdB;
+    if (createdA !== createdB) return createdB - createdA;
 
-    return (a.id || '').localeCompare(b.id || '');
+    return (b.id || '').localeCompare(a.id || '');
   });
 
   // Subfilter for ledger

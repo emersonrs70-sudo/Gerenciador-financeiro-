@@ -56,6 +56,19 @@ export type ExtratoFilter = 'todos' | 'despesas' | 'receitas';
 
 export type SubPainelType = 'saldo-real' | 'saldo' | 'receitas' | 'despesas' | 'metas' | null;
 
+export interface RecurrentRule {
+  id: string;
+  descricao: string;
+  valor: number;
+  diaDoMes: number; // Day of the month (e.g. 5, 10, 20)
+  categoria: string;
+  tipoItem: 'despesa' | 'receita';
+  accountId: string;
+  ativa: boolean;
+  criadaEm: string;
+  ultimoMesGerado?: string; // e.g. "2026-10"
+}
+
 export interface AppNotification {
   id: string;
   titulo: string;
