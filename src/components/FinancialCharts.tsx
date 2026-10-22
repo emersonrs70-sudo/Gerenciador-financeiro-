@@ -720,10 +720,12 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
               </div>
             </div>
 
-            {/* Stable Layout Structure with Silky Smooth Sliding Table */}
-            <div className={`grid grid-cols-1 ${selectedCategory ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-3 my-1.5 items-stretch transition-all duration-300`}>
+            {/* Stable Layout Structure with Side-by-Side Flex (Never stacks vertically during exit) */}
+            <div className="flex flex-col sm:flex-row gap-3 my-1.5 items-stretch min-w-0">
               {/* Left Column: Donut Chart + Category switcher */}
-              <div className="flex flex-col items-center justify-between min-w-0">
+              <div className={`flex flex-col items-center justify-between min-w-0 transition-[width] duration-300 ease-out ${
+                selectedCategory ? 'w-full sm:w-1/2' : 'w-full'
+              }`}>
                 <div className="relative h-32 sm:h-36 w-full flex items-center justify-center">
                   {pieData.length === 0 ? (
                     <div className="text-zinc-400 text-xs text-center">
@@ -829,7 +831,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                   </div>
                 ) : (
                   /* When selected: Category Switcher Pills */
-                  <div className="flex flex-wrap gap-1 justify-center max-h-16 overflow-y-auto w-full custom-scrollbar pt-1">
+                  <div className="flex flex-wrap gap-1 justify-center max-h-14 overflow-y-auto w-full custom-scrollbar pt-1">
                     {pieData.map((cat) => {
                       const isSelected = selectedCategory?.toLowerCase() === cat.name.toLowerCase();
                       return (
@@ -851,80 +853,72 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                 )}
               </div>
 
-              {/* Right Column: Transactions Table with Smooth Slide & Fade Entrance */}
-              <AnimatePresence>
-                {selectedCategory && (
-                  <motion.div
-                    initial={{ opacity: 0, x: 20 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    exit={{ opacity: 0, x: 20 }}
-                    transition={{ duration: 0.25, ease: 'easeOut' }}
-                    className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-[#EAE7E0] dark:border-[#4C4E5D]/50 pt-2 sm:pt-0 sm:pl-3 min-w-0"
-                  >
-                    <div>
-                      <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/30">
-                        <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
-                          Lançamentos no Período
-                        </span>
-                        <span className="text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
-                          {selectedCategoryTransactions.length} {selectedCategoryTransactions.length === 1 ? 'item' : 'itens'}
-                        </span>
-                      </div>
-
-                      <div className="max-h-40 sm:max-h-44 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
-                        {selectedCategoryTransactions.length === 0 ? (
-                          <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 text-[11px]">
-                            Nenhum lançamento encontrado nesta categoria para o período selecionado.
-                          </div>
-                        ) : (
-                          selectedCategoryTransactions.map((t) => {
-                            const acc = accounts.find((a) => a.id === t.accountId);
-                            const dateDisplay = t.data ? t.data.split('-').slice(1).reverse().join('/') : '--/--';
-                            return (
-                              <div
-                                key={t.id}
-                                className="flex items-center justify-between p-1.5 bg-[#F8F7F4] dark:bg-[#252530] rounded-lg border border-[#E8E5DC]/80 dark:border-[#4C4E5D]/40 text-[10px]"
-                              >
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span className="font-mono text-zinc-400 dark:text-zinc-500 text-[9px] shrink-0">
-                                    {dateDisplay}
-                                  </span>
-                                  <div className="min-w-0">
-                                    <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[100px] sm:max-w-[125px]">
-                                      {t.descricao || 'Sem descrição'}
-                                    </p>
-                                    {acc && (
-                                      <span className="text-[8px] text-zinc-500 dark:text-zinc-400 block truncate">
-                                        {acc.nome}
-                                      </span>
-                                    )}
-                                  </div>
-                                </div>
-                                <span
-                                  className={`font-mono font-bold shrink-0 ml-1 ${
-                                    t.tipoItem === 'receita'
-                                      ? 'text-emerald-600 dark:text-emerald-400'
-                                      : 'text-rose-600 dark:text-rose-400'
-                                  }`}
-                                >
-                                  {t.tipoItem === 'receita' ? '+' : '-'}{formatCurrency(t.valor)}
-                                </span>
-                              </div>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="pt-1.5 mt-1 border-t border-[#EAE7E0] dark:border-[#4C4E5D]/40 flex justify-between items-center text-[10px]">
-                      <span className="text-zinc-500 dark:text-zinc-400">Total da Categoria:</span>
-                      <span className="font-mono font-bold text-zinc-900 dark:text-white">
-                        {formatCurrency(selectedCategoryTotal)}
+              {/* Right Column: Transactions Table (Instant clean unmount on close so height never jumps) */}
+              {selectedCategory && (
+                <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-[#EAE7E0] dark:border-[#4C4E5D]/50 pt-2 sm:pt-0 sm:pl-3 min-w-0 w-full sm:w-1/2 transition-opacity duration-200">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/30">
+                      <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
+                        Lançamentos no Período
+                      </span>
+                      <span className="text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
+                        {selectedCategoryTransactions.length} {selectedCategoryTransactions.length === 1 ? 'item' : 'itens'}
                       </span>
                     </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+
+                    <div className="max-h-36 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                      {selectedCategoryTransactions.length === 0 ? (
+                        <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 text-[11px]">
+                          Nenhum lançamento encontrado nesta categoria para o período selecionado.
+                        </div>
+                      ) : (
+                        selectedCategoryTransactions.map((t) => {
+                          const acc = accounts.find((a) => a.id === t.accountId);
+                          const dateDisplay = t.data ? t.data.split('-').slice(1).reverse().join('/') : '--/--';
+                          return (
+                            <div
+                              key={t.id}
+                              className="flex items-center justify-between p-1.5 bg-[#F8F7F4] dark:bg-[#252530] rounded-lg border border-[#E8E5DC]/80 dark:border-[#4C4E5D]/40 text-[10px]"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-mono text-zinc-400 dark:text-zinc-500 text-[9px] shrink-0">
+                                  {dateDisplay}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[100px] sm:max-w-[125px]">
+                                    {t.descricao || 'Sem descrição'}
+                                  </p>
+                                  {acc && (
+                                    <span className="text-[8px] text-zinc-500 dark:text-zinc-400 block truncate">
+                                      {acc.nome}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span
+                                className={`font-mono font-bold shrink-0 ml-1 ${
+                                  t.tipoItem === 'receita'
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-rose-600 dark:text-rose-400'
+                                }`}
+                              >
+                                {t.tipoItem === 'receita' ? '+' : '-'}{formatCurrency(t.valor)}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-1.5 mt-1 border-t border-[#EAE7E0] dark:border-[#4C4E5D]/40 flex justify-between items-center text-[10px]">
+                    <span className="text-zinc-500 dark:text-zinc-400">Total da Categoria:</span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-white">
+                      {formatCurrency(selectedCategoryTotal)}
+                    </span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
