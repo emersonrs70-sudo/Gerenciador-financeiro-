@@ -8,7 +8,7 @@ import {
   ShieldCheck, Target, ArrowUpRight, ArrowDownRight, Wallet, Sparkles, Layers, CheckCircle2,
   Filter, X
 } from 'lucide-react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { Transaction, BankAccount } from '../types';
 import { ExpenseCalendar } from './ExpenseCalendar';
 
@@ -387,18 +387,14 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
   return (
     <div className="space-y-3.5">
-      {/* 12-COLUMN HARMONIC GRID */}
-      <div className="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 gap-3.5 items-stretch">
+      {/* ROW 1: FLUID TRANSITIONING TOP CARDS (50%/50% when selected, 66.6%/33.3% default) */}
+      <div className="flex flex-col lg:flex-row gap-3.5 items-stretch w-full">
         
-        {/* ROW 1: CARD 1 - FLUXO FINANCEIRO DINÂMICO (Shrinks to 1.5 space / 6 cols when category selected, otherwise 2 spaces / 8 cols) */}
-        <motion.div
-          layout
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className={`${
-            selectedCategory ? 'lg:col-span-6' : 'lg:col-span-8'
-          } col-span-12 md:col-span-12 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300`}
+        {/* CARD 1: FLUXO FINANCEIRO DINÂMICO */}
+        <div
+          className={`w-full ${
+            selectedCategory ? 'lg:w-1/2' : 'lg:w-2/3'
+          } transition-[width] duration-300 ease-out bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between overflow-hidden`}
         >
           <div>
             {/* Header + Category Filter + Period Selector */}
@@ -545,9 +541,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
               )}
             </div>
 
-            {/* Smooth AreaChart */}
+            {/* Smooth AreaChart with Debounce to prevent 60fps re-draw stalls during resize */}
             <div className="h-36 sm:h-40 xl:h-44 w-full mt-1">
-              <ResponsiveContainer width="100%" height="100%">
+              <ResponsiveContainer width="100%" height="100%" debounce={40}>
                 <AreaChart data={fluxoData} margin={{ top: 5, right: 10, left: -22, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
@@ -651,17 +647,13 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
               </span>
             )}
           </div>
-        </motion.div>
+        </div>
 
-        {/* ROW 1: CARD 2 - DIVISÃO POR CATEGORIA (Expands to 1.5 space / 6 cols with transactions table when slice clicked, otherwise 1 space / 4 cols) */}
-        <motion.div
-          layout
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.25 }}
-          className={`${
-            selectedCategory ? 'lg:col-span-6' : 'lg:col-span-4'
-          } col-span-12 md:col-span-12 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300`}
+        {/* CARD 2: DIVISÃO POR CATEGORIA */}
+        <div
+          className={`w-full ${
+            selectedCategory ? 'lg:w-1/2' : 'lg:w-1/3'
+          } transition-[width] duration-300 ease-out bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between overflow-hidden`}
         >
           <div>
             {/* Header + Toggle + Close selection */}
@@ -728,18 +720,18 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
               </div>
             </div>
 
-            {/* If NO category selected: Normal Compact Donut View */}
-            {!selectedCategory ? (
-              <>
-                {/* Donut Chart Container */}
-                <div className="relative h-32 sm:h-36 w-full my-1.5 flex items-center justify-center">
+            {/* Stable Layout Structure with Silky Smooth Sliding Table */}
+            <div className={`grid grid-cols-1 ${selectedCategory ? 'sm:grid-cols-2' : 'grid-cols-1'} gap-3 my-1.5 items-stretch transition-all duration-300`}>
+              {/* Left Column: Donut Chart + Category switcher */}
+              <div className="flex flex-col items-center justify-between min-w-0">
+                <div className="relative h-32 sm:h-36 w-full flex items-center justify-center">
                   {pieData.length === 0 ? (
                     <div className="text-zinc-400 text-xs text-center">
                       Sem dados de {modoPizza === 'despesa' ? 'despesas' : 'receitas'} neste período.
                     </div>
                   ) : (
                     <>
-                      <ResponsiveContainer width="100%" height="100%">
+                      <ResponsiveContainer width="100%" height="100%" debounce={40}>
                         <PieChart>
                           <Tooltip
                             formatter={(val: number, name: string) => [
@@ -761,139 +753,82 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                             nameKey="name"
                             cx="50%"
                             cy="50%"
-                            innerRadius={42}
-                            outerRadius={64}
+                            innerRadius={selectedCategory ? 36 : 42}
+                            outerRadius={selectedCategory ? 56 : 64}
                             paddingAngle={3}
                             onMouseEnter={(_, idx) => setHoveredPieIndex(idx)}
                             onMouseLeave={() => setHoveredPieIndex(null)}
                             onClick={(data) => {
                               if (data && data.name) {
-                                setSelectedCategory(data.name);
+                                setSelectedCategory((prev) => (prev === data.name ? null : data.name));
                               }
                             }}
                             className="cursor-pointer"
                           >
-                            {pieData.map((entry, index) => (
-                              <Cell
-                                key={`cell-${index}`}
-                                fill={entry.color}
-                                stroke="#FFFFFF"
-                                strokeWidth={hoveredPieIndex === index ? 3 : 1}
-                                style={{ outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
-                              />
-                            ))}
+                            {pieData.map((entry, index) => {
+                              const isSelected = selectedCategory?.toLowerCase() === entry.name.toLowerCase();
+                              return (
+                                <Cell
+                                  key={`drill-cell-${index}`}
+                                  fill={entry.color}
+                                  stroke={isSelected ? '#18181B' : '#FFFFFF'}
+                                  strokeWidth={isSelected ? 2.5 : (hoveredPieIndex === index ? 3 : 1)}
+                                  opacity={selectedCategory && !isSelected ? 0.45 : 1}
+                                  style={{ outline: 'none', cursor: 'pointer', transition: 'opacity 0.2s' }}
+                                />
+                              );
+                            })}
                           </Pie>
                         </PieChart>
                       </ResponsiveContainer>
 
                       {/* Center Info in Donut */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                        <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">
-                          {hoveredPieIndex !== null && pieData[hoveredPieIndex] ? pieData[hoveredPieIndex].name : 'Total'}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-1">
+                        <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold truncate max-w-[85px]">
+                          {selectedCategory || (hoveredPieIndex !== null && pieData[hoveredPieIndex] ? pieData[hoveredPieIndex].name : 'Total')}
                         </span>
                         <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
-                          {hoveredPieIndex !== null && pieData[hoveredPieIndex]
-                            ? formatCurrency(pieData[hoveredPieIndex].value)
-                            : formatCurrency(totalModoPizza)}
+                          {selectedCategory
+                            ? formatCurrency(selectedCategoryTotal)
+                            : hoveredPieIndex !== null && pieData[hoveredPieIndex]
+                              ? formatCurrency(pieData[hoveredPieIndex].value)
+                              : formatCurrency(totalModoPizza)}
                         </span>
+                        {selectedCategory && (
+                          <span className="text-[9px] text-zinc-500 font-medium">
+                            {selectedCategoryPct}% do total
+                          </span>
+                        )}
                       </div>
                     </>
                   )}
                 </div>
 
-                {/* Top Categories List - Clickable to drilldown */}
-                <div className="space-y-1 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
-                  {pieData.slice(0, 3).map((cat) => (
-                    <div
-                      key={cat.name}
-                      onClick={() => setSelectedCategory(cat.name)}
-                      className="flex items-center justify-between text-[11px] py-1 px-1.5 rounded-lg hover:bg-[#F8F7F4] dark:hover:bg-[#252530] transition-colors cursor-pointer group"
-                      title="Clique para detalhar esta categoria"
-                    >
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                        <span className="truncate text-zinc-700 dark:text-zinc-200 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
-                          {cat.name}
-                        </span>
+                {/* When NOT selected: Top 3 Categories List */}
+                {!selectedCategory ? (
+                  <div className="space-y-1 max-h-24 overflow-y-auto pr-1 w-full custom-scrollbar">
+                    {pieData.slice(0, 3).map((cat) => (
+                      <div
+                        key={cat.name}
+                        onClick={() => setSelectedCategory(cat.name)}
+                        className="flex items-center justify-between text-[11px] py-1 px-1.5 rounded-lg hover:bg-[#F8F7F4] dark:hover:bg-[#252530] transition-colors cursor-pointer group"
+                        title="Clique para detalhar esta categoria"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                          <span className="truncate text-zinc-700 dark:text-zinc-200 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                            {cat.name}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2 font-mono shrink-0">
+                          <span className="text-zinc-500 dark:text-zinc-400 text-[10px]">{cat.percent}%</span>
+                          <span className="font-bold text-zinc-900 dark:text-white text-[10px]">{formatCurrency(cat.value)}</span>
+                        </div>
                       </div>
-                      <div className="flex items-center gap-2 font-mono shrink-0">
-                        <span className="text-zinc-500 dark:text-zinc-400 text-[10px]">{cat.percent}%</span>
-                        <span className="font-bold text-zinc-900 dark:text-white text-[10px]">{formatCurrency(cat.value)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            ) : (
-              /* Alteração 1: EXPANDED VIEW WITH 2 COLUMNS (PIE ON LEFT, TRANSACTIONS TABLE ON RIGHT) */
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-1.5 items-stretch">
-                {/* Left side: Donut chart with highlighted active slice + Category badges */}
-                <div className="flex flex-col items-center justify-between">
-                  <div className="relative h-32 sm:h-36 w-full flex items-center justify-center">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Tooltip
-                          formatter={(val: number, name: string) => [
-                            `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                            name
-                          ]}
-                          contentStyle={{
-                            backgroundColor: '#32323F',
-                            borderColor: '#4C4E5D',
-                            borderRadius: '12px',
-                            color: '#FFFFFF',
-                            fontSize: '11px',
-                            fontWeight: 600
-                          }}
-                        />
-                        <Pie
-                          data={pieData}
-                          dataKey="value"
-                          nameKey="name"
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={36}
-                          outerRadius={56}
-                          paddingAngle={3}
-                          onClick={(data) => {
-                            if (data && data.name) {
-                              setSelectedCategory((prev) => (prev === data.name ? null : data.name));
-                            }
-                          }}
-                          className="cursor-pointer"
-                        >
-                          {pieData.map((entry, index) => {
-                            const isSelected = selectedCategory?.toLowerCase() === entry.name.toLowerCase();
-                            return (
-                              <Cell
-                                key={`drill-cell-${index}`}
-                                fill={entry.color}
-                                stroke={isSelected ? '#18181B' : '#FFFFFF'}
-                                strokeWidth={isSelected ? 2.5 : 1}
-                                opacity={isSelected ? 1 : 0.45}
-                                style={{ outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
-                              />
-                            );
-                          })}
-                        </Pie>
-                      </PieChart>
-                    </ResponsiveContainer>
-
-                    {/* Center Info in Donut */}
-                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
-                      <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold truncate max-w-[85px]">
-                        {selectedCategory}
-                      </span>
-                      <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
-                        {formatCurrency(selectedCategoryTotal)}
-                      </span>
-                      <span className="text-[9px] text-zinc-500 font-medium">
-                        {selectedCategoryPct}% do total
-                      </span>
-                    </div>
+                    ))}
                   </div>
-
-                  {/* Category switcher pills */}
+                ) : (
+                  /* When selected: Category Switcher Pills */
                   <div className="flex flex-wrap gap-1 justify-center max-h-16 overflow-y-auto w-full custom-scrollbar pt-1">
                     {pieData.map((cat) => {
                       const isSelected = selectedCategory?.toLowerCase() === cat.name.toLowerCase();
@@ -913,88 +848,101 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                       );
                     })}
                   </div>
-                </div>
-
-                {/* Right side: Transactions Table for the selected category */}
-                <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-[#EAE7E0] dark:border-[#4C4E5D]/50 pt-2 sm:pt-0 sm:pl-3 min-w-0">
-                  <div>
-                    <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/30">
-                      <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
-                        Lançamentos no Período
-                      </span>
-                      <span className="text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
-                        {selectedCategoryTransactions.length} {selectedCategoryTransactions.length === 1 ? 'item' : 'itens'}
-                      </span>
-                    </div>
-
-                    <div className="max-h-40 sm:max-h-44 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
-                      {selectedCategoryTransactions.length === 0 ? (
-                        <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 text-[11px]">
-                          Nenhum lançamento encontrado nesta categoria para o período selecionado.
-                        </div>
-                      ) : (
-                        selectedCategoryTransactions.map((t) => {
-                          const acc = accounts.find((a) => a.id === t.accountId);
-                          const dateDisplay = t.data ? t.data.split('-').slice(1).reverse().join('/') : '--/--';
-                          return (
-                            <div
-                              key={t.id}
-                              className="flex items-center justify-between p-1.5 bg-[#F8F7F4] dark:bg-[#252530] rounded-lg border border-[#E8E5DC]/80 dark:border-[#4C4E5D]/40 text-[10px]"
-                            >
-                              <div className="flex items-center gap-1.5 min-w-0">
-                                <span className="font-mono text-zinc-400 dark:text-zinc-500 text-[9px] shrink-0">
-                                  {dateDisplay}
-                                </span>
-                                <div className="min-w-0">
-                                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[100px] sm:max-w-[125px]">
-                                    {t.descricao || 'Sem descrição'}
-                                  </p>
-                                  {acc && (
-                                    <span className="text-[8px] text-zinc-500 dark:text-zinc-400 block truncate">
-                                      {acc.nome}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <span
-                                className={`font-mono font-bold shrink-0 ml-1 ${
-                                  t.tipoItem === 'receita'
-                                    ? 'text-emerald-600 dark:text-emerald-400'
-                                    : 'text-rose-600 dark:text-rose-400'
-                                }`}
-                              >
-                                {t.tipoItem === 'receita' ? '+' : '-'}{formatCurrency(t.valor)}
-                              </span>
-                            </div>
-                          );
-                        })
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="pt-1.5 mt-1 border-t border-[#EAE7E0] dark:border-[#4C4E5D]/40 flex justify-between items-center text-[10px]">
-                    <span className="text-zinc-500 dark:text-zinc-400">Total da Categoria:</span>
-                    <span className="font-mono font-bold text-zinc-900 dark:text-white">
-                      {formatCurrency(selectedCategoryTotal)}
-                    </span>
-                  </div>
-                </div>
+                )}
               </div>
-            )}
+
+              {/* Right Column: Transactions Table with Smooth Slide & Fade Entrance */}
+              <AnimatePresence>
+                {selectedCategory && (
+                  <motion.div
+                    initial={{ opacity: 0, x: 20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 20 }}
+                    transition={{ duration: 0.25, ease: 'easeOut' }}
+                    className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-[#EAE7E0] dark:border-[#4C4E5D]/50 pt-2 sm:pt-0 sm:pl-3 min-w-0"
+                  >
+                    <div>
+                      <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/30">
+                        <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
+                          Lançamentos no Período
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
+                          {selectedCategoryTransactions.length} {selectedCategoryTransactions.length === 1 ? 'item' : 'itens'}
+                        </span>
+                      </div>
+
+                      <div className="max-h-40 sm:max-h-44 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                        {selectedCategoryTransactions.length === 0 ? (
+                          <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 text-[11px]">
+                            Nenhum lançamento encontrado nesta categoria para o período selecionado.
+                          </div>
+                        ) : (
+                          selectedCategoryTransactions.map((t) => {
+                            const acc = accounts.find((a) => a.id === t.accountId);
+                            const dateDisplay = t.data ? t.data.split('-').slice(1).reverse().join('/') : '--/--';
+                            return (
+                              <div
+                                key={t.id}
+                                className="flex items-center justify-between p-1.5 bg-[#F8F7F4] dark:bg-[#252530] rounded-lg border border-[#E8E5DC]/80 dark:border-[#4C4E5D]/40 text-[10px]"
+                              >
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span className="font-mono text-zinc-400 dark:text-zinc-500 text-[9px] shrink-0">
+                                    {dateDisplay}
+                                  </span>
+                                  <div className="min-w-0">
+                                    <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[100px] sm:max-w-[125px]">
+                                      {t.descricao || 'Sem descrição'}
+                                    </p>
+                                    {acc && (
+                                      <span className="text-[8px] text-zinc-500 dark:text-zinc-400 block truncate">
+                                        {acc.nome}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <span
+                                  className={`font-mono font-bold shrink-0 ml-1 ${
+                                    t.tipoItem === 'receita'
+                                      ? 'text-emerald-600 dark:text-emerald-400'
+                                      : 'text-rose-600 dark:text-rose-400'
+                                  }`}
+                                >
+                                  {t.tipoItem === 'receita' ? '+' : '-'}{formatCurrency(t.valor)}
+                                </span>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-1.5 mt-1 border-t border-[#EAE7E0] dark:border-[#4C4E5D]/40 flex justify-between items-center text-[10px]">
+                      <span className="text-zinc-500 dark:text-zinc-400">Total da Categoria:</span>
+                      <span className="font-mono font-bold text-zinc-900 dark:text-white">
+                        {formatCurrency(selectedCategoryTotal)}
+                      </span>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           </div>
 
           <div className="text-[10px] text-zinc-500 dark:text-[#988E96] border-t border-[#EAE7E0] dark:border-[#4C4E5D]/60 pt-2 mt-1 flex justify-between">
             <span>{pieData.length} categorias</span>
             <span className="font-mono font-bold text-zinc-800 dark:text-[#DDD5D0]">{formatCurrency(totalModoPizza)}</span>
           </div>
-        </motion.div>
+        </div>
+      </div>
 
+      {/* ROW 2: 3-COLUMN HARMONIC GRID (INDEPENDENT FROM ROW 1) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
         {/* ROW 2: CELL 3 - COMPARATIVO MENSAL (EVOLUÇÃO & METAS) */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.1 }}
-          className="col-span-12 md:col-span-6 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
@@ -1068,7 +1016,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.15 }}
-          className="col-span-12 md:col-span-6 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
@@ -1139,7 +1087,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.2 }}
-          className="col-span-12 md:col-span-12 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="md:col-span-2 lg:col-span-1 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
@@ -1227,7 +1175,6 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
             </span>
           </div>
         </motion.div>
-
       </div>
 
       {/* COMPACT INTERACTIVE EXPENSE CALENDAR (Optional) */}
