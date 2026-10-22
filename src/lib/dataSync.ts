@@ -391,13 +391,14 @@ export async function saveRecurrentRuleToFirestore(userId: string, rule: Recurre
       id: rule.id,
       descricao: rule.descricao,
       valor: rule.valor,
-      diaDoMes: rule.diaDoMes,
+      diaDoMes: rule.diaDoMes || 1,
       categoria: rule.categoria,
       tipoItem: rule.tipoItem,
-      accountId: rule.accountId,
-      ativa: rule.ativa,
-      criadaEm: rule.criadaEm,
-      ultimoMesGerado: rule.ultimoMesGerado || ''
+      accountId: rule.accountId || 'santander',
+      ativa: rule.ativa !== false,
+      criadaEm: rule.criadaEm || new Date().toISOString(),
+      ultimoMesGerado: rule.ultimoMesGerado || '',
+      userId: userId
     });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);

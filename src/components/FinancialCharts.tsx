@@ -406,11 +406,15 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     Fluxo Financeiro Dinâmico
                   </h3>
                   {isCategoryFiltered && (
-                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/50">
+                    <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold border ${
+                      filteredCategoryIsReceita
+                        ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/70 dark:text-emerald-300 border-emerald-200/80 dark:border-emerald-700/60'
+                        : 'bg-rose-50 text-rose-700 dark:bg-rose-950/70 dark:text-rose-300 border-rose-200/80 dark:border-rose-700/60'
+                    }`}>
                       <span>{fluxoCategoriaFiltro}</span>
                       <button
                         onClick={() => setFluxoCategoriaFiltro('todas')}
-                        className="hover:text-rose-500 cursor-pointer ml-0.5"
+                        className="hover:opacity-75 cursor-pointer ml-0.5"
                         title="Remover filtro de categoria"
                       >
                         <X className="w-2.5 h-2.5" />
@@ -428,28 +432,36 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
               {/* Controls: Category Filter Dropdown + Period selector */}
               <div className="flex items-center gap-1.5 flex-wrap self-stretch sm:self-auto justify-between sm:justify-end">
                 {/* Alteração 2: Category Filter Dropdown */}
-                <div className="flex items-center gap-1 bg-[#F3F1EB] dark:bg-[#252530] px-2 py-1 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-[10px]">
-                  <Filter className="w-3 h-3 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-xl border text-[10px] transition-all ${
+                  isCategoryFiltered
+                    ? 'bg-blue-50/80 dark:bg-[#252530] border-blue-400/80 dark:border-cyan-500/70 text-blue-800 dark:text-cyan-300 shadow-xs'
+                    : 'bg-[#F3F1EB] dark:bg-[#252530] border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-zinc-700 dark:text-[#DDD5D0]'
+                }`}>
+                  <Filter className={`w-3 h-3 shrink-0 ${
+                    isCategoryFiltered ? 'text-blue-600 dark:text-cyan-400' : 'text-zinc-500 dark:text-[#988E96]'
+                  }`} />
                   <select
                     value={fluxoCategoriaFiltro}
                     onChange={(e) => setFluxoCategoriaFiltro(e.target.value)}
-                    className="bg-transparent text-zinc-800 dark:text-zinc-200 font-medium outline-none cursor-pointer max-w-[110px] sm:max-w-[130px] truncate"
+                    className="bg-transparent text-zinc-800 dark:text-zinc-100 font-medium outline-none cursor-pointer max-w-[120px] sm:max-w-[150px] truncate"
                     title="Filtrar fluxo por categoria"
                   >
-                    <option value="todas">Todas as Categorias</option>
+                    <option value="todas" className="bg-white dark:bg-[#1E1E26] text-zinc-900 dark:text-zinc-100">
+                      Todas as Categorias
+                    </option>
                     {categoriasDespesaList.length > 0 && (
-                      <optgroup label="Despesas">
+                      <optgroup label="Despesas" className="bg-white dark:bg-[#1E1E26] text-rose-600 dark:text-rose-400 font-bold">
                         {categoriasDespesaList.map((c) => (
-                          <option key={`flx-desp-${c}`} value={c}>
+                          <option key={`flx-desp-${c}`} value={c} className="bg-white dark:bg-[#1E1E26] text-zinc-800 dark:text-zinc-100 font-normal">
                             {c}
                           </option>
                         ))}
                       </optgroup>
                     )}
                     {categoriasReceitaList.length > 0 && (
-                      <optgroup label="Receitas">
+                      <optgroup label="Receitas" className="bg-white dark:bg-[#1E1E26] text-emerald-600 dark:text-emerald-400 font-bold">
                         {categoriasReceitaList.map((c) => (
-                          <option key={`flx-rec-${c}`} value={c}>
+                          <option key={`flx-rec-${c}`} value={c} className="bg-white dark:bg-[#1E1E26] text-zinc-800 dark:text-zinc-100 font-normal">
                             {c}
                           </option>
                         ))}
@@ -582,13 +594,21 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                       return [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, label];
                     }}
                     contentStyle={{
-                      backgroundColor: '#32323F',
+                      backgroundColor: '#1E1E26',
                       borderColor: '#4C4E5D',
                       borderRadius: '12px',
                       color: '#FFFFFF',
                       fontSize: '11px',
                       fontWeight: 600,
-                      boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
+                      boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+                    }}
+                    itemStyle={{
+                      color: '#FFFFFF',
+                      fontSize: '11px'
+                    }}
+                    labelStyle={{
+                      color: '#FFFFFF',
+                      fontWeight: 700
                     }}
                   />
                   {(!isCategoryFiltered || filteredCategoryIsReceita || fluxoData.some(d => d.Receita > 0)) && (
@@ -686,7 +706,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
                       modoPizza === 'despesa'
                         ? 'bg-white dark:bg-[#4C4E5D] text-rose-600 dark:text-rose-400 shadow-xs'
-                        : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
+                        : 'text-zinc-500 hover:text-rose-600 dark:text-[#988E96] dark:hover:text-rose-300'
                     }`}
                   >
                     Despesas
@@ -699,7 +719,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
                       modoPizza === 'receita'
                         ? 'bg-white dark:bg-[#4C4E5D] text-emerald-600 dark:text-emerald-400 shadow-xs'
-                        : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
+                        : 'text-zinc-500 hover:text-emerald-600 dark:text-[#988E96] dark:hover:text-emerald-300'
                     }`}
                   >
                     Receitas
@@ -741,12 +761,21 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                               name
                             ]}
                             contentStyle={{
-                              backgroundColor: '#32323F',
+                              backgroundColor: '#1E1E26',
                               borderColor: '#4C4E5D',
                               borderRadius: '12px',
                               color: '#FFFFFF',
                               fontSize: '11px',
-                              fontWeight: 600
+                              fontWeight: 600,
+                              boxShadow: '0 4px 12px rgba(0,0,0,0.35)'
+                            }}
+                            itemStyle={{
+                              color: '#FFFFFF',
+                              fontSize: '11px'
+                            }}
+                            labelStyle={{
+                              color: '#FFFFFF',
+                              fontWeight: 700
                             }}
                           />
                           <Pie
@@ -841,7 +870,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                           className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
                             isSelected
                               ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
-                              : 'bg-[#F3F1EB] dark:bg-[#252530] text-zinc-600 dark:text-zinc-300 hover:bg-[#EAE7E0]'
+                              : 'bg-[#F3F1EB] dark:bg-[#252530] text-zinc-600 dark:text-zinc-300 hover:bg-[#EAE7E0] dark:hover:bg-[#4C4E5D]/60 dark:hover:text-white'
                           }`}
                         >
                           <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />

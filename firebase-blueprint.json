@@ -176,6 +176,66 @@
         }
       },
       "required": ["nome", "tipo", "saldoInicial", "userId"]
+    },
+    "RecurrentRule": {
+      "title": "RecurrentRule",
+      "description": "Recurring transaction generation rule",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Rule identifier"
+        },
+        "descricao": {
+          "type": "string",
+          "maxLength": 250,
+          "description": "Transaction description to generate"
+        },
+        "valor": {
+          "type": "number",
+          "description": "Monetary value"
+        },
+        "diaDoMes": {
+          "type": "number",
+          "description": "Day of the month for execution (1-31)"
+        },
+        "categoria": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Category name"
+        },
+        "tipoItem": {
+          "type": "string",
+          "enum": ["despesa", "receita"],
+          "description": "Expense or income"
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Associated bank account ID"
+        },
+        "ativa": {
+          "type": "boolean",
+          "description": "Whether recurring rule is active"
+        },
+        "criadaEm": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Creation timestamp ISO string"
+        },
+        "ultimoMesGerado": {
+          "type": "string",
+          "maxLength": 20,
+          "description": "Last generated month code e.g. 2026-10"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        }
+      },
+      "required": ["descricao", "valor", "diaDoMes", "categoria", "tipoItem"]
     }
   },
   "firestore": {
@@ -198,6 +258,10 @@
     "/users/{userId}/accounts/{accountId}": {
       "schema": "BankAccount",
       "description": "User bank accounts"
+    },
+    "/users/{userId}/recurrent_rules/{ruleId}": {
+      "schema": "RecurrentRule",
+      "description": "User recurring transaction automation rules"
     }
   }
 }

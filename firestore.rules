@@ -65,6 +65,16 @@ service cloud.firestore {
         && data.userId == userId;
     }
 
+    function isValidRecurrentRule(data, userId) {
+      return data.descricao is string && data.descricao.size() > 0 && data.descricao.size() <= 250
+        && data.valor is number
+        && data.diaDoMes is number && data.diaDoMes >= 1 && data.diaDoMes <= 31
+        && data.categoria is string && data.categoria.size() > 0 && data.categoria.size() <= 80
+        && (data.tipoItem == 'despesa' || data.tipoItem == 'receita')
+        && data.ativa is bool
+        && (!('userId' in data) || data.userId == userId);
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
@@ -95,6 +105,13 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(accountId) && isValidBankAccount(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(accountId) && isValidBankAccount(incoming(), userId) && incoming().userId == existing().userId;
         allow delete: if isOwner(userId) && isValidId(accountId);
+      }
+
+      match /recurrent_rules/{ruleId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(ruleId);
       }
     }
   }

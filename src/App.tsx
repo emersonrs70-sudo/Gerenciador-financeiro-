@@ -33,6 +33,8 @@ import { ExpenseCalendar } from './components/ExpenseCalendar';
 import { PersonalAIAdvisor } from './components/PersonalAIAdvisor';
 import { StreakModal } from './components/StreakModal';
 import { NotificationCenter } from './components/NotificationCenter';
+import { AudioControls } from './components/AudioControls';
+import { jarvisAudio } from './lib/jarvisAudio';
 import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
 import { FirebaseDomainModal } from './components/FirebaseDomainModal';
@@ -196,6 +198,17 @@ export default function App() {
   const [mobileTabActive, setMobileTabActive] = useState<'dashboard' | 'transacoes' | 'planejador'>('dashboard');
   const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
 
+  const handleNavigateNav = (nav: 'dashboard' | 'transacoes' | 'sonhos' | 'contas' | 'categorias' | 'ia') => {
+    setActiveNav(nav);
+    jarvisAudio.announceNavigation(nav);
+    setIsMobileSidebarOpen(false);
+  };
+
+  const handleSwitchDashboardTab = (tab: 'geral' | 'graficos' | 'calendario' | 'cartoes') => {
+    setDashboardTab(tab);
+    jarvisAudio.announceNavigation(tab);
+  };
+
   // Firebase Cloud & Network status
   const [isOnline, setIsOnline] = useState<boolean>(false);
   const [firebaseUser, setFirebaseUser] = useState<FirebaseUser | null>(() => auth.currentUser);
@@ -276,6 +289,9 @@ export default function App() {
 
     // Mirror to standard visible toasts
     showToast(`${titulo}: ${mensagem}`, tipo === 'alerta' ? 'erro' : 'sucesso');
+
+    // JARVIS Sci-Fi notification chime & vocal announcement
+    jarvisAudio.announceNotification(titulo);
 
     // Browser Desktop Notification
     if ('Notification' in window && Notification.permission === 'granted') {
@@ -504,6 +520,7 @@ export default function App() {
 
   // Theme support toggler
   const toggleTheme = () => {
+    jarvisAudio.playSound('click');
     setIsDarkMode((prev) => {
       const next = !prev;
       if (next) {
@@ -518,6 +535,7 @@ export default function App() {
 
   // Months navigation triggers
   const prevMonth = () => {
+    jarvisAudio.playSound('click');
     setDataAncorada((prev) => {
       const next = new Date(prev);
       next.setMonth(prev.getMonth() - 1);
@@ -526,6 +544,7 @@ export default function App() {
   };
 
   const nextMonth = () => {
+    jarvisAudio.playSound('click');
     setDataAncorada((prev) => {
       const next = new Date(prev);
       next.setMonth(prev.getMonth() + 1);
@@ -534,6 +553,7 @@ export default function App() {
   };
 
   const selectMonth = (monthIndex: number) => {
+    jarvisAudio.playSound('click');
     setDataAncorada((prev) => {
       const next = new Date(prev);
       next.setMonth(monthIndex);
@@ -542,6 +562,7 @@ export default function App() {
   };
 
   const resetToToday = () => {
+    jarvisAudio.playSound('click');
     setDataAncorada(new Date());
   };
 
@@ -622,6 +643,9 @@ export default function App() {
         : `Receita "${descricao}" injetada com sucesso! 🚀`,
       'sucesso'
     );
+
+    // JARVIS vocal and sound confirmation
+    jarvisAudio.announceTransactionAdded(tipoItem, valor, descricao);
   };
 
   // Batch add transactions from statement import
@@ -679,6 +703,8 @@ export default function App() {
       `Foram lançadas ${createdTransactions.length} movimentações no seu controle financeiro.`,
       'sucesso'
     );
+    jarvisAudio.playSound('success');
+    jarvisAudio.speak(`${createdTransactions.length} movimentações importadas com sucesso, senhor.`, { interrupt: true });
   };
 
   // Delete transaction handler
@@ -700,6 +726,7 @@ export default function App() {
     saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
 
     showToast('Lançamento removido com sucesso!', 'info');
+    jarvisAudio.announceTransactionDeleted();
   };
 
   // Update transaction handler
@@ -736,6 +763,7 @@ export default function App() {
     saveLocal(`local_receitas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'receita'));
 
     showToast('Lançamento atualizado com sucesso!', 'sucesso');
+    jarvisAudio.announceTransactionUpdated();
   };
 
   // Add continuous recurring rule
@@ -1237,10 +1265,7 @@ export default function App() {
           </p>
 
           <button
-            onClick={() => {
-              setActiveNav('dashboard');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('dashboard')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'dashboard'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -1252,10 +1277,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveNav('transacoes');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('transacoes')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'transacoes'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -1267,10 +1289,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveNav('sonhos');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('sonhos')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'sonhos'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -1285,10 +1304,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveNav('contas');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('contas')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'contas'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -1303,10 +1319,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveNav('categorias');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('categorias')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'categorias'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -1318,10 +1331,7 @@ export default function App() {
           </button>
 
           <button
-            onClick={() => {
-              setActiveNav('ia');
-              if (isMobile) setIsMobileSidebarOpen(false);
-            }}
+            onClick={() => handleNavigateNav('ia')}
             className={`w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
               activeNav === 'ia'
                 ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -2126,9 +2136,15 @@ export default function App() {
               onSendTestNotification={handleSendTestNotification}
             />
 
+            {/* JARVIS Audio Controls */}
+            <AudioControls />
+
             {/* Streak Modal Trigger */}
             <button
-              onClick={() => setIsStreakModalOpen(true)}
+              onClick={() => {
+                setIsStreakModalOpen(true);
+                jarvisAudio.announceStreak(streak);
+              }}
               title="Clique para ver níveis, medalhas e resumo"
               className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
                 streak > 0
@@ -2168,7 +2184,7 @@ export default function App() {
           <div className="bg-[#FDFCFB]/90 dark:bg-[#32323F]/90 border-b border-[#E8E5DC] dark:border-[#4C4E5D]/60 px-4 sm:px-6 py-2.5 flex items-center justify-between flex-shrink-0 z-10">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-none py-0.5">
               <button
-                onClick={() => setDashboardTab('geral')}
+                onClick={() => handleSwitchDashboardTab('geral')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'geral'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -2180,7 +2196,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setDashboardTab('graficos')}
+                onClick={() => handleSwitchDashboardTab('graficos')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'graficos'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -2192,7 +2208,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setDashboardTab('calendario')}
+                onClick={() => handleSwitchDashboardTab('calendario')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'calendario'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -2204,7 +2220,7 @@ export default function App() {
               </button>
 
               <button
-                onClick={() => setDashboardTab('cartoes')}
+                onClick={() => handleSwitchDashboardTab('cartoes')}
                 className={`flex items-center gap-2 px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer whitespace-nowrap ${
                   dashboardTab === 'cartoes'
                     ? 'bg-[#32323F] text-white dark:bg-[#4C4E5D] dark:text-[#DDD5D0] shadow-xs'
@@ -2618,65 +2634,6 @@ export default function App() {
         categoriasDespesa={categoriasDespesa}
         categoriasReceita={categoriasReceita}
       />
-
-      {/* SYSTEM METERS BOTTOM NAVIGATION BAR (Exclusively mobile tab bar) */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-[#32323F]/95 backdrop-blur-md border-t border-zinc-200/80 dark:border-[#4C4E5D]/60 z-40 flex justify-around py-2 lg:hidden shadow-lg">
-        <button
-          onClick={() => {
-            setActiveNav('dashboard');
-            setDashboardTab('geral');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            activeNav === 'dashboard' && dashboardTab === 'geral'
-              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
-              : 'text-zinc-400 dark:text-[#988E96]'
-          }`}
-        >
-          <LayoutDashboard className="w-4 h-4 text-emerald-400" />
-          <span className="text-[10px]">Visão Geral</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveNav('dashboard');
-            setDashboardTab('graficos');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            activeNav === 'dashboard' && dashboardTab === 'graficos'
-              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
-              : 'text-zinc-400 dark:text-[#988E96]'
-          }`}
-        >
-          <TrendingUp className="w-4 h-4 text-blue-400" />
-          <span className="text-[10px]">Gráficos</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveNav('dashboard');
-            setDashboardTab('calendario');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            activeNav === 'dashboard' && dashboardTab === 'calendario'
-              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
-              : 'text-zinc-400 dark:text-[#988E96]'
-          }`}
-        >
-          <Calendar className="w-4 h-4 text-amber-400" />
-          <span className="text-[10px]">Calendário</span>
-        </button>
-        <button
-          onClick={() => {
-            setActiveNav('transacoes');
-          }}
-          className={`flex flex-col items-center gap-1 transition-all cursor-pointer py-1 px-3 rounded-lg ${
-            activeNav === 'transacoes'
-              ? 'text-zinc-900 dark:text-[#DDD5D0] font-bold'
-              : 'text-zinc-400 dark:text-[#988E96]'
-          }`}
-        >
-          <Receipt className="w-4 h-4 text-rose-400" />
-          <span className="text-[10px]">Extrato</span>
-        </button>
-      </nav>
 
       {/* STREAK REWARDS AND ROSTER MODAL OVERLAY */}
       <StreakModal

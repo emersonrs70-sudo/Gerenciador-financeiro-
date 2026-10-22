@@ -1,131 +1,95 @@
-# Plano de Evolução Visual, Lançamentos em Abas, IA Aprimorada e Grid Gráfica 3x2
+# Motor de Áudio JARVIS & Efeitos Sonoros Sci-Fi [CONCLUÍDO]
 
-Plano detalhado para modernização do modo claro com tons off-white contemporâneos, reestruturação da tela de lançamentos com extrato e histórico em abas colapsáveis de largura total, aprimoramento das diretrizes e mecanismo do Chat Inteligente com prévia interativa em 1 clique, e reformulação da tela de gráficos em uma grade executiva 3x2 com Donut interativo de categorias.
+Implementação de um sistema completo de feedback por voz e efeitos sonoros inspirado no JARVIS da Marvel, integrando síntese de voz masculina personalizada em português, sintetizador Web Audio API para efeitos sonoros de alta tecnologia, controles de áudio na interface e sonorização de ações, navegação e notificações.
 
----
-
-### Decisões do Usuário & Alinhamento
+### Status da Implementação: Concluído e Ativo
+- [x] Motor de som sci-fi procedual com Web Audio API (`src/lib/jarvisAudio.ts`)
+- [x] Síntese vocal masculina calibrada com entonação JARVIS em português (`pt-BR`)
+- [x] Componente de controle de áudio no topo da tela com popover, slider de volume e mudo (`src/components/AudioControls.tsx`)
+- [x] Integração auditiva nas ações do sistema: lançamentos, faturas, exclusões, faturas importadas e notificações
+- [x] Sonorização de transição entre abas (Dashboard, Extrato, Sonhos, Contas, Categorias, Gráficos)
+- [x] Sonorização e anúncio vocal da sequência diária (Streak)
+- [x] Validação de build e compilação sem erros
 
 > [!IMPORTANT]
-> As seguintes decisões foram confirmadas pelo usuário durante a fase de alinhamento e regem a implementação:
->
-> - **Alternância entre Extrato e Histórico**: Abas integradas com alternância direta e animada dentro do mesmo card ampliado de largura total, mantendo um modo ativo em destaque e o outro colapsado para eliminar rolagem vertical da página.
-> - **Interação no Chat Inteligente**: Ao reconhecer uma transação em linguagem natural, o assistente exibirá um **balão de prévia interativa com confirmação em 1 clique** (`[Confirmar Lançamento]` e `[Cancelar]`), garantindo precisão antes de gravar no banco de dados.
-> - **Distribuição da Grade 3x2 de Gráficos**:
->   - Linha Superior:
->     - 2 primeiros blocos (col-span-2): **Gráfico de Fluxo Financeiro** (Receitas vs Despesas mensal).
->     - 3º bloco (col-span-1): **Gráfico de Pizza / Donut de Categorias** com percentuais e distribuição.
->   - Linha Inferior (3 blocos):
->     - Bloco 1: **Comparativo Mensal** (evolução percentual vs mês anterior e ticket médio).
->     - Bloco 2: **Balanço Líquido & Taxa de Poupança** (margem de sobra real vs metas).
->     - Bloco 3: **Projeção de Fluxo de Caixa** (estimativa baseada nos hábitos históricos).
-> - **Tons de Branco Off-White**: Substituição dos tons frios e acinzentados do modo claro por paleta off-white nobre (`#FBFBF9`, `#F5F4EE`, `#ECE9E2`), garantindo conforto ocular superior e acabamento premium.
+> As seguintes decisões foram confirmadas na fase de alinhamento e moldarão a arquitetura:
+> - **Alcance do Feedback por Voz**: Em todas as ações principais, navegação entre abas e notificações emitidas pelo sistema.
+> - **Estética Sonora**: Efeitos sonoros sutis de interface sci-fi e alta tecnologia sintetizados diretamente no navegador com a Web Audio API (sem dependência de arquivos externos que poderiam falhar ao carregar).
+> - **Controle de Interface**: Botão integrado no cabeçalho com controle mestre de áudio (Mudo / Ativo), ajuste de volume e alternância independente entre Voz JARVIS e Efeitos Sonoros.
 
 ---
 
-## 1. Visão Geral e Conceito Central
+### 1. Overview & Core Concept
 
-- **O que faz**: Otimiza a ergonomia visual do FintechCore em 4 frentes sinérgicas: conforto estético no modo claro (off-white), densidade de tela perfeita na gestão de extrato/lançamentos sem rolagem, inteligência natural avançada no chat com prévias acionáveis e visualização analítica em matriz 3x2.
-- **Público-alvo**: Usuários que buscam uma ferramenta financeira veloz, com leitura confortável em telas claras, navegação ágil sem perda de foco vertical e suporte de IA conversacional resolutivo.
-- **Valor Principal**: Eliminação definitiva da rolagem desnecessária, maior clareza analítica com novos gráficos de composição e redução de atrito na inserção de transações por voz ou texto.
-
----
-
-## 2. Experiência do Usuário & Design Visual
-
-### A. Paleta Off-White no Modo Claro
-- **Fundo da Aplicação**: `#F8F7F3` (Off-white aconchegante com toque neutro suave).
-- **Superfícies de Cards e Sidebar**: `#FFFFFF` / `#FCFBF8` com bordas sutis em `#E6E3DA` (elimina o contraste áspero do branco puro sem perder luminosidade).
-- **Acentos e Destaques no Claro**: `#32323F` (Gunmetal elegante para textos primários) e `#4C4E5D` para controles secundários.
-- **Modo Escuro**: Mantém a paleta Gunmetal (`#32323F`, `#252530`, `#4C4E5D`, `#988E96`, `#DDD5D0`) já consolidada.
-
-### B. Tela de Lançamentos & Extrato (Ergonomia Sem Rolagem)
-- **Card de Inserção Rápida (TransactionForm)**: Reajustado para proporção harmoniosa de topo/lateral com seletores compactos e feedback rápido.
-- **Card Ampliado de Movimentações (TransactionTable)**:
-  - Ocupa a largura total proporcional disponível.
-  - Cabeçalho com abas integradas estilo switcher executivo:
-    - `[ 📄 Extrato do Mês Atual (N lançamentos) ]`
-    - `[ 🔍 Histórico Geral & Pesquisa Global ]`
-  - Apenas o extrato selecionado é expandido; o outro fica recolhido sem ocupar altura vertical.
-  - Contêiner de tabela com altura fixa contida (`max-h-[460px] overflow-y-auto custom-scrollbar`) e cabeçalho `sticky`, permitindo navegar por dezenas de transações mantendo toda a tela estática.
-
-### C. Chat Inteligente Aprimorado (PersonalAIAdvisor)
-- **Compreensão de Linguagem Natural Brasileira**:
-  - Padrões ricos: *"gastei 48 no almoço hoje no cartão santander"*, *"recebi 3500 de salário ontem na conta corrente"*, *"comprei tênis 280 em 2x despesa lazer"*, *"paguei conta de luz 190,50"*.
-  - Detecção automática de:
-    - `tipoItem`: Receita ou Despesa.
-    - `valor`: Conversão de formatos brasileiros (`R$ 45,90`, `45.90`, `50 conto`).
-    - `categoria`: Reconhecimento semântico inteligente baseado na lista ativa de categorias do usuário.
-    - `accountId`: Vínculo automático à conta/cartão mencionada (Santander, Inter, Nubank, Dinheiro, etc.).
-    - `data`: Conversão de termos relativos ("hoje", "ontem", "anteontem") para `YYYY-MM-DD`.
-    - `faturaMes`: Detecção de compras parceladas ou em fatura futura.
-- **Balão de Prévia Interativo**:
-  - Em vez de gravar cegamente, o bot responde com um card visual estilizado mostrando todos os dados extraídos:
-    - Descrição, Categoria, Conta/Cartão, Data e Valor formatado em reais.
-    - Botão verde destacado: `[✓ Confirmar e Lançar]`
-    - Botão neutro: `[✕ Descartar]`
-  - Ao clicar em confirmar, a transação é inserida instantaneamente no Firestore/Local e o card atualiza para o estado `[✓ Lançado com Sucesso]`.
-
-### D. Tela de Gráficos em Matriz 3x2 (FinancialCharts)
-- Layout em proporção equilibrada (3 colunas horizontais x 2 linhas verticais):
-  ```
-  ┌────────────────────────────────────────────────────────────────────────┐
-  │                           TELA DE GRÁFICOS (3x2)                       │
-  ├──────────────────────────────────────────┬─────────────────────────────┤
-  │ FLUXO FINANCEIRO MENSAL (Col 1 e Col 2)   │ DONUT DE CATEGORIAS (Col 3) │
-  │ • Comparativo Receitas x Despesas        │ • Distribuição percentual   │
-  │ • Linha de Saldo / Tendência             │ • Legenda interativa        │
-  │ • Controles de visão (3M / 6M / 12M)     │ • Hover com detalhe e total │
-  ├────────────────────────────┬─────────────┴──────────────┬──────────────┤
-  │ COMPARATIVO MENSAL (Col 1) │ BALANÇO LÍQUIDO (Col 2)    │ PROJEÇÃO (3) │
-  │ • Variação percentual      │ • Taxa de Poupança         │ • Estimativa │
-  │ • Médias diárias e mensais │ • Sobra Real vs Meta       │ • Tendência  │
-  └────────────────────────────┴────────────────────────────┴──────────────┘
-  ```
-- **Transições Suaves**: Animações de entrada e troca de mês via `framer-motion`/`motion/react` com micro-interações ao passar o mouse sobre fatias e barras.
+- **O que faz**: Adiciona uma presença auditiva sofisticada e futurista ao gerenciador financeiro. Sempre que o usuário adiciona transações, troca de abas, atinge metas ou recebe alertas, o sistema executa um feedback sonoro sci-fi imediato e uma síntese de voz com cadência britânica/elegante em português, referindo-se educadamente ao usuário como o JARVIS de Tony Stark.
+- **Público-Alvo**: Usuários que buscam uma experiência de ponta, imersiva e produtiva em seu painel financeiro diário.
+- **Principal Valor**: Transformar a rotina de registro financeiro em uma experiência dinâmica e envolvente, aumentando o engajamento e a percepção de controle tecnológico sobre o próprio orçamento.
 
 ---
 
-## 3. Decisões do Produto & Trade-Offs
+### 2. User Experience & Visual Design
 
-- **Abas Integradas no Extrato**:
-  - *Abordagem*: Um único card principal na área de extrato com toggle de abas integradas para alternar entre "Extrato do Período" e "Histórico Geral".
-  - *Por que*: O usuário confirmou essa preferência; evita qualquer rolagem de página para baixo e unifica a largura visual dos relatórios tabulares.
-- **Balão de Prévia Interativa no Chat**:
-  - *Abordagem*: Geração de componente de confirmação em 1 clique na mensagem do chat antes de salvar.
-  - *Por que*: Elimina erros de interpretação sem exigir digitação extra do usuário, fornecendo controle total com 1 toque.
-- **Matriz 3x2 para Gráficos**:
-  - *Abordagem*: Grid com 3 colunas e 2 linhas no desktop, condensando o fluxo financeiro em 2 colunas e complementando com donut e 3 cards analíticos funcionais na base.
-  - *Por que*: Otimiza o viewport de laptops e desktops, eliminando a necessidade de scrollar a tela para ver relatórios essenciais.
+- **Controle no Topo do Aplicativo**:
+  - Ícone de áudio/JARVIS localizado no cabeçalho ao lado do sino de notificações.
+  - Indicador visual discreto: ondas sonoras holográficas sutis quando o JARVIS estiver falando ou quando houver som ativo.
+  - Menu suspenso de áudio rápido:
+    - Interruptor Geral: Mudo / Ativo.
+    - Controle deslizante de Volume (0% a 100%).
+    - Alternador "Voz do JARVIS (Fala)".
+    - Alternador "Sons de Interface (Sci-Fi FX)".
+    - Botão "Testar Voz do JARVIS" ("Olá, senhor. Todos os sistemas financeiros operando em capacidade nominal.").
+- **Feedback em Ações do Sistema**:
+  - **Criação de Transação**: Blip sci-fi de confirmação harmônico + voz: *"Transação registrada com sucesso, senhor."*
+  - **Exclusão de Transação**: Som sci-fi de dissolução + voz: *"Item removido do registro."*
+  - **Navegação de Abas**: Micro-pulso acústico de transição de dados + voz rápida contextual (*"Acessando extrato financeiro"*, *"Carregando gráficos e relatórios"*, etc.).
+  - **Notificações & Alertas**: Som harmônico duplo sci-fi + voz narrando o alerta essencial.
+  - **Metas & Sequência Diária**: Som celebratório de acordes sintéticos de alta fidelidade + voz: *"Sequência diária atualizada. Parabéns pela disciplina, senhor."*
+- **Entonação da Voz**:
+  - Seleção algorítmica de voz masculina em português (`pt-BR` ou `pt-PT`) com maior fidelidade disponível no sistema operacional do usuário.
+  - Ajuste de parâmetros de fala: tom ligeiramente mais grave (`pitch: 0.90`) e cadência pausada e articulada (`rate: 0.98`), conferindo compostura, autoridade e calma.
 
 ---
 
-## 4. Arquitetura Técnica & Estrutura de Componentes
+### 3. Key Product Decisions & Trade-Offs
+
+- **Decisão 1: Síntese de Efeitos Sonoros via Web Audio API (Osciladores & Filtros)**
+  - *Abordagem Escolhida*: Geração procedural direta dos sons (senoides puras, filtros passa-faixa, curvas exponenciais de ganho e micro-arpeggios de frequências 800Hz–2400Hz).
+  - *Por quê*: Latência zero (<5ms), sem consumo de banda de rede, sem risco de erro 404 de arquivos MP3 e garantia de consistência auditiva em qualquer plataforma.
+  - *Alternativas Consideradas*: Arquivos de áudio estáticos externos (propensos a falhas de rede e bloqueios de CORS).
+- **Decisão 2: Motor Híbrido com Web Speech API e Respeito a Autoplay**
+  - *Abordagem Escolhida*: Síntese local no navegador via `window.speechSynthesis`, com ativação limpa vinculada ao primeiro clique do usuário para satisfazer os requisitos de áudio dos navegadores.
+  - *Por quê*: Resposta instantânea sem custo de API por cada clique de navegação, funcionamento offline e privacidade total dos dados falados.
+- **Decisão 3: Memória e Preferência Persistente**
+  - *Abordagem Escolhida*: Armazenamento das configurações de volume, voz e mudo no `localStorage`, garantindo que o usuário tenha controle total e possa silenciar a qualquer instante se estiver em ambiente silencioso.
+
+---
+
+### 4. Technical Architecture & Data Strategy
 
 ```
-┌──────────────────────────────────────────────────────────────────────────────┐
-│                              APP COMPONENT TREE                              │
-├──────────────────────────────────────────────────────────────────────────────┤
-│ App.tsx (Root Shell: h-screen overflow-hidden)                                │
-│ ├─ SidebarNavigation (Desktop / Mobile Drawer)                                │
-│ ├─ TopHeaderBar (Data, Notificações, Streak, Firebase, Theme Toggle)          │
-│ ├─ TopTabsMenu (Visão Geral, Gráficos, Calendário, Cartões)                   │
-│ └─ Main Content Area                                                         │
-│     ├─ Tab: Visão Geral (5 MetricCards, SubPanels, Quick Ledger)             │
-│     ├─ Tab: Gráficos & Relatórios (FinancialCharts: Grid 3x2 + Donut)        │
-│     ├─ Tab: Calendário Financeiro (ExpenseCalendar)                          │
-│     └─ Nav: Lançamentos & Extrato                                            │
-│         ├─ TransactionForm                                                   │
-│         └─ TransactionTable (Abas integradas: Mês vs Histórico Global)       │
-│                                                                              │
-│ PersonalAIAdvisor.tsx (Chat NLP Engine + Interactive Confirmation Balloon)    │
-└──────────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────┐
+│                      FINTECH CORE APP                           │
+├───────────────────────────────┬─────────────────────────────────┤
+│    Interface & Componentes    │        Sistema de Áudio         │
+│                               │                                 │
+│  [Top Header]                 │    ┌─────────────────────────┐  │
+│    └── AudioControlsPopover ──┼───►│  jarvisAudioService     │  │
+│                               │    ├─────────────────────────┤  │
+│  [Tab Navigation]             │    │ • Web Audio FX Engine   │  │
+│    └── Tab Change Handler ────┼───►│   (Blips, Sweeps, Alert)│  │
+│                               │    │                         │  │
+│  [Transaction Form & List]    │    │ • Voice Speech Engine   │  │
+│    └── OnSave / OnDelete ─────┼───►│   (Pitch/Rate tuned,    │  │
+│                               │    │    Portuguese Male)     │  │
+│  [Notification Center]        │    │                         │  │
+│    └── OnNewNotification ─────┼───►│ • Storage & Volume Bus  │  │
+│                               │    └─────────────────────────┘  │
+└───────────────────────────────┴─────────────────────────────────┘
 ```
 
-### Mapeamento de Estado e Gatilhos
-- `src/index.css`: Definição das variáveis de cor off-white no `@layer base` e tema Tailwind v4.
-- `src/components/TransactionTable.tsx`: Estado local `activeLedgerView: 'mes' | 'historico'` com largura 100% harmonizada e transição fluida.
-- `src/components/FinancialCharts.tsx`: Implementação da grade `grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5` contendo o fluxo em `lg:col-span-2`, donut em `lg:col-span-1`, e os 3 cards secundários na linha 2.
-- `src/components/PersonalAIAdvisor.tsx`: Parser regex e semântico calibrado em português + tipo de mensagem `action_preview` com callback `onAddTransaction` ao clicar em confirmar.
-
----
+#### Mapeamento de Eventos Sonoros:
+1. `playSciFiSound('click')`: Micro-pulso 1200Hz com atenuação em 25ms.
+2. `playSciFiSound('success')`: Tríade harmônica ascendente 523Hz -> 659Hz -> 784Hz.
+3. `playSciFiSound('warning')`: Frequência dupla 320Hz/480Hz modulada.
+4. `playSciFiSound('tab')`: Sweep de frequência 400Hz -> 800Hz em 60ms.
+5. `speakJarvis(phrase, priority)`: Enfileiramento inteligente para evitar sobreposição caótica de falas, interrompendo ou complementando as mensagens com compostura.

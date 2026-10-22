@@ -1,6 +1,6 @@
 {
-  "summary": "Plano de evolução visual e funcional do FintechCore:\n1. Aplicação de tons de branco off-white modernos no modo claro.\n2. Redimensionamento e unificação em abas integradas/colapsáveis dos cards de Extrato do Período e Histórico Geral para eliminar scroll vertical.\n3. Upgrade profundo do assistente inteligente com parsing NLP avançado em PT-BR e balão de prévia interativa para confirmação em 1 clique.\n4. Reestruturação da tela de gráficos em grade 3x2 com Donut de Categorias, Fluxo Financeiro 2-col, Comparativo Mensal, Balanço e Projeção.",
-  "updatedAt": "2026-10-16T15:27:04.088866217Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Plano completo para implementação do motor de áudio JARVIS com respostas por voz sintética masculina calibrada, sintetizador Web Audio API de efeitos sonoros sci-fi de alta tecnologia para notificações e navegação, controles de volume e mudo no cabeçalho e integração em todas as ações do sistema.",
+  "updatedAt":  "2026-10-22T08:02:48.747467027Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }
