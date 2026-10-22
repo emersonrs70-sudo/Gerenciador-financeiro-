@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer,
   XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 import {
   TrendingUp, TrendingDown, PieChart as PieIcon, BarChart2,
-  ShieldCheck, Target, ArrowUpRight, ArrowDownRight, Wallet, Sparkles, Layers, CheckCircle2
+  ShieldCheck, Target, ArrowUpRight, ArrowDownRight, Wallet, Sparkles, Layers, CheckCircle2,
+  Filter, X
 } from 'lucide-react';
 import { motion } from 'motion/react';
 import { Transaction, BankAccount } from '../types';
@@ -45,10 +46,35 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   const [modoPizza, setModoPizza] = useState<'despesa' | 'receita'>('despesa');
   const [hoveredPieIndex, setHoveredPieIndex] = useState<number | null>(null);
 
+  // Alteração 1: Clicked category in pie chart to expand to 1.5 space & show transactions table
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+
+  // Alteração 2: Category filter in dynamic financial flow
+  const [fluxoCategoriaFiltro, setFluxoCategoriaFiltro] = useState<string>('todas');
+
   // Filter based on selected bank account
   const filteredByAccount = selectedAccountId && selectedAccountId !== 'consolidado'
     ? transactions.filter(t => t.accountId === selectedAccountId)
     : transactions;
+
+  // Available categories for dropdown filter
+  const { categoriasDespesaList, categoriasReceitaList } = useMemo(() => {
+    const desp = new Set<string>();
+    const rec = new Set<string>();
+    filteredByAccount.forEach(t => {
+      if (t.tipoItem === 'despesa' && t.categoria) desp.add(t.categoria);
+      if (t.tipoItem === 'receita' && t.categoria) rec.add(t.categoria);
+    });
+    categorias.forEach(c => {
+      if (!desp.has(c) && !rec.has(c)) {
+        desp.add(c);
+      }
+    });
+    return {
+      categoriasDespesaList: Array.from(desp).sort((a, b) => a.localeCompare(b)),
+      categoriasReceitaList: Array.from(rec).sort((a, b) => a.localeCompare(b))
+    };
+  }, [filteredByAccount, categorias]);
 
   // Reference date
   const hoje = new Date();
@@ -112,6 +138,11 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     ? Math.max(0, Math.round(((totalReceitasPeriodo - totalDespesasPeriodo) / totalReceitasPeriodo) * 100))
     : 0;
 
+  // Category filter state analysis
+  const isCategoryFiltered = fluxoCategoriaFiltro !== 'todas';
+  const filteredCategoryIsReceita = isCategoryFiltered && categoriasReceitaList.includes(fluxoCategoriaFiltro);
+  const filteredCategoryIsDespesa = isCategoryFiltered && categoriasDespesaList.includes(fluxoCategoriaFiltro);
+
   // 1. Time-series Data for AreaChart (Fluxo Financeiro)
   const fluxoData: Array<{ lbl: string; Receita: number; Gasto: number }> = [];
 
@@ -122,7 +153,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
-          return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m && t.tipoItem === 'despesa';
+          const matchDate = parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'despesa';
         })
         .reduce((s, t) => s + t.valor, 0);
 
@@ -130,7 +163,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
-          return parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m && t.tipoItem === 'receita';
+          const matchDate = parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'receita';
         })
         .reduce((s, t) => s + t.valor, 0);
 
@@ -151,7 +186,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
-          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'despesa';
+          const matchDate = parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'despesa';
         })
         .reduce((s, t) => s + t.valor, 0);
 
@@ -159,7 +196,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         .filter(t => {
           if (!t.data) return false;
           const p = t.data.split('-');
-          return parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx && t.tipoItem === 'receita';
+          const matchDate = parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'receita';
         })
         .reduce((s, t) => s + t.valor, 0);
 
@@ -178,10 +217,18 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     for (let d = startDay; d <= endDay; d++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
       const dDespesas = filteredTrans
-        .filter(t => t.data === dateStr && t.tipoItem === 'despesa')
+        .filter(t => {
+          const matchDate = t.data === dateStr;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'despesa';
+        })
         .reduce((s, t) => s + t.valor, 0);
       const dReceitas = filteredTrans
-        .filter(t => t.data === dateStr && t.tipoItem === 'receita')
+        .filter(t => {
+          const matchDate = t.data === dateStr;
+          const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
+          return matchDate && matchCat && t.tipoItem === 'receita';
+        })
         .reduce((s, t) => s + t.valor, 0);
 
       fluxoData.push({
@@ -191,6 +238,14 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       });
     }
   }
+
+  // Filtered Category Metrics for Quick Bar
+  const filteredCategoryTrans = filteredTrans.filter(t => t.categoria === fluxoCategoriaFiltro);
+  const totalCategoryFiltered = filteredCategoryTrans.reduce((s, t) => s + t.valor, 0);
+  const totalBaseComparison = filteredCategoryIsReceita ? totalReceitasPeriodo : totalDespesasPeriodo;
+  const categorySharePct = totalBaseComparison > 0 ? Math.round((totalCategoryFiltered / totalBaseComparison) * 100) : 0;
+  const countCategoryFiltered = filteredCategoryTrans.length;
+  const mediaCategoriaPorPonto = fluxoData.length > 0 ? totalCategoryFiltered / fluxoData.length : 0;
 
   // 2. Pie / Donut Chart Data (Categorias)
   const transactionsModoPizza = filteredTrans.filter(t => t.tipoItem === modoPizza);
@@ -209,6 +264,26 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
       color: PIE_COLORS[idx % PIE_COLORS.length]
     }))
     .sort((a, b) => b.value - a.value);
+
+  // Selected Category Transactions for Drilldown Table (Alteração 1)
+  const selectedCategoryTransactions = useMemo(() => {
+    if (!selectedCategory) return [];
+    return filteredTrans
+      .filter(t => t.tipoItem === modoPizza && t.categoria.toLowerCase() === selectedCategory.toLowerCase())
+      .sort((a, b) => {
+        const dateA = a.data ? new Date(a.data).getTime() : 0;
+        const dateB = b.data ? new Date(b.data).getTime() : 0;
+        return dateB - dateA;
+      });
+  }, [selectedCategory, filteredTrans, modoPizza]);
+
+  const selectedCategoryTotal = useMemo(() => {
+    return selectedCategoryTransactions.reduce((acc, t) => acc + t.valor, 0);
+  }, [selectedCategoryTransactions]);
+
+  const selectedCategoryPct = totalModoPizza > 0
+    ? Math.round((selectedCategoryTotal / totalModoPizza) * 100)
+    : 0;
 
   // 3. Comparativo Mensal Data (Last 5 Months)
   const monthNamesShort = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -312,77 +387,162 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
   return (
     <div className="space-y-3.5">
-      {/* 3x2 HARMONIC GRID (3 columns on desktop, 2 rows) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 items-stretch">
+      {/* 12-COLUMN HARMONIC GRID */}
+      <div className="grid grid-cols-1 md:grid-cols-12 lg:grid-cols-12 gap-3.5 items-stretch">
         
-        {/* ROW 1: CELL 1 & 2 (COL-SPAN 2) - FLUXO FINANCEIRO EVOLUTIVO */}
+        {/* ROW 1: CARD 1 - FLUXO FINANCEIRO DINÂMICO (Shrinks to 1.5 space / 6 cols when category selected, otherwise 2 spaces / 8 cols) */}
         <motion.div
+          layout
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2 }}
-          className="lg:col-span-2 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          transition={{ duration: 0.25 }}
+          className={`${
+            selectedCategory ? 'lg:col-span-6' : 'lg:col-span-8'
+          } col-span-12 md:col-span-12 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300`}
         >
           <div>
-            {/* Header + Period Selector */}
+            {/* Header + Category Filter + Period Selector */}
             <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
               <div>
-                <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
-                  <TrendingUp className="w-4 h-4 text-emerald-500" />
-                  Fluxo Financeiro Dinâmico
-                </h3>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                    <TrendingUp className="w-4 h-4 text-emerald-500" />
+                    Fluxo Financeiro Dinâmico
+                  </h3>
+                  {isCategoryFiltered && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md text-[9px] font-semibold bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-300 border border-emerald-200/80 dark:border-emerald-800/50">
+                      <span>{fluxoCategoriaFiltro}</span>
+                      <button
+                        onClick={() => setFluxoCategoriaFiltro('todas')}
+                        className="hover:text-rose-500 cursor-pointer ml-0.5"
+                        title="Remover filtro de categoria"
+                      >
+                        <X className="w-2.5 h-2.5" />
+                      </button>
+                    </span>
+                  )}
+                </div>
                 <p className="text-[10px] text-zinc-500 dark:text-[#988E96]">
-                  Acompanhamento de Receitas vs Despesas em tempo real
+                  {isCategoryFiltered
+                    ? `Filtrando movimentações de "${fluxoCategoriaFiltro}"`
+                    : 'Acompanhamento de Receitas vs Despesas em tempo real'}
                 </p>
               </div>
 
-              {/* Period selector tabs */}
-              <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-0.5 rounded-lg text-[10px] font-semibold border border-[#E8E5DC] dark:border-[#4C4E5D]/60 self-stretch sm:self-auto justify-between">
-                {(['7dias', '15dias', 'mes', '3meses', 'ano'] as const).map((p) => {
-                  const labels = { '7dias': '7D', '15dias': '15D', 'mes': 'Mês', '3meses': '3M', 'ano': 'Ano' };
-                  return (
-                    <button
-                      key={p}
-                      onClick={() => setPeriodoFiltro(p)}
-                      className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
-                        periodoFiltro === p
-                          ? 'bg-white dark:bg-[#4C4E5D] text-zinc-900 dark:text-white shadow-xs font-bold'
-                          : 'text-zinc-600 dark:text-[#988E96] hover:text-zinc-900 dark:hover:text-white'
-                      }`}
-                    >
-                      {labels[p]}
-                    </button>
-                  );
-                })}
+              {/* Controls: Category Filter Dropdown + Period selector */}
+              <div className="flex items-center gap-1.5 flex-wrap self-stretch sm:self-auto justify-between sm:justify-end">
+                {/* Alteração 2: Category Filter Dropdown */}
+                <div className="flex items-center gap-1 bg-[#F3F1EB] dark:bg-[#252530] px-2 py-1 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-[10px]">
+                  <Filter className="w-3 h-3 text-zinc-500 dark:text-zinc-400 shrink-0" />
+                  <select
+                    value={fluxoCategoriaFiltro}
+                    onChange={(e) => setFluxoCategoriaFiltro(e.target.value)}
+                    className="bg-transparent text-zinc-800 dark:text-zinc-200 font-medium outline-none cursor-pointer max-w-[110px] sm:max-w-[130px] truncate"
+                    title="Filtrar fluxo por categoria"
+                  >
+                    <option value="todas">Todas as Categorias</option>
+                    {categoriasDespesaList.length > 0 && (
+                      <optgroup label="Despesas">
+                        {categoriasDespesaList.map((c) => (
+                          <option key={`flx-desp-${c}`} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {categoriasReceitaList.length > 0 && (
+                      <optgroup label="Receitas">
+                        {categoriasReceitaList.map((c) => (
+                          <option key={`flx-rec-${c}`} value={c}>
+                            {c}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                  </select>
+                </div>
+
+                {/* Period selector tabs */}
+                <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-0.5 rounded-lg text-[10px] font-semibold border border-[#E8E5DC] dark:border-[#4C4E5D]/60">
+                  {(['7dias', '15dias', 'mes', '3meses', 'ano'] as const).map((p) => {
+                    const labels = { '7dias': '7D', '15dias': '15D', 'mes': 'Mês', '3meses': '3M', 'ano': 'Ano' };
+                    return (
+                      <button
+                        key={p}
+                        onClick={() => setPeriodoFiltro(p)}
+                        className={`px-2 py-0.5 rounded-md transition-all cursor-pointer ${
+                          periodoFiltro === p
+                            ? 'bg-white dark:bg-[#4C4E5D] text-zinc-900 dark:text-white shadow-xs font-bold'
+                            : 'text-zinc-600 dark:text-[#988E96] hover:text-zinc-900 dark:hover:text-white'
+                        }`}
+                      >
+                        {labels[p]}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </div>
 
-            {/* Quick Metrics Bar */}
+            {/* Quick Metrics Bar: Dynamically adapts to filtered category */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 my-2.5">
-              <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
-                <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Receitas</span>
-                <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
-                  +{formatCurrency(totalReceitasPeriodo)}
-                </span>
-              </div>
-              <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
-                <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Despesas</span>
-                <span className="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">
-                  -{formatCurrency(totalDespesasPeriodo)}
-                </span>
-              </div>
-              <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
-                <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Saldo Líquido</span>
-                <span className={`text-xs font-bold font-mono ${saldoLiquidoPeriodo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
-                  {saldoLiquidoPeriodo >= 0 ? '+' : ''}{formatCurrency(saldoLiquidoPeriodo)}
-                </span>
-              </div>
-              <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
-                <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Poupança</span>
-                <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono flex items-center gap-1">
-                  {taxaPoupanca}%
-                  <span className="text-[8px] text-zinc-400 font-normal">taxa</span>
-                </span>
-              </div>
+              {!isCategoryFiltered ? (
+                <>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Receitas</span>
+                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 font-mono">
+                      +{formatCurrency(totalReceitasPeriodo)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Despesas</span>
+                    <span className="text-xs font-bold text-rose-600 dark:text-rose-400 font-mono">
+                      -{formatCurrency(totalDespesasPeriodo)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Saldo Líquido</span>
+                    <span className={`text-xs font-bold font-mono ${saldoLiquidoPeriodo >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {saldoLiquidoPeriodo >= 0 ? '+' : ''}{formatCurrency(saldoLiquidoPeriodo)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Poupança</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono flex items-center gap-1">
+                      {taxaPoupanca}%
+                      <span className="text-[8px] text-zinc-400 font-normal">taxa</span>
+                    </span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Total Filtrado</span>
+                    <span className={`text-xs font-bold font-mono ${filteredCategoryIsReceita ? 'text-emerald-600 dark:text-emerald-400' : 'text-rose-600 dark:text-rose-400'}`}>
+                      {filteredCategoryIsReceita ? '+' : '-'}{formatCurrency(totalCategoryFiltered)}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Participação</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono flex items-center gap-1">
+                      {categorySharePct}%
+                      <span className="text-[8px] text-zinc-400 font-normal">do total</span>
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Lançamentos</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
+                      {countCategoryFiltered} {countCategoryFiltered === 1 ? 'item' : 'itens'}
+                    </span>
+                  </div>
+                  <div className="p-2 bg-[#F8F7F4] dark:bg-[#252530] rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                    <span className="text-[9px] text-zinc-500 dark:text-zinc-400 block font-medium">Média no Período</span>
+                    <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
+                      {formatCurrency(mediaCategoriaPorPonto)}
+                    </span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Smooth AreaChart */}
@@ -415,10 +575,16 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`}
                   />
                   <Tooltip
-                    formatter={(val: number, name: string) => [
-                      `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                      name === 'Receita' ? 'Receitas (+)' : 'Despesas (-)'
-                    ]}
+                    formatter={(val: number, name: string) => {
+                      const label = isCategoryFiltered
+                        ? name === 'Gasto'
+                          ? `${fluxoCategoriaFiltro} (-)`
+                          : `${fluxoCategoriaFiltro} (+)`
+                        : name === 'Receita'
+                          ? 'Receitas (+)'
+                          : 'Despesas (-)';
+                      return [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, label];
+                    }}
                     contentStyle={{
                       backgroundColor: '#32323F',
                       borderColor: '#4C4E5D',
@@ -429,22 +595,26 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                       boxShadow: '0 4px 12px rgba(0,0,0,0.15)'
                     }}
                   />
-                  <Area
-                    type="monotone"
-                    dataKey="Receita"
-                    stroke="#10B981"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorReceita)"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Gasto"
-                    stroke="#F43F5E"
-                    strokeWidth={2}
-                    fillOpacity={1}
-                    fill="url(#colorGasto)"
-                  />
+                  {(!isCategoryFiltered || filteredCategoryIsReceita || fluxoData.some(d => d.Receita > 0)) && (
+                    <Area
+                      type="monotone"
+                      dataKey="Receita"
+                      stroke="#10B981"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorReceita)"
+                    />
+                  )}
+                  {(!isCategoryFiltered || filteredCategoryIsDespesa || fluxoData.some(d => d.Gasto > 0)) && (
+                    <Area
+                      type="monotone"
+                      dataKey="Gasto"
+                      stroke="#F43F5E"
+                      strokeWidth={2}
+                      fillOpacity={1}
+                      fill="url(#colorGasto)"
+                    />
+                  )}
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -452,142 +622,365 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
           <div className="flex items-center justify-between text-[10px] text-zinc-500 dark:text-[#988E96] border-t border-[#EAE7E0] dark:border-[#4C4E5D]/60 pt-2 mt-1">
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-1 font-medium">
-                <span className="w-2 h-2 rounded-full bg-emerald-500" /> Receitas
-              </span>
-              <span className="flex items-center gap-1 font-medium">
-                <span className="w-2 h-2 rounded-full bg-rose-500" /> Despesas
-              </span>
-            </div>
-            <span className="font-mono text-zinc-600 dark:text-zinc-300">
-              Cobertura: {totalDespesasPeriodo > 0 ? (totalReceitasPeriodo / totalDespesasPeriodo).toFixed(1) : '∞'}x
-            </span>
-          </div>
-        </motion.div>
-
-        {/* ROW 1: CELL 3 (COL-SPAN 1) - GRÁFICO DE PIZZA / DONUT DAS CATEGORIAS */}
-        <motion.div
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.2, delay: 0.05 }}
-          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
-        >
-          <div>
-            <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
-              <div>
-                <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
-                  <PieIcon className="w-4 h-4 text-blue-500" />
-                  Divisão por Categoria
-                </h3>
-                <p className="text-[10px] text-zinc-500 dark:text-[#988E96]">
-                  Distribuição percentual dos fluxos
-                </p>
-              </div>
-
-              {/* Toggle Despesas vs Receitas */}
-              <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-0.5 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/50 text-[10px] font-bold">
-                <button
-                  onClick={() => setModoPizza('despesa')}
-                  className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
-                    modoPizza === 'despesa'
-                      ? 'bg-white dark:bg-[#4C4E5D] text-rose-600 dark:text-rose-400 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
-                  }`}
-                >
-                  Despesas
-                </button>
-                <button
-                  onClick={() => setModoPizza('receita')}
-                  className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
-                    modoPizza === 'receita'
-                      ? 'bg-white dark:bg-[#4C4E5D] text-emerald-600 dark:text-emerald-400 shadow-xs'
-                      : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
-                  }`}
-                >
-                  Receitas
-                </button>
-              </div>
-            </div>
-
-            {/* Donut Chart Container */}
-            <div className="relative h-32 sm:h-36 w-full my-1.5 flex items-center justify-center">
-              {pieData.length === 0 ? (
-                <div className="text-zinc-400 text-xs text-center">
-                  Sem dados de {modoPizza === 'despesa' ? 'despesas' : 'receitas'} neste período.
-                </div>
+              {isCategoryFiltered ? (
+                <span className="flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-200">
+                  <span className={`w-2 h-2 rounded-full ${filteredCategoryIsReceita ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                  {fluxoCategoriaFiltro} ({countCategoryFiltered} registros)
+                </span>
               ) : (
                 <>
-                  <ResponsiveContainer width="100%" height="100%">
-                    <PieChart>
-                      <Tooltip
-                        formatter={(val: number, name: string) => [
-                          `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-                          name
-                        ]}
-                        contentStyle={{
-                          backgroundColor: '#32323F',
-                          borderColor: '#4C4E5D',
-                          borderRadius: '12px',
-                          color: '#FFFFFF',
-                          fontSize: '11px',
-                          fontWeight: 600
-                        }}
-                      />
-                      <Pie
-                        data={pieData}
-                        dataKey="value"
-                        nameKey="name"
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={42}
-                        outerRadius={64}
-                        paddingAngle={3}
-                        onMouseEnter={(_, idx) => setHoveredPieIndex(idx)}
-                        onMouseLeave={() => setHoveredPieIndex(null)}
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.color}
-                            stroke="#FFFFFF"
-                            strokeWidth={hoveredPieIndex === index ? 3 : 1}
-                            style={{ outline: 'none', transition: 'all 0.2s' }}
-                          />
-                        ))}
-                      </Pie>
-                    </PieChart>
-                  </ResponsiveContainer>
-
-                  {/* Center Info in Donut */}
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                    <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">
-                      {hoveredPieIndex !== null && pieData[hoveredPieIndex] ? pieData[hoveredPieIndex].name : 'Total'}
-                    </span>
-                    <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
-                      {hoveredPieIndex !== null && pieData[hoveredPieIndex]
-                        ? formatCurrency(pieData[hoveredPieIndex].value)
-                        : formatCurrency(totalModoPizza)}
-                    </span>
-                  </div>
+                  <span className="flex items-center gap-1 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500" /> Receitas
+                  </span>
+                  <span className="flex items-center gap-1 font-medium">
+                    <span className="w-2 h-2 rounded-full bg-rose-500" /> Despesas
+                  </span>
                 </>
               )}
             </div>
+            {isCategoryFiltered ? (
+              <button
+                onClick={() => setFluxoCategoriaFiltro('todas')}
+                className="font-mono text-zinc-600 dark:text-zinc-300 hover:text-emerald-500 cursor-pointer underline text-[10px]"
+              >
+                Limpar filtro
+              </button>
+            ) : (
+              <span className="font-mono text-zinc-600 dark:text-zinc-300">
+                Cobertura: {totalDespesasPeriodo > 0 ? (totalReceitasPeriodo / totalDespesasPeriodo).toFixed(1) : '∞'}x
+              </span>
+            )}
+          </div>
+        </motion.div>
 
-            {/* Top Categories List */}
-            <div className="space-y-1 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
-              {pieData.slice(0, 3).map((cat) => (
-                <div key={cat.name} className="flex items-center justify-between text-[11px] py-0.5">
-                  <div className="flex items-center gap-1.5 min-w-0">
-                    <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
-                    <span className="truncate text-zinc-700 dark:text-zinc-200 font-medium">{cat.name}</span>
+        {/* ROW 1: CARD 2 - DIVISÃO POR CATEGORIA (Expands to 1.5 space / 6 cols with transactions table when slice clicked, otherwise 1 space / 4 cols) */}
+        <motion.div
+          layout
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.25 }}
+          className={`${
+            selectedCategory ? 'lg:col-span-6' : 'lg:col-span-4'
+          } col-span-12 md:col-span-12 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between transition-all duration-300`}
+        >
+          <div>
+            {/* Header + Toggle + Close selection */}
+            <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
+              <div className="flex items-center gap-2 flex-wrap min-w-0">
+                <div>
+                  <h3 className="text-xs sm:text-sm font-bold flex items-center gap-1.5 text-zinc-900 dark:text-white">
+                    <PieIcon className="w-4 h-4 text-blue-500 shrink-0" />
+                    <span>Divisão por Categoria</span>
+                  </h3>
+                  <p className="text-[10px] text-zinc-500 dark:text-[#988E96]">
+                    {selectedCategory ? 'Clique para alternar ou fechar o detalhe' : 'Clique em uma fatia para detalhar'}
+                  </p>
+                </div>
+                {selectedCategory && (
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-900/50 dark:text-blue-200 border border-blue-200 dark:border-blue-800/60 truncate max-w-[130px]">
+                    {selectedCategory}
+                  </span>
+                )}
+              </div>
+
+              <div className="flex items-center gap-1.5 shrink-0">
+                {/* Toggle Despesas vs Receitas */}
+                <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-0.5 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/50 text-[10px] font-bold">
+                  <button
+                    onClick={() => {
+                      setModoPizza('despesa');
+                      setSelectedCategory(null);
+                    }}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
+                      modoPizza === 'despesa'
+                        ? 'bg-white dark:bg-[#4C4E5D] text-rose-600 dark:text-rose-400 shadow-xs'
+                        : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
+                    }`}
+                  >
+                    Despesas
+                  </button>
+                  <button
+                    onClick={() => {
+                      setModoPizza('receita');
+                      setSelectedCategory(null);
+                    }}
+                    className={`px-2 py-0.5 rounded-md cursor-pointer transition-all ${
+                      modoPizza === 'receita'
+                        ? 'bg-white dark:bg-[#4C4E5D] text-emerald-600 dark:text-emerald-400 shadow-xs'
+                        : 'text-zinc-500 hover:text-zinc-800 dark:text-[#988E96]'
+                    }`}
+                  >
+                    Receitas
+                  </button>
+                </div>
+
+                {/* Close category drilldown button */}
+                {selectedCategory && (
+                  <button
+                    onClick={() => setSelectedCategory(null)}
+                    className="p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-[#F3F1EB] dark:hover:bg-[#252530] transition-colors cursor-pointer"
+                    title="Fechar detalhamento e restaurar proporção original"
+                    aria-label="Fechar detalhamento"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+            </div>
+
+            {/* If NO category selected: Normal Compact Donut View */}
+            {!selectedCategory ? (
+              <>
+                {/* Donut Chart Container */}
+                <div className="relative h-32 sm:h-36 w-full my-1.5 flex items-center justify-center">
+                  {pieData.length === 0 ? (
+                    <div className="text-zinc-400 text-xs text-center">
+                      Sem dados de {modoPizza === 'despesa' ? 'despesas' : 'receitas'} neste período.
+                    </div>
+                  ) : (
+                    <>
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Tooltip
+                            formatter={(val: number, name: string) => [
+                              `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                              name
+                            ]}
+                            contentStyle={{
+                              backgroundColor: '#32323F',
+                              borderColor: '#4C4E5D',
+                              borderRadius: '12px',
+                              color: '#FFFFFF',
+                              fontSize: '11px',
+                              fontWeight: 600
+                            }}
+                          />
+                          <Pie
+                            data={pieData}
+                            dataKey="value"
+                            nameKey="name"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={42}
+                            outerRadius={64}
+                            paddingAngle={3}
+                            onMouseEnter={(_, idx) => setHoveredPieIndex(idx)}
+                            onMouseLeave={() => setHoveredPieIndex(null)}
+                            onClick={(data) => {
+                              if (data && data.name) {
+                                setSelectedCategory(data.name);
+                              }
+                            }}
+                            className="cursor-pointer"
+                          >
+                            {pieData.map((entry, index) => (
+                              <Cell
+                                key={`cell-${index}`}
+                                fill={entry.color}
+                                stroke="#FFFFFF"
+                                strokeWidth={hoveredPieIndex === index ? 3 : 1}
+                                style={{ outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
+                              />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+
+                      {/* Center Info in Donut */}
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                        <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold">
+                          {hoveredPieIndex !== null && pieData[hoveredPieIndex] ? pieData[hoveredPieIndex].name : 'Total'}
+                        </span>
+                        <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
+                          {hoveredPieIndex !== null && pieData[hoveredPieIndex]
+                            ? formatCurrency(pieData[hoveredPieIndex].value)
+                            : formatCurrency(totalModoPizza)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Top Categories List - Clickable to drilldown */}
+                <div className="space-y-1 max-h-24 overflow-y-auto pr-1 custom-scrollbar">
+                  {pieData.slice(0, 3).map((cat) => (
+                    <div
+                      key={cat.name}
+                      onClick={() => setSelectedCategory(cat.name)}
+                      className="flex items-center justify-between text-[11px] py-1 px-1.5 rounded-lg hover:bg-[#F8F7F4] dark:hover:bg-[#252530] transition-colors cursor-pointer group"
+                      title="Clique para detalhar esta categoria"
+                    >
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                        <span className="truncate text-zinc-700 dark:text-zinc-200 font-medium group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+                          {cat.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 font-mono shrink-0">
+                        <span className="text-zinc-500 dark:text-zinc-400 text-[10px]">{cat.percent}%</span>
+                        <span className="font-bold text-zinc-900 dark:text-white text-[10px]">{formatCurrency(cat.value)}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </>
+            ) : (
+              /* Alteração 1: EXPANDED VIEW WITH 2 COLUMNS (PIE ON LEFT, TRANSACTIONS TABLE ON RIGHT) */
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 my-1.5 items-stretch">
+                {/* Left side: Donut chart with highlighted active slice + Category badges */}
+                <div className="flex flex-col items-center justify-between">
+                  <div className="relative h-32 sm:h-36 w-full flex items-center justify-center">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <PieChart>
+                        <Tooltip
+                          formatter={(val: number, name: string) => [
+                            `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            name
+                          ]}
+                          contentStyle={{
+                            backgroundColor: '#32323F',
+                            borderColor: '#4C4E5D',
+                            borderRadius: '12px',
+                            color: '#FFFFFF',
+                            fontSize: '11px',
+                            fontWeight: 600
+                          }}
+                        />
+                        <Pie
+                          data={pieData}
+                          dataKey="value"
+                          nameKey="name"
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={36}
+                          outerRadius={56}
+                          paddingAngle={3}
+                          onClick={(data) => {
+                            if (data && data.name) {
+                              setSelectedCategory((prev) => (prev === data.name ? null : data.name));
+                            }
+                          }}
+                          className="cursor-pointer"
+                        >
+                          {pieData.map((entry, index) => {
+                            const isSelected = selectedCategory?.toLowerCase() === entry.name.toLowerCase();
+                            return (
+                              <Cell
+                                key={`drill-cell-${index}`}
+                                fill={entry.color}
+                                stroke={isSelected ? '#18181B' : '#FFFFFF'}
+                                strokeWidth={isSelected ? 2.5 : 1}
+                                opacity={isSelected ? 1 : 0.45}
+                                style={{ outline: 'none', transition: 'all 0.2s', cursor: 'pointer' }}
+                              />
+                            );
+                          })}
+                        </Pie>
+                      </PieChart>
+                    </ResponsiveContainer>
+
+                    {/* Center Info in Donut */}
+                    <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center px-2">
+                      <span className="text-[9px] text-zinc-400 uppercase tracking-wider font-semibold truncate max-w-[85px]">
+                        {selectedCategory}
+                      </span>
+                      <span className="text-xs font-bold text-zinc-900 dark:text-white font-mono">
+                        {formatCurrency(selectedCategoryTotal)}
+                      </span>
+                      <span className="text-[9px] text-zinc-500 font-medium">
+                        {selectedCategoryPct}% do total
+                      </span>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-2 font-mono shrink-0">
-                    <span className="text-zinc-500 dark:text-zinc-400 text-[10px]">{cat.percent}%</span>
-                    <span className="font-bold text-zinc-900 dark:text-white text-[10px]">{formatCurrency(cat.value)}</span>
+
+                  {/* Category switcher pills */}
+                  <div className="flex flex-wrap gap-1 justify-center max-h-16 overflow-y-auto w-full custom-scrollbar pt-1">
+                    {pieData.map((cat) => {
+                      const isSelected = selectedCategory?.toLowerCase() === cat.name.toLowerCase();
+                      return (
+                        <button
+                          key={`pill-${cat.name}`}
+                          onClick={() => setSelectedCategory(isSelected ? null : cat.name)}
+                          className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all flex items-center gap-1 cursor-pointer ${
+                            isSelected
+                              ? 'bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 shadow-xs'
+                              : 'bg-[#F3F1EB] dark:bg-[#252530] text-zinc-600 dark:text-zinc-300 hover:bg-[#EAE7E0]'
+                          }`}
+                        >
+                          <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: cat.color }} />
+                          <span className="truncate max-w-[80px]">{cat.name}</span>
+                        </button>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
-            </div>
+
+                {/* Right side: Transactions Table for the selected category */}
+                <div className="flex flex-col justify-between border-t sm:border-t-0 sm:border-l border-[#EAE7E0] dark:border-[#4C4E5D]/50 pt-2 sm:pt-0 sm:pl-3 min-w-0">
+                  <div>
+                    <div className="flex items-center justify-between mb-1.5 pb-1 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/30">
+                      <span className="text-[11px] font-bold text-zinc-800 dark:text-zinc-200">
+                        Lançamentos no Período
+                      </span>
+                      <span className="text-[10px] font-mono font-semibold text-zinc-500 dark:text-zinc-400">
+                        {selectedCategoryTransactions.length} {selectedCategoryTransactions.length === 1 ? 'item' : 'itens'}
+                      </span>
+                    </div>
+
+                    <div className="max-h-40 sm:max-h-44 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar">
+                      {selectedCategoryTransactions.length === 0 ? (
+                        <div className="p-4 text-center text-zinc-400 dark:text-zinc-500 text-[11px]">
+                          Nenhum lançamento encontrado nesta categoria para o período selecionado.
+                        </div>
+                      ) : (
+                        selectedCategoryTransactions.map((t) => {
+                          const acc = accounts.find((a) => a.id === t.accountId);
+                          const dateDisplay = t.data ? t.data.split('-').slice(1).reverse().join('/') : '--/--';
+                          return (
+                            <div
+                              key={t.id}
+                              className="flex items-center justify-between p-1.5 bg-[#F8F7F4] dark:bg-[#252530] rounded-lg border border-[#E8E5DC]/80 dark:border-[#4C4E5D]/40 text-[10px]"
+                            >
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                <span className="font-mono text-zinc-400 dark:text-zinc-500 text-[9px] shrink-0">
+                                  {dateDisplay}
+                                </span>
+                                <div className="min-w-0">
+                                  <p className="font-medium text-zinc-800 dark:text-zinc-200 truncate max-w-[100px] sm:max-w-[125px]">
+                                    {t.descricao || 'Sem descrição'}
+                                  </p>
+                                  {acc && (
+                                    <span className="text-[8px] text-zinc-500 dark:text-zinc-400 block truncate">
+                                      {acc.nome}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              <span
+                                className={`font-mono font-bold shrink-0 ml-1 ${
+                                  t.tipoItem === 'receita'
+                                    ? 'text-emerald-600 dark:text-emerald-400'
+                                    : 'text-rose-600 dark:text-rose-400'
+                                }`}
+                              >
+                                {t.tipoItem === 'receita' ? '+' : '-'}{formatCurrency(t.valor)}
+                              </span>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="pt-1.5 mt-1 border-t border-[#EAE7E0] dark:border-[#4C4E5D]/40 flex justify-between items-center text-[10px]">
+                    <span className="text-zinc-500 dark:text-zinc-400">Total da Categoria:</span>
+                    <span className="font-mono font-bold text-zinc-900 dark:text-white">
+                      {formatCurrency(selectedCategoryTotal)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="text-[10px] text-zinc-500 dark:text-[#988E96] border-t border-[#EAE7E0] dark:border-[#4C4E5D]/60 pt-2 mt-1 flex justify-between">
@@ -596,12 +989,12 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           </div>
         </motion.div>
 
-        {/* ROW 2: CELL 4 (COL-SPAN 1) - COMPARATIVO MENSAL (EVOLUÇÃO & METAS) */}
+        {/* ROW 2: CELL 3 - COMPARATIVO MENSAL (EVOLUÇÃO & METAS) */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.1 }}
-          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="col-span-12 md:col-span-6 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
@@ -670,12 +1063,12 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           </div>
         </motion.div>
 
-        {/* ROW 2: CELL 5 (COL-SPAN 1) - BALANÇO PATRIMONIAL & LIQUIDEZ */}
+        {/* ROW 2: CELL 4 - BALANÇO PATRIMONIAL & LIQUIDEZ */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.15 }}
-          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="col-span-12 md:col-span-6 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
@@ -741,12 +1134,12 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           </div>
         </motion.div>
 
-        {/* ROW 2: CELL 6 (COL-SPAN 1) - PROJEÇÃO FINANCEIRA & REGRA 50-30-20 */}
+        {/* ROW 2: CELL 5 - PROJEÇÃO FINANCEIRA & REGRA 50-30-20 */}
         <motion.div
           initial={{ opacity: 0, y: 6 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.2, delay: 0.2 }}
-          className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
+          className="col-span-12 md:col-span-12 lg:col-span-4 bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] flex flex-col justify-between"
         >
           <div>
             <div className="flex justify-between items-center border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">

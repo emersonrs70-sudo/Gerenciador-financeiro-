@@ -1,5 +1,5 @@
-import React from 'react';
-import { Flame, CheckCircle2, Award } from 'lucide-react';
+import React, { useState } from 'react';
+import { Flame, CheckCircle2, Award, X } from 'lucide-react';
 
 interface NudgeBannerProps {
   streak: number;
@@ -7,10 +7,33 @@ interface NudgeBannerProps {
 }
 
 export const NudgeBanner: React.FC<NudgeBannerProps> = ({ streak, registrouHoje }) => {
+  const [dismissed, setDismissed] = useState<boolean>(() => {
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      return localStorage.getItem(`nudge_banner_dismissed_${todayStr}`) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  if (dismissed) {
+    return null;
+  }
+
+  const handleDismiss = () => {
+    setDismissed(true);
+    try {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      localStorage.setItem(`nudge_banner_dismissed_${todayStr}`, 'true');
+    } catch {
+      // ignore localStorage errors
+    }
+  };
+
   return (
     <div
       id="status-geral-banner"
-      className={`p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all ${
+      className={`relative p-2.5 sm:p-3 rounded-xl border flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 transition-all pr-8 ${
         !registrouHoje
           ? 'bg-amber-50/60 border-amber-200/80 dark:bg-amber-950/15 dark:border-amber-900/30'
           : 'bg-emerald-50/50 border-emerald-200/80 dark:bg-emerald-950/10 dark:border-emerald-900/30'
@@ -55,12 +78,24 @@ export const NudgeBanner: React.FC<NudgeBannerProps> = ({ streak, registrouHoje 
           </p>
         </div>
       </div>
-      {streak >= 3 && (
-        <div className="flex items-center gap-1.5 self-end sm:self-center px-2.5 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 rounded-lg text-[10px] font-bold tracking-wide">
-          <Award className="w-3.5 h-3.5" />
-          <span>{streak} Dias Ativo</span>
-        </div>
-      )}
+      <div className="flex items-center gap-2 self-end sm:self-center">
+        {streak >= 3 && (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 bg-zinc-900 text-white dark:bg-zinc-100 dark:text-zinc-950 rounded-lg text-[10px] font-bold tracking-wide">
+            <Award className="w-3.5 h-3.5" />
+            <span>{streak} Dias Ativo</span>
+          </div>
+        )}
+      </div>
+
+      {/* Dismiss button */}
+      <button
+        onClick={handleDismiss}
+        className="absolute top-2 right-2 p-1 rounded-lg text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+        title="Fechar notificação"
+        aria-label="Fechar notificação"
+      >
+        <X className="w-4 h-4" />
+      </button>
     </div>
   );
 };
