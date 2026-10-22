@@ -277,28 +277,34 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   const projecaoFimMes = totalDespesasPeriodo + mediaGastosDiarios * Math.max(0, new Date(currentYear, currentMonth + 1, 0).getDate() - hoje.getDate());
 
   // Rule 50-30-20 breakdown
-  const necessidadesKeywords = ['moradia', 'aluguel', 'luz', 'agua', 'energia', 'alimentação', 'mercado', 'saúde', 'transporte', 'condomínio'];
+  const necessidadesKeywords = ['moradia', 'aluguel', 'luz', 'agua', 'energia', 'alimentação', 'mercado', 'saúde', 'transporte', 'condomínio', 'educação', 'educacao', 'contas'];
   const desejosKeywords = ['lazer', 'cinema', 'restaurante', 'viagem', 'bar', 'shopping', 'roupa', 'assinaturas', 'netflix', 'spotify'];
+  const poupancaKeywords = ['investimento', 'investimentos', 'poupança', 'poupanca', 'reserva', 'fundo', 'emergência', 'emergencia', 'aporte', 'tesouro', 'cdb', 'ações', 'acoes', 'caixinha'];
 
   let necessidadesTotal = 0;
   let desejosTotal = 0;
-  let outrosTotal = 0;
+  let aportesPoupancaTotal = 0;
 
   filteredTrans.filter(t => t.tipoItem === 'despesa').forEach(t => {
     const c = t.categoria.toLowerCase();
-    if (necessidadesKeywords.some(k => c.includes(k))) {
+    const d = (t.descricao || '').toLowerCase();
+    if (necessidadesKeywords.some(k => c.includes(k) || d.includes(k))) {
       necessidadesTotal += t.valor;
-    } else if (desejosKeywords.some(k => c.includes(k))) {
-      desejosTotal += t.valor;
+    } else if (poupancaKeywords.some(k => c.includes(k) || d.includes(k))) {
+      aportesPoupancaTotal += t.valor;
     } else {
-      outrosTotal += t.valor;
+      desejosTotal += t.valor;
     }
   });
 
   const baseOrcamento = totalReceitasPeriodo > 0 ? totalReceitasPeriodo : Math.max(1, totalDespesasPeriodo);
   const pctNecessidades = Math.min(100, Math.round((necessidadesTotal / baseOrcamento) * 100));
   const pctDesejos = Math.min(100, Math.round((desejosTotal / baseOrcamento) * 100));
-  const pctPoupanca = Math.max(0, 100 - pctNecessidades - pctDesejos);
+
+  // Total destinado à poupança e reserva: aportes intencionais + sobra líquida livre em conta
+  const sobraLivre = Math.max(0, totalReceitasPeriodo - (necessidadesTotal + desejosTotal + aportesPoupancaTotal));
+  const totalDestinadoPoupanca = aportesPoupancaTotal + sobraLivre;
+  const pctPoupanca = Math.min(100, Math.round((totalDestinadoPoupanca / baseOrcamento) * 100));
 
   const formatCurrency = (val: number) => {
     return `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

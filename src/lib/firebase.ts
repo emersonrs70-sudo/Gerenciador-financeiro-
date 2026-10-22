@@ -78,7 +78,7 @@ export async function testConnection(): Promise<boolean> {
 }
 
 // Default static lists
-export const DEFAULT_CATEGORIES_DESPESA = ["Moradia", "Alimentação", "Transporte", "Lazer", "Outros"];
+export const DEFAULT_CATEGORIES_DESPESA = ["Moradia", "Alimentação", "Transporte", "Lazer", "Investimentos / Reserva", "Outros"];
 export const DEFAULT_CATEGORIES_RECEITA = ["Salário", "Freelance", "Investimentos", "Reembolsos", "Outras Receitas"];
 export const DEFAULT_CATEGORIES = DEFAULT_CATEGORIES_DESPESA;
 

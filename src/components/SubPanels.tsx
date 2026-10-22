@@ -141,14 +141,26 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
       {/* 2. TERMOMETRO DE SOBRA */}
       {activeType === 'saldo' && (() => {
         const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
+        const savingsKeywords = ['investimento', 'investimentos', 'poupança', 'poupanca', 'reserva', 'fundo', 'emergência', 'emergencia', 'aporte', 'tesouro', 'cdb', 'ações', 'acoes', 'caixinha'];
         
         // Mapear gastos reais do mês
         const actualNeeds = despesasMes
           .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
           .reduce((s, d) => s + d.valor, 0);
+
+        // Aportes intencionais em reserva de emergência e investimentos
+        const actualInvested = despesasMes
+          .filter((d) => 
+            savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
+          )
+          .reduce((s, d) => s + d.valor, 0);
           
+        // Despesas de estilo de vida (exclui necessidades e aportes para reserva/investimentos)
         const actualWants = despesasMes
-          .filter((d) => !needsCategories.includes(d.categoria.toLowerCase()))
+          .filter((d) => 
+            !needsCategories.includes(d.categoria.toLowerCase()) &&
+            !savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
+          )
           .reduce((s, d) => s + d.valor, 0);
 
         // Definir se é simulação ou real
@@ -159,9 +171,12 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
         const idealWants = incomeBase * 0.30;
         const idealSavings = incomeBase * 0.20;
         
-        const actualSaved = isSimulation 
-          ? Math.max(0, 5000 - totalDespesasMes) 
-          : Math.max(0, totalReceitasMes - totalDespesasMes);
+        // Total poupado: somatório dos aportes guardados na reserva + sobra não gasta em conta
+        const totalGastosConsumo = actualNeeds + actualWants;
+        const sobraEmConta = isSimulation
+          ? Math.max(0, 5000 - (totalGastosConsumo + actualInvested))
+          : Math.max(0, totalReceitasMes - (totalGastosConsumo + actualInvested));
+        const actualSaved = actualInvested + sobraEmConta;
 
         // Percentuais de uso do orçamento
         const needsPct = idealNeeds > 0 ? (actualNeeds / idealNeeds) * 100 : 0;
@@ -274,23 +289,29 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
-                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Poupança & Projetos</span>
+                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Reserva & Investimentos</span>
                   </div>
                   <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
                     {formatValue(idealSavings)}
                   </span>
                 </div>
                 <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
-                  <span className="text-zinc-500 dark:text-zinc-400">Sobra Poupar:</span>
+                  <span className="text-zinc-500 dark:text-zinc-400">Total Destinado:</span>
                   <span className="font-bold text-emerald-500">
                     {formatValue(actualSaved)}
                   </span>
                 </div>
+                {actualInvested > 0 && (
+                  <div className="flex justify-between text-[9px] text-zinc-500 dark:text-zinc-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-mono">
+                    <span>Fundo/Aportes: {formatValue(actualInvested)}</span>
+                    <span>Sobra Caixa: {formatValue(sobraEmConta)}</span>
+                  </div>
+                )}
                 <div className="space-y-1">
                   <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
                     <div 
                       className="bg-emerald-500 h-full transition-all duration-500" 
-                      style={{ width: `${savingsPct}%` }}
+                      style={{ width: `${Math.min(100, savingsPct)}%` }}
                     ></div>
                   </div>
                   <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
@@ -308,7 +329,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
             <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#252530] rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
               <span>💡</span>
               <span>
-                <strong>Como funciona o mapeamento automático:</strong> Despesas categorizadas como <em>Moradia</em>, <em>Alimentação</em>, e <em>Transporte</em> são somadas automaticamente em <strong>Necessidades</strong>. Todas as outras categorias (como <em>Lazer</em> e <em>Outros</em>) são direcionadas para <strong>Estilo de Vida</strong>. A diferença restante é o que você consegue efetivamente <strong>Poupar</strong>!
+                <strong>Como alimentar os 20% (Fundo de Emergência):</strong> Você pode tanto deixar o dinheiro sobrar no saldo da conta quanto registrar os depósitos criando lançamentos com a categoria <em>"Investimentos"</em>, <em>"Poupança"</em> ou <em>"Reserva"</em> (ou incluindo "fundo de emergência" na descrição). O sistema reconhece esses depósitos diretamente no pilar dos <strong>20%</strong> sem misturá-los com despesas de consumo!
               </span>
             </div>
           </div>
