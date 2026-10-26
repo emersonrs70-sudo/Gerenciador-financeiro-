@@ -94,10 +94,7 @@ export const DEFAULT_RECEITAS: Transaction[] = [
   { id: 'r2', descricao: 'Projeto Freelance', valor: 1500.00, data: '2026-06-18', categoria: 'Freelance', tipoItem: 'receita' }
 ];
 
-export const DEFAULT_PROJETOS: Project[] = [
-  { id: 'p1', nome: 'Viagem de Fim de Ano', valor: 6000.00, dataAlvo: '2026-12-31' },
-  { id: 'p2', nome: 'Notebook Novo', valor: 4500.00, dataAlvo: '2026-09-30' }
-];
+export const DEFAULT_PROJETOS: Project[] = [];
 
 // Local state helpers for offline recovery & caching
 export function getLocal<T>(key: string, defaultValue: T): T {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { PlusCircle, ListTodo, Loader2, RefreshCw } from 'lucide-react';
-import { Category, Transaction, BankAccount, RecurrentRule, getBillMonthForDate } from '../types';
+import { PlusCircle, ListTodo, Loader2, RefreshCw, CreditCard, Calendar, AlertCircle } from 'lucide-react';
+import { Category, Transaction, BankAccount, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate } from '../types';
 
 interface TransactionFormProps {
   categoriasDespesa: string[];
@@ -65,9 +65,24 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [criandoCategoria, setCriandoCategoria] = useState(false);
   const [novaCategoriaNome, setNovaCategoriaNome] = useState('');
 
-  const [tipoGasto, setTipoGasto] = useState<'variavel' | 'fixo'>('variavel');
+  const [tipoGasto, setTipoGasto] = useState<'variavel' | 'parcelado' | 'fixo'>('variavel');
+  const [numParcelas, setNumParcelas] = useState<number>(2);
+  const [modoValorParcela, setModoValorParcela] = useState<'total' | 'parcela'>('total');
   const [validadeFixo, setValidadeFixo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleTipoGastoChange = (novoTipo: 'variavel' | 'parcelado' | 'fixo') => {
+    setTipoGasto(novoTipo);
+    if (novoTipo === 'parcelado') {
+      const currentAcc = accounts.find(a => a.id === accountId);
+      if (!currentAcc || currentAcc.tipo !== 'credito') {
+        const creditAcc = accounts.find(a => a.tipo === 'credito');
+        if (creditAcc) {
+          setAccountId(creditAcc.id);
+        }
+      }
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -78,7 +93,32 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
       const account = accounts.find(a => a.id === accountId);
       const catToUse = categoria;
 
-      if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
+      if (modo === 'despesa' && tipoGasto === 'parcelado') {
+        // CASE: PARCELAMENTO NO CARTÃO (CRÉDITO)
+        const parsedVal = parseFloat(valor);
+        const count = Math.max(2, Math.min(36, numParcelas));
+        const valorPorParcela = modoValorParcela === 'total'
+          ? Math.round((parsedVal / count) * 100) / 100
+          : parsedVal;
+        
+        const closingDay = account?.diaFechamento || 5;
+
+        for (let i = 0; i < count; i++) {
+          const installmentDate = getInstallmentTransactionDate(data, i);
+          const installmentFaturaMes = getInstallmentBillMonth(data, i, closingDay);
+          const installmentDesc = `${descricao.trim()} (${i + 1}/${count})`;
+
+          await onAddTransaction(
+            installmentDesc,
+            valorPorParcela,
+            installmentDate,
+            catToUse,
+            modo,
+            accountId,
+            installmentFaturaMes
+          );
+        }
+      } else if (modo === 'despesa' && tipoGasto === 'fixo' && validadeFixo) {
         // CASE 1: FIXED LIMIT DATE (replicate up to validadeFixo)
         try {
           const startDate = new Date(data + 'T12:00:00');
@@ -377,13 +417,102 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
               </div>
               <select
                 value={tipoGasto}
-                onChange={(e) => setTipoGasto(e.target.value as 'variavel' | 'fixo')}
+                onChange={(e) => handleTipoGastoChange(e.target.value as 'variavel' | 'parcelado' | 'fixo')}
                 className="w-full bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 font-medium"
               >
                 <option value="variavel">Lançamento Único (Variável)</option>
+                <option value="parcelado">Parcelado no Cartão (Crédito)</option>
                 <option value="fixo">Lançamento Fixo (Recorrente Mensal)</option>
               </select>
             </div>
+
+            {tipoGasto === 'parcelado' && (
+              <div className="space-y-2.5 p-3 bg-amber-50/70 dark:bg-[#2a2a36] border border-amber-200/80 dark:border-amber-500/30 rounded-xl">
+                <div className="flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-amber-900 dark:text-amber-300 flex items-center gap-1.5">
+                    <CreditCard className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
+                    Parcelamento no Cartão
+                  </span>
+                  {(() => {
+                    const acc = accounts.find(a => a.id === accountId);
+                    return acc && acc.diaFechamento ? (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                        Fechamento: dia {acc.diaFechamento}
+                      </span>
+                    ) : null;
+                  })()}
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+                      Nº de Parcelas
+                    </label>
+                    <select
+                      value={numParcelas}
+                      onChange={(e) => setNumParcelas(parseInt(e.target.value, 10))}
+                      className="w-full bg-white dark:bg-[#252530] border border-amber-200 dark:border-amber-800/50 text-zinc-900 dark:text-white rounded-lg px-2.5 py-1.5 text-xs font-bold focus:outline-none"
+                    >
+                      {[2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 18, 24, 36].map((n) => (
+                        <option key={n} value={n}>
+                          {n}x {valor && modoValorParcela === 'total' && !isNaN(parseFloat(valor)) ? `de R$ ${(parseFloat(valor) / n).toFixed(2)}` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 uppercase tracking-wider block mb-1">
+                      O valor digitado é:
+                    </label>
+                    <select
+                      value={modoValorParcela}
+                      onChange={(e) => setModoValorParcela(e.target.value as 'total' | 'parcela')}
+                      className="w-full bg-white dark:bg-[#252530] border border-amber-200 dark:border-amber-800/50 text-zinc-900 dark:text-white rounded-lg px-2 py-1.5 text-xs font-semibold focus:outline-none"
+                    >
+                      <option value="total">Valor Total da Compra</option>
+                      <option value="parcela">Valor de Cada Parcela</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Explanatory Rule Preview */}
+                {(() => {
+                  const acc = accounts.find(a => a.id === accountId);
+                  const closingDay = acc?.diaFechamento || 5;
+                  const dayNumber = parseInt(data.split('-')[2], 10) || new Date().getDate();
+                  const isAfterClosing = dayNumber > closingDay;
+                  const firstBill = getInstallmentBillMonth(data, 0, closingDay);
+                  const lastBill = getInstallmentBillMonth(data, numParcelas - 1, closingDay);
+                  const parsedVal = parseFloat(valor) || 0;
+                  const valParcela = modoValorParcela === 'total' ? (parsedVal / numParcelas) : parsedVal;
+
+                  return (
+                    <div className="pt-2 border-t border-amber-200/60 dark:border-[#4C4E5D]/50 text-[11px] space-y-1.5">
+                      <div className="flex items-center gap-1.5 font-bold">
+                        <span className={`w-2 h-2 rounded-full ${isAfterClosing ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                        <span className={isAfterClosing ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}>
+                          {isAfterClosing
+                            ? `Compra no dia ${dayNumber} (após o fechamento dia ${closingDay}):`
+                            : `Compra no dia ${dayNumber} (antes do fechamento dia ${closingDay}):`}
+                        </span>
+                      </div>
+                      <p className="text-zinc-600 dark:text-zinc-300 text-[10px] leading-relaxed">
+                        {isAfterClosing ? (
+                          <>
+                            Como a compra é após o dia {closingDay}, a fatura deste mês já fechou. A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> contará na <strong>fatura do mês seguinte ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
+                          </>
+                        ) : (
+                          <>
+                            A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> entrará na <strong>fatura atual ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
+                          </>
+                        )}
+                      </p>
+                    </div>
+                  );
+                })()}
+              </div>
+            )}
 
             {tipoGasto === 'fixo' && (
               <div className="space-y-1.5 p-2.5 bg-purple-50/60 dark:bg-purple-950/20 border border-purple-200/70 dark:border-purple-800/40 rounded-xl">

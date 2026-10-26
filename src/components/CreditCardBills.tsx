@@ -56,11 +56,15 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
   const nextMonthDate = new Date(today.getFullYear(), today.getMonth() + 1, 1);
   billMonthsSet.add(getYearMonthStr(nextMonthDate));
 
+  // Helper to determine which bill month a transaction belongs to:
+  // If transaction already has faturaMes explicitly, use it; otherwise compute via getBillMonthForDate(t.data, closingDay)
+  const getTxBillMonth = (t: Transaction) => {
+    return t.faturaMes || getBillMonthForDate(t.data, closingDay);
+  };
+
   // Add months from actual transactions
   cardTransactions.forEach(t => {
-    if (t.faturaMes) {
-      billMonthsSet.add(t.faturaMes);
-    }
+    billMonthsSet.add(getTxBillMonth(t));
   });
 
   const sortedBillMonths = Array.from(billMonthsSet).sort((a, b) => b.localeCompare(a));
@@ -170,7 +174,7 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
         <div className="space-y-3 max-h-72 overflow-y-auto pr-1 custom-scrollbar">
           {sortedBillMonths.map(month => {
             const monthTx = cardTransactions
-              .filter(t => t.faturaMes === month)
+              .filter(t => getTxBillMonth(t) === month)
               .sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());
             
             const compras = monthTx.filter(t => t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
@@ -241,21 +245,30 @@ export const CreditCardBills: React.FC<CreditCardBillsProps> = ({
                   <p className="text-[11px] text-zinc-400 dark:text-zinc-500 italic">Sem transações registradas para esta fatura.</p>
                 ) : (
                   <div className="space-y-1.5 max-h-40 overflow-y-auto pr-1">
-                    {monthTx.map(t => (
-                      <div key={t.id} className="flex justify-between items-center text-[11px] hover:bg-zinc-100/60 dark:hover:bg-[#222226] p-1 rounded transition-colors">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <span className="text-zinc-400 dark:text-zinc-500 shrink-0 font-mono text-[10px]">
-                            {t.data.split('-')[2]}/{t.data.split('-')[1]}
-                          </span>
-                          <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
-                            {t.descricao}
+                    {monthTx.map(t => {
+                      const tDay = parseInt(t.data.split('-')[2], 10);
+                      const isAfterClosing = tDay > closingDay;
+                      return (
+                        <div key={t.id} className="flex justify-between items-center text-[11px] hover:bg-zinc-100/60 dark:hover:bg-[#222226] p-1 rounded transition-colors">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-zinc-400 dark:text-zinc-500 shrink-0 font-mono text-[10px]">
+                              {t.data.split('-')[2]}/{t.data.split('-')[1]}
+                            </span>
+                            <span className="text-zinc-700 dark:text-zinc-300 font-medium truncate">
+                              {t.descricao}
+                            </span>
+                            {isAfterClosing && (
+                              <span className="text-[9px] px-1.5 py-0.2 rounded-md bg-amber-500/15 text-amber-700 dark:text-amber-400 font-bold shrink-0" title={`Compra realizada no dia ${tDay} (após o fechamento dia ${closingDay})`}>
+                                pós-fechamento
+                              </span>
+                            )}
+                          </div>
+                          <span className={`font-bold font-mono shrink-0 ${t.tipoItem === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                            {t.tipoItem === 'despesa' ? '-' : '+'} R$ {t.valor.toFixed(2)}
                           </span>
                         </div>
-                        <span className={`font-bold font-mono shrink-0 ${t.tipoItem === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                          {t.tipoItem === 'despesa' ? '-' : '+'} R$ {t.valor.toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
 

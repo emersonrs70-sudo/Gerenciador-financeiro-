@@ -53,6 +53,11 @@ export const BankNotificationBanner: React.FC<BankNotificationBannerProps> = ({
               <span className="text-[11px] font-bold text-zinc-600 dark:text-[#BCABA8]">
                 {current.banco}
               </span>
+              {current.parcelas && current.parcelas > 1 && (
+                <span className="text-[10px] font-extrabold px-2 py-0.5 rounded-full bg-purple-500/15 text-purple-700 dark:text-purple-300">
+                  {current.parcelas}x de {formatCurrency(current.valor / current.parcelas)}
+                </span>
+              )}
               {count > 1 && (
                 <span className="text-[10px] bg-zinc-200/80 dark:bg-[#4C4E5D] text-zinc-700 dark:text-[#DDD5D0] px-1.5 py-0.2 rounded-md font-bold">
                   + {count - 1} pendente{count - 1 > 1 ? 's' : ''}

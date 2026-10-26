@@ -8,7 +8,7 @@ import {
   Layers, CheckCircle2, ChevronDown, Zap
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, PendingSuggestion
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -44,6 +44,7 @@ import { FirebaseDomainModal } from './components/FirebaseDomainModal';
 import { ManageRecurrentModal } from './components/ManageRecurrentModal';
 import { BankNotificationBanner } from './components/BankNotificationBanner';
 import { MacroDroidModal } from './components/MacroDroidModal';
+import { AdjustSuggestionModal } from './components/AdjustSuggestionModal';
 import { createPendingSuggestionFromNotification } from './lib/notificationParser';
 
 interface Toast {
@@ -186,6 +187,7 @@ export default function App() {
     return getLocal<PendingSuggestion[]>('fintech_pending_suggestions', []);
   });
   const [isMacroDroidModalOpen, setIsMacroDroidModalOpen] = useState<boolean>(false);
+  const [adjustingSuggestion, setAdjustingSuggestion] = useState<PendingSuggestion | null>(null);
 
   const handleDeleteAccount = (id: string) => {
     if (accounts.length <= 1) {
@@ -417,7 +419,7 @@ export default function App() {
             accountId: 'santander',
             created_at: new Date(baseTime + (index + 10) * 1000).toISOString()
           }));
-          const initProj = DEFAULT_PROJETOS.map(p => ({ ...p, id: safeRandomUUID() }));
+          const initProj: Project[] = [];
           setTransactions([...initDesp, ...initRec]);
           setProjects(initProj);
           setCategoriasDespesa(DEFAULT_CATEGORIES_DESPESA);
@@ -429,7 +431,10 @@ export default function App() {
         } else {
           const dedupedCached = deduplicateTransactions([...cachedDesp, ...cachedRec]);
           setTransactions(dedupedCached);
-          setProjects(cachedProj);
+          // Strip away any mock example projects so the user's goals start clean
+          const cleanCachedProj = cachedProj.filter(p => !['p1', 'p2'].includes(p.id) && !['Viagem de Fim de Ano', 'Notebook Novo'].includes(p.nome));
+          setProjects(cleanCachedProj);
+          saveLocal(`local_projects_${currentUser.email}`, cleanCachedProj);
           setCategoriasDespesa(cachedCatDesp);
           setCategoriasReceita(cachedCatRec);
           const cachedRules = getLocal<RecurrentRule[]>(`local_recurrent_rules_${currentUser.email}`, []);
@@ -506,7 +511,8 @@ export default function App() {
 
   // Process incoming notification text from any source (Firestore cloud or local webhook)
   const processIncomingNotificationText = (text: string, title?: string) => {
-    const suggestion = createPendingSuggestionFromNotification(text, accounts, currentUser.email);
+    if (!text || text.trim().length === 0) return;
+    const suggestion = createPendingSuggestionFromNotification(text, accounts, currentUser.email, title);
     if (!suggestion) return;
 
     setPendingSuggestions((prev) => {
@@ -716,6 +722,14 @@ export default function App() {
     accountId: string = 'geral',
     faturaMes?: string
   ) => {
+    // Automatically compute faturaMes for credit card transactions if not provided
+    let finalFaturaMes = faturaMes;
+    const targetAcc = accounts.find(a => a.id === accountId);
+    if (targetAcc && targetAcc.tipo === 'credito') {
+      const closingDay = targetAcc.diaFechamento || 5;
+      finalFaturaMes = faturaMes || getBillMonthForDate(data, closingDay);
+    }
+
     const transactionId = safeRandomUUID();
     const newTransaction: Transaction = {
       id: transactionId,
@@ -725,7 +739,7 @@ export default function App() {
       categoria,
       tipoItem,
       accountId,
-      faturaMes,
+      faturaMes: finalFaturaMes,
       created_at: new Date().toISOString()
     };
 
@@ -760,14 +774,36 @@ export default function App() {
 
   // Bank notifications suggestions handlers (MacroDroid)
   const handleApproveSuggestion = async (suggestion: PendingSuggestion) => {
-    await handleAddTransaction(
-      suggestion.descricao,
-      suggestion.valor,
-      suggestion.data,
-      suggestion.categoria,
-      suggestion.tipoItem,
-      suggestion.accountId
-    );
+    const acc = accounts.find(a => a.id === suggestion.accountId);
+    const closingDay = acc?.diaFechamento || 5;
+
+    if (suggestion.parcelas && suggestion.parcelas > 1) {
+      const count = suggestion.parcelas;
+      const valorParcela = Math.round((suggestion.valor / count) * 100) / 100;
+      for (let i = 0; i < count; i++) {
+        const installmentDate = getInstallmentTransactionDate(suggestion.data, i);
+        const installmentFaturaMes = getInstallmentBillMonth(suggestion.data, i, closingDay);
+        const installmentDesc = `${suggestion.descricao} (${i + 1}/${count})`;
+        await handleAddTransaction(
+          installmentDesc,
+          valorParcela,
+          installmentDate,
+          suggestion.categoria,
+          suggestion.tipoItem,
+          suggestion.accountId,
+          installmentFaturaMes
+        );
+      }
+    } else {
+      await handleAddTransaction(
+        suggestion.descricao,
+        suggestion.valor,
+        suggestion.data,
+        suggestion.categoria,
+        suggestion.tipoItem,
+        suggestion.accountId
+      );
+    }
 
     setPendingSuggestions(prev => {
       const updated = prev.filter(p => p.id !== suggestion.id);
@@ -780,22 +816,76 @@ export default function App() {
     }
 
     jarvisAudio.playSound('success');
-    jarvisAudio.speak('Transação bancária aprovada e registrada com sucesso!');
-    showToast(`Transação de ${formatCurrency(suggestion.valor)} lançada no extrato!`, 'sucesso');
+    if (suggestion.parcelas && suggestion.parcelas > 1) {
+      jarvisAudio.speak(`Transação parcelada em ${suggestion.parcelas} vezes registrada com sucesso!`);
+      showToast(`Compra parcelada em ${suggestion.parcelas}x lançada no extrato!`, 'sucesso');
+    } else {
+      jarvisAudio.speak('Transação bancária aprovada e registrada com sucesso!');
+      showToast(`Transação de ${formatCurrency(suggestion.valor)} lançada no extrato!`, 'sucesso');
+    }
   };
 
   const handleEditSuggestion = (suggestion: PendingSuggestion) => {
-    setActiveNav('transacoes');
-    setSubpainelAberto(suggestion.tipoItem === 'receita' ? 'receitas' : 'despesas');
-    setPendingSuggestions(prev => {
-      const updated = prev.filter(p => p.id !== suggestion.id);
-      saveLocal('fintech_pending_suggestions', updated);
-      return updated;
-    });
-    if (firebaseUser) {
-      deletePendingSuggestionFromFirestore(firebaseUser.uid, suggestion.id).catch(() => {});
+    setAdjustingSuggestion(suggestion);
+  };
+
+  const handleSaveAdjustedSuggestion = async (adjusted: {
+    descricao: string;
+    valor: number;
+    data: string;
+    categoria: string;
+    tipoItem: 'despesa' | 'receita';
+    accountId: string;
+    faturaMes?: string;
+    parcelas?: number;
+  }) => {
+    const acc = accounts.find(a => a.id === adjusted.accountId);
+    const closingDay = acc?.diaFechamento || 5;
+
+    if (adjusted.parcelas && adjusted.parcelas > 1) {
+      const count = adjusted.parcelas;
+      const valorParcela = Math.round((adjusted.valor / count) * 100) / 100;
+      for (let i = 0; i < count; i++) {
+        const installmentDate = getInstallmentTransactionDate(adjusted.data, i);
+        const installmentFaturaMes = getInstallmentBillMonth(adjusted.data, i, closingDay);
+        const installmentDesc = `${adjusted.descricao} (${i + 1}/${count})`;
+        await handleAddTransaction(
+          installmentDesc,
+          valorParcela,
+          installmentDate,
+          adjusted.categoria,
+          adjusted.tipoItem,
+          adjusted.accountId,
+          installmentFaturaMes
+        );
+      }
+    } else {
+      await handleAddTransaction(
+        adjusted.descricao,
+        adjusted.valor,
+        adjusted.data,
+        adjusted.categoria,
+        adjusted.tipoItem,
+        adjusted.accountId,
+        adjusted.faturaMes
+      );
     }
-    showToast('Abra o formulário para conferir e registrar a transação.', 'info');
+
+    if (adjustingSuggestion) {
+      setPendingSuggestions(prev => {
+        const updated = prev.filter(p => p.id !== adjustingSuggestion.id);
+        saveLocal('fintech_pending_suggestions', updated);
+        return updated;
+      });
+
+      if (firebaseUser) {
+        updatePendingSuggestionStatusInFirestore(firebaseUser.uid, adjustingSuggestion.id, 'aprovada').catch(() => {});
+      }
+    }
+
+    setAdjustingSuggestion(null);
+    jarvisAudio.playSound('success');
+    showToast(`Transação "${adjusted.descricao}" lançada no extrato!`, 'sucesso');
   };
 
   const handleDismissSuggestion = (suggestion: PendingSuggestion) => {
@@ -832,6 +922,8 @@ export default function App() {
     const createdTransactions: Transaction[] = newItems.map((item, index) => {
       const transactionId = safeRandomUUID();
       const createdAt = new Date(baseTime + index * 50).toISOString();
+      const acc = accounts.find(a => a.id === (item.accountId || 'santander'));
+      const finalFaturaMes = item.faturaMes || (acc && acc.tipo === 'credito' ? getBillMonthForDate(item.data, acc.diaFechamento || 5) : undefined);
       return {
         id: transactionId,
         descricao: item.descricao,
@@ -840,7 +932,7 @@ export default function App() {
         categoria: item.categoria,
         tipoItem: item.tipoItem,
         accountId: item.accountId || 'santander',
-        faturaMes: item.faturaMes,
+        faturaMes: finalFaturaMes,
         created_at: createdAt
       };
     });
@@ -902,6 +994,13 @@ export default function App() {
     updatedData: { descricao: string; valor: number; data: string; categoria: string; accountId?: string; faturaMes?: string }
   ) => {
     const existing = transactions.find(t => t.id === id);
+    const targetAccId = updatedData.accountId || existing?.accountId || 'santander';
+    const targetAcc = accounts.find(a => a.id === targetAccId);
+    let finalFaturaMes = updatedData.faturaMes || existing?.faturaMes;
+    if (targetAcc && targetAcc.tipo === 'credito') {
+      finalFaturaMes = updatedData.faturaMes || getBillMonthForDate(updatedData.data, targetAcc.diaFechamento || 5);
+    }
+
     const updatedTransaction: Transaction = {
       id,
       descricao: updatedData.descricao,
@@ -909,8 +1008,8 @@ export default function App() {
       data: updatedData.data,
       categoria: updatedData.categoria,
       tipoItem,
-      accountId: updatedData.accountId || existing?.accountId || 'santander',
-      faturaMes: updatedData.faturaMes || existing?.faturaMes,
+      accountId: targetAccId,
+      faturaMes: finalFaturaMes,
       created_at: existing?.created_at || new Date().toISOString()
     };
 
@@ -2963,6 +3062,29 @@ export default function App() {
       <MacroDroidModal
         isOpen={isMacroDroidModalOpen}
         onClose={() => setIsMacroDroidModalOpen(false)}
+      />
+
+      {/* ADJUST SUGGESTED BANK TRANSACTION MODAL */}
+      <AdjustSuggestionModal
+        isOpen={!!adjustingSuggestion}
+        suggestion={adjustingSuggestion}
+        onClose={() => setAdjustingSuggestion(null)}
+        onSave={handleSaveAdjustedSuggestion}
+        onDismiss={(id) => {
+          setPendingSuggestions(prev => {
+            const updated = prev.filter(p => p.id !== id);
+            saveLocal('fintech_pending_suggestions', updated);
+            return updated;
+          });
+          if (firebaseUser) {
+            updatePendingSuggestionStatusInFirestore(firebaseUser.uid, id, 'descartada').catch(() => {});
+          }
+          setAdjustingSuggestion(null);
+          showToast('Sugestão descartada.', 'info');
+        }}
+        accounts={accounts}
+        categoriasDespesa={categoriasDespesa}
+        categoriasReceita={categoriasReceita}
       />
     </div>
   );

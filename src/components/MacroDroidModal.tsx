@@ -225,22 +225,19 @@ export const MacroDroidModal: React.FC<MacroDroidModalProps> = ({
             <div className="p-3.5 rounded-xl bg-zinc-50 dark:bg-[#252530] border border-zinc-200/70 dark:border-[#4C4E5D]/40 space-y-2.5">
               <p className="font-bold text-zinc-800 dark:text-[#DDD5D0] text-[11px] flex items-center gap-1.5">
                 <HelpCircle className="w-4 h-4 text-amber-500" />
-                Como testar no MacroDroid agora:
+                Como garantir que qualquer Pix ou compra seja reconhecido:
               </p>
-              <ol className="space-y-1.5 text-zinc-500 dark:text-[#988E96] text-[11px] list-decimal list-inside">
+              <ul className="space-y-1.5 text-zinc-500 dark:text-[#988E96] text-[11px] list-disc list-inside">
                 <li>
-                  No MacroDroid, abra sua macro e atualize a <strong>URL</strong> e o <strong>Corpo</strong> com os dados copiados acima.
+                  <strong>Gatilho no MacroDroid:</strong> Em <em>"Notificação Recebida"</em>, certifique-se de selecionar os apps bancários (Santander, Way, Nubank, Itaú, etc.) e em <em>"Correspondência de Conteúdo"</em> deixe marcado <strong>"Qualquer conteúdo"</strong> (para capturar tanto Pix enviado quanto compras e Pix recebido).
                 </li>
                 <li>
-                  Toque nos <strong>3 pontinhos</strong> no canto superior direito e selecione <strong>"Testar Ações"</strong>.
+                  <strong>Transações Suportadas:</strong> O sistema reconhece <strong>Pix enviado (saída/despesa)</strong>, <strong>Pix recebido (entrada/receita)</strong>, <strong>compras no cartão (à vista ou parceladas)</strong>, transferências e boletos pagos.
                 </li>
                 <li>
-                  Abra o <strong>"Registro do Sistema"</strong> do MacroDroid: agora exibirá <strong>Código 200</strong> em vez de 404!
+                  <strong>Botão "Ajustar":</strong> Se quiser alterar a categoria, conta ou descrição antes de lançar, basta clicar em <strong>"Ajustar"</strong> no card que abrirá o formulário completo de edição.
                 </li>
-                <li>
-                  No FintechCore (no navegador ou celular), o JARVIS anunciará por áudio e voz e exibirá o card de aprovação da transação na hora.
-                </li>
-              </ol>
+              </ul>
             </div>
           </div>
         </div>

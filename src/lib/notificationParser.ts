@@ -8,11 +8,18 @@ export interface ParseResult {
   categoria: string;
   accountId: string;
   data: string;
+  parcelas?: number;
+  valorTotal?: number;
 }
 
 /**
  * Intelligent parser for bank notifications from Brazilian banks
  * (Santander, Nubank, Itaú, Inter, C6, Bradesco, Caixa, Banco do Brasil, PicPay, Mercado Pago)
+ * Handles:
+ * - Pix enviado / Você transferiu / Pix realizado / Pix pago (Despesa)
+ * - Pix recebido / Transferência recebida / Salário (Receita)
+ * - Compras de cartão de crédito e débito (Despesa, com suporte a parcelas)
+ * - Boletos pagos e transferências
  */
 export function parseBankNotification(
   text: string,
@@ -24,36 +31,76 @@ export function parseBankNotification(
     return null;
   }
 
-  const cleanText = text.trim();
+  const cleanText = text.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
   const lower = cleanText.toLowerCase();
 
-  // 1. Detect Amount (R$ XX,XX or XX.XX)
-  // Match patterns like R$ 45,90, R$45.90, BRL 100,00, 45,90 BRL
-  const amountRegex = /(?:r\$|brl|\$)?\s*([0-9]{1,3}(?:\.[0-9]{3})*|\d+)[,\.]([0-9]{2})\b/i;
-  const matchAmount = cleanText.match(amountRegex);
+  // 1. Detect Installments (Parcelamento: ex: "em 3x de R$ 100,00", "em 3x", "parcelado em 5x")
+  let parcelas: number | undefined = undefined;
+  let valorTotal: number | undefined = undefined;
 
+  const installmentDeRegex = /(?:em\s+)?([1-9]|1[0-9]|2[0-4]|3[6])x\s*(?:de\s*)?(?:r\$|brl|\$)?\s*([0-9]{1,3}(?:\.[0-9]{3})*|\d+)[,\.]([0-9]{2})/i;
+  const matchInstDe = cleanText.match(installmentDeRegex);
+  if (matchInstDe) {
+    const pCount = parseInt(matchInstDe[1], 10);
+    const instInt = matchInstDe[2].replace(/\./g, '');
+    const instDec = matchInstDe[3];
+    const valorParcela = parseFloat(`${instInt}.${instDec}`);
+    if (valorParcela > 0 && pCount > 1) {
+      parcelas = pCount;
+      valorTotal = valorParcela * pCount;
+    }
+  } else {
+    const simpleInstRegex = /(?:em|parcelad[oa]\s+em)\s*([1-9]|1[0-9]|2[0-4]|3[6])\s*(?:x|vezes|parcelas)\b/i;
+    const matchSimpleInst = cleanText.match(simpleInstRegex);
+    if (matchSimpleInst) {
+      const parsedCount = parseInt(matchSimpleInst[1], 10);
+      if (parsedCount > 1) {
+        parcelas = parsedCount;
+      }
+    }
+  }
+
+  // 2. Detect Amount (R$ XX,XX or XX.XX or R$ XX)
   let valor = 0;
+
+  // Standard R$ 45,90 or 45,90 BRL or R$ 1.250,00
+  const amountWithDecimalsRegex = /(?:r\$|brl|\$)?\s*([0-9]{1,3}(?:\.[0-9]{3})*|\d+)[,\.]([0-9]{2})\b/i;
+  const matchAmount = cleanText.match(amountWithDecimalsRegex);
+
   if (matchAmount) {
     const intPart = matchAmount[1].replace(/\./g, '');
     const decPart = matchAmount[2];
     valor = parseFloat(`${intPart}.${decPart}`);
   }
 
+  // Fallback for integer currency e.g. "R$ 50" or "R$ 100" or "50 reais"
   if (isNaN(valor) || valor <= 0) {
-    // Try fallback for integer currency like R$ 50
-    const intCurrencyRegex = /(?:r\$|brl)\s*([0-9]{1,3}(?:\.[0-9]{3})*|\d+)\b/i;
+    const intCurrencyRegex = /(?:r\$|brl|\$)\s*([0-9]{1,3}(?:\.[0-9]{3})*|\d+)\b/i;
     const matchInt = cleanText.match(intCurrencyRegex);
     if (matchInt) {
       valor = parseFloat(matchInt[1].replace(/\./g, ''));
     }
   }
 
+  // Fallback for "XX reais"
+  if (isNaN(valor) || valor <= 0) {
+    const reaisRegex = /\b([0-9]{1,3}(?:\.[0-9]{3})*|\d+)\s*reais\b/i;
+    const matchReais = cleanText.match(reaisRegex);
+    if (matchReais) {
+      valor = parseFloat(matchReais[1].replace(/\./g, ''));
+    }
+  }
+
+  if (valorTotal && valorTotal > 0) {
+    valor = valorTotal;
+  }
+
   if (isNaN(valor) || valor <= 0) {
     return null; // A valid transaction notification must have an identifiable positive amount
   }
 
-  // 2. Detect Institution / Bank
-  let banco = 'Banco';
+  // 3. Detect Institution / Bank
+  let banco = 'Santander'; // Default primary bank
   let matchedAccountId = 'santander';
 
   if (lower.includes('santander') || lower.includes('way') || lower.includes('sx')) {
@@ -61,8 +108,7 @@ export function parseBankNotification(
     const cardAcc = accounts.find(a => a.tipo === 'credito' && (a.id.includes('santander') || a.nome.toLowerCase().includes('santander')));
     const checkingAcc = accounts.find(a => a.tipo === 'corrente' && a.id.includes('santander'));
     
-    // If credit card mentioned
-    if (lower.includes('crédito') || lower.includes('cartão') || lower.includes('fatura') || lower.includes('sx')) {
+    if (lower.includes('crédito') || lower.includes('cartão') || lower.includes('fatura') || lower.includes('sx') || parcelas) {
       matchedAccountId = cardAcc ? cardAcc.id : 'santander-cartao';
     } else {
       matchedAccountId = checkingAcc ? checkingAcc.id : 'santander';
@@ -87,10 +133,14 @@ export function parseBankNotification(
     banco = 'PicPay';
   } else if (lower.includes('mercado pago') || lower.includes('mercadopago')) {
     banco = 'Mercado Pago';
+  } else if (lower.includes('banco do brasil') || lower.includes('bb ')) {
+    banco = 'Banco do Brasil';
+  } else if (lower.includes('caixa')) {
+    banco = 'Caixa';
   }
 
-  // 3. Detect Transaction Type (Receita vs Despesa)
-  let tipoItem: 'despesa' | 'receita' = 'despesa';
+  // 4. Detect Transaction Type (Receita vs Despesa)
+  // Incoming income triggers
   const isIncomeKeyword =
     lower.includes('recebeu') ||
     lower.includes('recebido') ||
@@ -100,38 +150,62 @@ export function parseBankNotification(
     lower.includes('reembolso') ||
     lower.includes('estorno') ||
     lower.includes('salário creditado') ||
-    lower.includes('crédito em conta');
+    lower.includes('crédito em conta') ||
+    lower.includes('rendimento');
 
-  if (isIncomeKeyword) {
-    tipoItem = 'receita';
-  }
+  // Outgoing Pix triggers (Despesa)
+  const isPixOutgoing =
+    lower.includes('pix enviado') ||
+    lower.includes('você transferiu') ||
+    lower.includes('você enviou') ||
+    lower.includes('você fez um pix') ||
+    lower.includes('pix realizado') ||
+    lower.includes('transferência realizada') ||
+    lower.includes('pagamento pix') ||
+    lower.includes('pix pago') ||
+    lower.includes('envio de pix');
 
-  // 4. Extract Establishment / Counterparty (Descrição)
+  let tipoItem: 'despesa' | 'receita' = isIncomeKeyword && !isPixOutgoing ? 'receita' : 'despesa';
+
+  // 5. Extract Counterparty / Establishment (Descrição)
   let descricao = '';
 
-  // Patterns like "em NOME_DO_ESTABELECIMENTO"
-  const emMatch = cleanText.match(/\bem\s+([A-Za-z0-9\s\*\.\-\_\&]{2,40}?)(?:\s+(?:às|as|no dia|em|valor|com|final|\.|\,|$))/i);
-  // Patterns like "de NOME_DA_PESSOA" (for incoming Pix)
-  const deMatch = cleanText.match(/\bde\s+([A-Za-z0-9\s\*\.\-\_]{2,35}?)(?:\s+(?:às|as|no dia|em|valor|com|\.|\,|$))/i);
-  // Patterns like "para NOME_DA_PESSOA" (for outgoing Pix/transfers)
-  const paraMatch = cleanText.match(/\bpara\s+([A-Za-z0-9\s\*\.\-\_]{2,35}?)(?:\s+(?:às|as|no dia|em|valor|com|\.|\,|$))/i);
+  // Match "para NOME" (e.g. "para João da Silva" or "para Maria Santos")
+  const paraMatch = cleanText.match(/\b(?:para|a favor de|destinat[aá]rio:?)\s+([A-Za-z0-9\s\*\.\-\_]{2,35}?)(?:(?:\s+(?:às|as|no dia|em|valor|com|final|\.|\,|$))|$)/i);
+  // Match "de NOME" (e.g. "de João da Silva")
+  const deMatch = cleanText.match(/\b(?:de|remetente:?)\s+([A-Za-z0-9\s\*\.\-\_]{2,35}?)(?:(?:\s+(?:às|as|no dia|em|valor|com|final|\.|\,|$))|$)/i);
+  // Match "em NOME_DO_ESTABELECIMENTO" (e.g. "em Padaria do Zé")
+  const emMatch = cleanText.match(/\bem\s+([A-Za-z0-9\s\*\.\-\_\&]{2,40}?)(?:(?:\s+(?:às|as|no dia|em|valor|com|final|\.|\,|$))|$)/i);
 
-  if (tipoItem === 'receita' && deMatch && deMatch[1].trim().length > 1) {
-    descricao = `Pix de ${deMatch[1].trim()}`;
-  } else if (emMatch && emMatch[1].trim().length > 1) {
-    descricao = emMatch[1].trim();
-  } else if (paraMatch && paraMatch[1].trim().length > 1) {
-    descricao = `Pix para ${paraMatch[1].trim()}`;
-  } else {
-    // Fallback: search for words after "compra aprovada" or "compra de"
-    if (tipoItem === 'receita') {
-      descricao = `Pix Recebido - ${banco}`;
+  if (tipoItem === 'receita') {
+    if (deMatch && deMatch[1].trim().length > 1) {
+      descricao = `Pix de ${deMatch[1].trim()}`;
     } else {
-      descricao = `Compra no ${banco}`;
+      descricao = `Pix Recebido - ${banco}`;
+    }
+  } else {
+    // Outgoing transaction (Despesa)
+    if (isPixOutgoing || lower.includes('pix')) {
+      if (paraMatch && paraMatch[1].trim().length > 1) {
+        descricao = `Pix para ${paraMatch[1].trim()}`;
+      } else if (emMatch && emMatch[1].trim().length > 1) {
+        descricao = `Pix em ${emMatch[1].trim()}`;
+      } else {
+        descricao = `Pix Enviado (${banco})`;
+      }
+    } else {
+      // Card / Purchase
+      if (emMatch && emMatch[1].trim().length > 1) {
+        descricao = emMatch[1].trim();
+      } else if (paraMatch && paraMatch[1].trim().length > 1) {
+        descricao = `Pagamento para ${paraMatch[1].trim()}`;
+      } else {
+        descricao = `Compra no ${banco}`;
+      }
     }
   }
 
-  // Clean description punctuation and multiple spaces
+  // Clean description
   descricao = descricao
     .replace(/^[\s\.\,\-]+|[\s\.\,\-]+$/g, '')
     .replace(/\s{2,}/g, ' ')
@@ -141,8 +215,8 @@ export function parseBankNotification(
     descricao = tipoItem === 'receita' ? 'Entrada Pix' : `Despesa ${banco}`;
   }
 
-  // 5. Intelligent Category Assignment
-  let categoria = tipoItem === 'receita' ? 'Outros' : 'Outros';
+  // 6. Intelligent Category Assignment
+  let categoria = 'Outros';
 
   const descLower = descricao.toLowerCase();
   const fullLower = lower;
@@ -152,12 +226,10 @@ export function parseBankNotification(
       categoria = 'Salário';
     } else if (fullLower.includes('rendimento') || fullLower.includes('dividendo') || fullLower.includes('juros')) {
       categoria = 'Investimentos';
-    } else if (fullLower.includes('estorno') || fullLower.includes('devolução')) {
-      categoria = 'Reembolso';
-    } else if (customCategoriesReceita.includes('Pix')) {
-      categoria = 'Pix';
+    } else if (fullLower.includes('estorno') || fullLower.includes('devolução') || fullLower.includes('reembolso')) {
+      categoria = 'Reembolsos';
     } else {
-      categoria = 'Outros';
+      categoria = 'Pix';
     }
   } else {
     // Despesas category inference
@@ -242,7 +314,7 @@ export function parseBankNotification(
     }
   }
 
-  // 6. Current Local Date (YYYY-MM-DD)
+  // 7. Current Date (YYYY-MM-DD)
   const now = new Date();
   const year = now.getFullYear();
   const month = String(now.getMonth() + 1).padStart(2, '0');
@@ -256,19 +328,27 @@ export function parseBankNotification(
     tipoItem,
     categoria,
     accountId: matchedAccountId,
-    data
+    data,
+    parcelas,
+    valorTotal
   };
 }
 
 /**
- * Helper to build a complete PendingSuggestion from raw notification text
+ * Helper to build a complete PendingSuggestion from raw notification text and optional title
  */
 export function createPendingSuggestionFromNotification(
   rawText: string,
   accounts: BankAccount[] = [],
-  userId: string = 'emersonrs70@gmail.com'
+  userId: string = 'emersonrs70@gmail.com',
+  title?: string
 ): PendingSuggestion | null {
-  const parsed = parseBankNotification(textFix(rawText), accounts);
+  // Combine title and raw text if available for maximal context (bank name, transaction type, etc.)
+  const fullTextToParse = title && !rawText.toLowerCase().includes(title.toLowerCase())
+    ? `${title}: ${rawText}`
+    : rawText;
+
+  const parsed = parseBankNotification(fullTextToParse, accounts);
   if (!parsed) return null;
 
   return {
@@ -283,10 +363,8 @@ export function createPendingSuggestionFromNotification(
     data: parsed.data,
     status: 'pendente',
     userId,
-    createdAt: new Date().toISOString()
+    createdAt: new Date().toISOString(),
+    parcelas: parsed.parcelas,
+    valorTotal: parsed.valorTotal
   };
-}
-
-function textFix(str: string): string {
-  return str.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
 }

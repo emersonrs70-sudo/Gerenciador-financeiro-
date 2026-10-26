@@ -41,6 +41,44 @@ export function getBillMonthForDate(dateStr: string, closingDay: number = 5): st
   }
 }
 
+/**
+ * Computes the target billing month (YYYY-MM) for the (installmentIndex + 1)-th installment.
+ * installmentIndex is 0-indexed (0 = 1ª parcela, 1 = 2ª parcela, etc.).
+ * If purchase date is after closingDay, the 1st installment (index 0) falls into next month's bill!
+ */
+export function getInstallmentBillMonth(dateStr: string, installmentIndex: number, closingDay: number = 5): string {
+  const baseBillMonth = getBillMonthForDate(dateStr, closingDay);
+  const [bYearStr, bMonthStr] = baseBillMonth.split('-');
+  const baseYear = parseInt(bYearStr, 10);
+  const baseMonth = parseInt(bMonthStr, 10) - 1; // 0-indexed
+
+  const targetDate = new Date(baseYear, baseMonth + installmentIndex, 1);
+  const targetYear = targetDate.getFullYear();
+  const targetMonth = String(targetDate.getMonth() + 1).padStart(2, '0');
+  return `${targetYear}-${targetMonth}`;
+}
+
+/**
+ * Computes the transaction date (YYYY-MM-DD) for the (installmentIndex + 1)-th installment.
+ */
+export function getInstallmentTransactionDate(dateStr: string, installmentIndex: number): string {
+  if (installmentIndex === 0) return dateStr;
+  const date = new Date(dateStr + 'T12:00:00');
+  if (isNaN(date.getTime())) return dateStr;
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  const day = date.getDate();
+
+  const targetDate = new Date(year, month + installmentIndex, 1);
+  const maxDays = new Date(targetDate.getFullYear(), targetDate.getMonth() + 1, 0).getDate();
+  const targetDay = Math.min(day, maxDays);
+
+  const yyyy = targetDate.getFullYear();
+  const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetDay).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
 export interface Category {
   nome: string;
 }
@@ -91,6 +129,8 @@ export interface PendingSuggestion {
   status: 'pendente' | 'aprovada' | 'descartada';
   userId?: string;
   createdAt: string;
+  parcelas?: number;
+  valorTotal?: number;
 }
 
 export function safeRandomUUID(): string {
