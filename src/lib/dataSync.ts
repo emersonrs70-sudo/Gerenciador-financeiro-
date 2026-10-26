@@ -545,3 +545,39 @@ export async function deletePendingSuggestionFromFirestore(userId: string, sugge
     handleFirestoreError(err, OperationType.DELETE, path);
   }
 }
+
+/**
+ * Real-time listener for incoming bank notifications from mobile MacroDroid directly via Firestore.
+ * Works seamlessly on static GitHub Pages, local dev, or anywhere without an Express server.
+ */
+export function subscribeToIncomingNotifications(
+  onNotification: (notif: { id: string; text: string; title?: string; app?: string }) => void
+): () => void {
+  try {
+    const notifsCol = collection(db, 'incoming_notifications');
+    const unsubscribe = onSnapshot(notifsCol, (snapshot) => {
+      snapshot.docChanges().forEach((change) => {
+        if (change.type === 'added') {
+          const data = change.doc.data();
+          if (data && data.text) {
+            onNotification({
+              id: change.doc.id,
+              text: data.text,
+              title: data.title,
+              app: data.app
+            });
+            // Delete from incoming buffer so it doesn't process multiple times
+            deleteDoc(doc(db, 'incoming_notifications', change.doc.id)).catch(() => {});
+          }
+        }
+      });
+    }, (err) => {
+      console.warn('Incoming notifications listener notice:', err);
+    });
+    return unsubscribe;
+  } catch (err) {
+    console.warn('Failed to subscribe to incoming notifications:', err);
+    return () => {};
+  }
+}
+

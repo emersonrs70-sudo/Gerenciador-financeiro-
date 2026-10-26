@@ -303,9 +303,41 @@
         }
       },
       "required": ["descricao", "valor", "tipoItem", "status", "userId"]
+    },
+    "IncomingNotification": {
+      "title": "IncomingNotification",
+      "description": "Incoming bank notifications pushed from mobile automation like MacroDroid",
+      "type": "object",
+      "properties": {
+        "text": {
+          "type": "string",
+          "maxLength": 1000,
+          "description": "Notification content body"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 200,
+          "description": "Notification title"
+        },
+        "app": {
+          "type": "string",
+          "maxLength": 100,
+          "description": "Originating banking app package or name"
+        },
+        "timestamp": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Timestamp string"
+        }
+      },
+      "required": ["text"]
     }
   },
   "firestore": {
+    "/incoming_notifications/{notifId}": {
+      "schema": "IncomingNotification",
+      "description": "Buffer collection for incoming mobile push notifications"
+    },
     "/users/{userId}": {
       "schema": "UserProfile",
       "description": "User profile documents"

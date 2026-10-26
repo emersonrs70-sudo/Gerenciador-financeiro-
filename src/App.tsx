@@ -22,7 +22,8 @@ import {
   addProjectToFirestore, deleteProjectFromFirestore,
   saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore,
   addCategoryToFirestore, deleteCategoryFromFirestore,
-  savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore
+  savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore,
+  subscribeToIncomingNotifications
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
@@ -503,7 +504,40 @@ export default function App() {
     return () => unsubscribe();
   }, [firebaseUser, currentUser.email]);
 
-  // Polling for incoming webhook bank notifications from MacroDroid
+  // Process incoming notification text from any source (Firestore cloud or local webhook)
+  const processIncomingNotificationText = (text: string, title?: string) => {
+    const suggestion = createPendingSuggestionFromNotification(text, accounts, currentUser.email);
+    if (!suggestion) return;
+
+    setPendingSuggestions((prev) => {
+      // Avoid duplicate suggestion
+      if (prev.some(p => p.id === suggestion.id || (p.rawText === suggestion.rawText && Math.abs(new Date(p.createdAt).getTime() - new Date(suggestion.createdAt).getTime()) < 10000))) {
+        return prev;
+      }
+      const updated = [suggestion, ...prev];
+      saveLocal('fintech_pending_suggestions', updated);
+      return updated;
+    });
+
+    if (firebaseUser) {
+      savePendingSuggestionToFirestore(firebaseUser.uid, suggestion).catch(() => {});
+    }
+
+    // Vocal & Audio alert by JARVIS
+    jarvisAudio.playSound('wake');
+    jarvisAudio.speak(`Senhor, identifiquei uma notificação do ${suggestion.banco}. ${suggestion.descricao}, no valor de ${suggestion.valor.toFixed(2)} reais. Deseja registrar?`);
+    showToast(`Transação detectada: ${suggestion.descricao} (${formatCurrency(suggestion.valor)})`, 'info');
+  };
+
+  // 1. Direct cloud real-time listener via Firebase Firestore (Works everywhere including GitHub Pages)
+  useEffect(() => {
+    const unsubscribe = subscribeToIncomingNotifications((notif) => {
+      processIncomingNotificationText(notif.text, notif.title);
+    });
+    return () => unsubscribe();
+  }, [accounts, currentUser.email, firebaseUser]);
+
+  // 2. Secondary polling for local Express dev server
   useEffect(() => {
     const pollInterval = setInterval(async () => {
       try {
@@ -512,27 +546,7 @@ export default function App() {
         const data = await res.json();
         if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
           for (const rawItem of data.notifications) {
-            const suggestion = createPendingSuggestionFromNotification(rawItem.text, accounts, currentUser.email);
-            if (suggestion) {
-              setPendingSuggestions((prev) => {
-                // Avoid duplicate suggestion
-                if (prev.some(p => p.id === suggestion.id || (p.rawText === suggestion.rawText && Math.abs(new Date(p.createdAt).getTime() - new Date(suggestion.createdAt).getTime()) < 10000))) {
-                  return prev;
-                }
-                const updated = [suggestion, ...prev];
-                saveLocal('fintech_pending_suggestions', updated);
-                return updated;
-              });
-
-              if (firebaseUser) {
-                savePendingSuggestionToFirestore(firebaseUser.uid, suggestion).catch(() => {});
-              }
-
-              // Vocal & Audio alert by JARVIS
-              jarvisAudio.playSound('wake');
-              jarvisAudio.speak(`Senhor, identifiquei uma notificação do ${suggestion.banco}. ${suggestion.descricao}, no valor de ${suggestion.valor.toFixed(2)} reais. Deseja registrar?`);
-              showToast(`Transação detectada: ${suggestion.descricao} (${formatCurrency(suggestion.valor)})`, 'info');
-            }
+            processIncomingNotificationText(rawItem.text, rawItem.title);
           }
         }
       } catch {

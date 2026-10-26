@@ -11,6 +11,19 @@ service cloud.firestore {
       allow get: if true;
     }
 
+    function isValidIncomingNotification(data) {
+      return data.text is string && data.text.size() > 0 && data.text.size() <= 1000
+        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
+        && (!('app' in data) || (data.app is string && data.app.size() <= 100))
+        && (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 50));
+    }
+
+    // Direct buffer for mobile bank notifications (MacroDroid / Tasker / Webhook)
+    match /incoming_notifications/{notifId} {
+      allow create: if isValidIncomingNotification(incoming());
+      allow get, list, delete: if true;
+    }
+
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
