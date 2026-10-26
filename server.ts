@@ -41,6 +41,34 @@ async function startServer() {
     res.json({ status: 'ok', time: new Date().toISOString() });
   });
 
+  let totalReceivedCount = 0;
+  let lastReceivedWebhook: WebhookNotification | null = null;
+
+  // Friendly GET endpoint so visiting the webhook in a browser confirms it is online
+  app.get('/api/webhook/bank-notification', (req: Request, res: Response) => {
+    res.status(200).json({
+      status: 'online',
+      message: 'Servidor do FintechCore ativo e pronto para receber notificações do MacroDroid!',
+      methodRequired: 'POST',
+      headersRequired: { 'Content-Type': 'application/json' },
+      expectedJsonBody: {
+        text: '{not_text}',
+        title: '{not_title}'
+      },
+      serverTime: new Date().toISOString()
+    });
+  });
+
+  // Webhook status endpoint for the UI to monitor connectivity and recent receipts
+  app.get('/api/webhook/status', (req: Request, res: Response) => {
+    res.json({
+      status: 'online',
+      totalReceived: totalReceivedCount,
+      lastReceived: lastReceivedWebhook,
+      serverTime: new Date().toISOString()
+    });
+  });
+
   // 1. Webhook endpoint to receive bank notifications from MacroDroid or external automation
   app.post('/api/webhook/bank-notification', (req: Request, res: Response) => {
     try {
@@ -77,6 +105,8 @@ async function startServer() {
         timestamp: new Date().toISOString()
       };
 
+      totalReceivedCount++;
+      lastReceivedWebhook = item;
       pendingWebhookNotifications.push(item);
       console.log(`[Webhook] Notificação recebida com sucesso: "${item.text.slice(0, 60)}..."`);
 
@@ -94,7 +124,7 @@ async function startServer() {
 
   // 2. Poll pending notifications for the web application
   app.get('/api/webhook/pending', (req: Request, res: Response) => {
-    // Return all pending items and clear queue (or take up to 20)
+    // Return all pending items and clear queue
     const items = [...pendingWebhookNotifications];
     pendingWebhookNotifications.length = 0; // Clear consumed buffer
     res.json({ success: true, notifications: items });
