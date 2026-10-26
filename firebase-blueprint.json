@@ -236,6 +236,73 @@
         }
       },
       "required": ["descricao", "valor", "diaDoMes", "categoria", "tipoItem"]
+    },
+    "PendingSuggestion": {
+      "title": "PendingSuggestion",
+      "description": "Incoming bank notification pending approval",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Unique suggestion ID"
+        },
+        "rawText": {
+          "type": "string",
+          "maxLength": 500,
+          "description": "Original notification text"
+        },
+        "banco": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Bank or institution name"
+        },
+        "descricao": {
+          "type": "string",
+          "maxLength": 250,
+          "description": "Parsed transaction description"
+        },
+        "valor": {
+          "type": "number",
+          "description": "Monetary transaction value"
+        },
+        "tipoItem": {
+          "type": "string",
+          "enum": ["despesa", "receita"],
+          "description": "Expense or income"
+        },
+        "categoria": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Suggested category"
+        },
+        "accountId": {
+          "type": "string",
+          "maxLength": 80,
+          "description": "Suggested bank account ID"
+        },
+        "data": {
+          "type": "string",
+          "maxLength": 30,
+          "description": "Date in YYYY-MM-DD format"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pendente", "aprovada", "descartada"],
+          "description": "Approval status"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        },
+        "createdAt": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Timestamp ISO string"
+        }
+      },
+      "required": ["descricao", "valor", "tipoItem", "status", "userId"]
     }
   },
   "firestore": {
@@ -262,6 +329,10 @@
     "/users/{userId}/recurrent_rules/{ruleId}": {
       "schema": "RecurrentRule",
       "description": "User recurring transaction automation rules"
+    },
+    "/users/{userId}/pending_suggestions/{suggestionId}": {
+      "schema": "PendingSuggestion",
+      "description": "User pending bank notification suggestions"
     }
   }
 }

@@ -5,10 +5,10 @@ import {
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles,
   Cloud, RefreshCw, LogIn, LogOut, LayoutDashboard, Receipt, Target,
   Landmark, Tags, Bot, Calendar, CreditCard, BarChart3, Menu, X, Plus,
-  Layers, CheckCircle2, ChevronDown
+  Layers, CheckCircle2, ChevronDown, Zap
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, PendingSuggestion
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -20,7 +20,9 @@ import {
   addTransactionToFirestore, batchAddTransactionsToFirestore,
   deleteTransactionFromFirestore, updateTransactionInFirestore,
   addProjectToFirestore, deleteProjectFromFirestore,
-  saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore
+  saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore,
+  addCategoryToFirestore, deleteCategoryFromFirestore,
+  savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
@@ -39,6 +41,9 @@ import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
 import { FirebaseDomainModal } from './components/FirebaseDomainModal';
 import { ManageRecurrentModal } from './components/ManageRecurrentModal';
+import { BankNotificationBanner } from './components/BankNotificationBanner';
+import { MacroDroidModal } from './components/MacroDroidModal';
+import { createPendingSuggestionFromNotification } from './lib/notificationParser';
 
 interface Toast {
   id: string;
@@ -139,8 +144,12 @@ export default function App() {
 
   // App dataset state
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-  const [categoriasDespesa, setCategoriasDespesa] = useState<string[]>(DEFAULT_CATEGORIES_DESPESA);
-  const [categoriasReceita, setCategoriasReceita] = useState<string[]>(DEFAULT_CATEGORIES_RECEITA);
+  const [categoriasDespesa, setCategoriasDespesa] = useState<string[]>(() => {
+    return getLocal<string[]>(`local_categorias_despesa_${DEFAULT_PERSONAL_USER.email}`, DEFAULT_CATEGORIES_DESPESA);
+  });
+  const [categoriasReceita, setCategoriasReceita] = useState<string[]>(() => {
+    return getLocal<string[]>(`local_categorias_receita_${DEFAULT_PERSONAL_USER.email}`, DEFAULT_CATEGORIES_RECEITA);
+  });
   const [projects, setProjects] = useState<Project[]>([]);
 
   // Bank Accounts state (loaded from cache)
@@ -170,6 +179,12 @@ export default function App() {
     return getLocal<RecurrentRule[]>(`local_recurrent_rules_${DEFAULT_PERSONAL_USER.email}`, []);
   });
   const [isManageRecurrentModalOpen, setIsManageRecurrentModalOpen] = useState<boolean>(false);
+
+  // Bank notifications pending suggestions (MacroDroid integration)
+  const [pendingSuggestions, setPendingSuggestions] = useState<PendingSuggestion[]>(() => {
+    return getLocal<PendingSuggestion[]>('fintech_pending_suggestions', []);
+  });
+  const [isMacroDroidModalOpen, setIsMacroDroidModalOpen] = useState<boolean>(false);
 
   const handleDeleteAccount = (id: string) => {
     if (accounts.length <= 1) {
@@ -464,6 +479,22 @@ export default function App() {
         setRecurrentRules(liveRules);
         saveLocal(`local_recurrent_rules_${currentUser.email}`, liveRules);
       },
+      onCategories: (cloudDespesas, cloudReceitas) => {
+        if (cloudDespesas.length > 0) {
+          const mergedDespesas = Array.from(new Set([...DEFAULT_CATEGORIES_DESPESA, ...cloudDespesas]));
+          setCategoriasDespesa(mergedDespesas);
+          saveLocal(`local_categorias_despesa_${currentUser.email}`, mergedDespesas);
+        }
+        if (cloudReceitas.length > 0) {
+          const mergedReceitas = Array.from(new Set([...DEFAULT_CATEGORIES_RECEITA, ...cloudReceitas]));
+          setCategoriasReceita(mergedReceitas);
+          saveLocal(`local_categorias_receita_${currentUser.email}`, mergedReceitas);
+        }
+      },
+      onPendingSuggestions: (cloudSuggestions) => {
+        setPendingSuggestions(cloudSuggestions);
+        saveLocal('fintech_pending_suggestions', cloudSuggestions);
+      },
       onError: (err) => {
         console.warn('Real-time sync notice:', err);
       }
@@ -471,6 +502,46 @@ export default function App() {
 
     return () => unsubscribe();
   }, [firebaseUser, currentUser.email]);
+
+  // Polling for incoming webhook bank notifications from MacroDroid
+  useEffect(() => {
+    const pollInterval = setInterval(async () => {
+      try {
+        const res = await fetch('/api/webhook/pending');
+        if (!res.ok) return;
+        const data = await res.json();
+        if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
+          for (const rawItem of data.notifications) {
+            const suggestion = createPendingSuggestionFromNotification(rawItem.text, accounts, currentUser.email);
+            if (suggestion) {
+              setPendingSuggestions((prev) => {
+                // Avoid duplicate suggestion
+                if (prev.some(p => p.id === suggestion.id || (p.rawText === suggestion.rawText && Math.abs(new Date(p.createdAt).getTime() - new Date(suggestion.createdAt).getTime()) < 10000))) {
+                  return prev;
+                }
+                const updated = [suggestion, ...prev];
+                saveLocal('fintech_pending_suggestions', updated);
+                return updated;
+              });
+
+              if (firebaseUser) {
+                savePendingSuggestionToFirestore(firebaseUser.uid, suggestion).catch(() => {});
+              }
+
+              // Vocal & Audio alert by JARVIS
+              jarvisAudio.playSound('wake');
+              jarvisAudio.speak(`Senhor, identifiquei uma notificação do ${suggestion.banco}. ${suggestion.descricao}, no valor de ${suggestion.valor.toFixed(2)} reais. Deseja registrar?`);
+              showToast(`Transação detectada: ${suggestion.descricao} (${formatCurrency(suggestion.valor)})`, 'info');
+            }
+          }
+        }
+      } catch {
+        // Ignore network polling glitches
+      }
+    }, 4000);
+
+    return () => clearInterval(pollInterval);
+  }, [accounts, currentUser.email, firebaseUser]);
 
   const [domainModalError, setDomainModalError] = useState<{ isOpen: boolean; code?: string; message?: string }>({
     isOpen: false
@@ -570,16 +641,34 @@ export default function App() {
 
   // Add category handler
   const handleAddCategory = async (nome: string, tipoItem: 'despesa' | 'receita') => {
+    if (!nome.trim()) return;
+    const cleanNome = nome.trim();
     if (tipoItem === 'despesa') {
-      const updated = [...categoriasDespesa, nome];
+      if (categoriasDespesa.includes(cleanNome)) {
+        showToast(`A categoria "${cleanNome}" já existe!`, 'info');
+        return;
+      }
+      const updated = [...categoriasDespesa, cleanNome];
       setCategoriasDespesa(updated);
       saveLocal(`local_categorias_despesa_${currentUser!.email}`, updated);
     } else {
-      const updated = [...categoriasReceita, nome];
+      if (categoriasReceita.includes(cleanNome)) {
+        showToast(`A categoria "${cleanNome}" já existe!`, 'info');
+        return;
+      }
+      const updated = [...categoriasReceita, cleanNome];
       setCategoriasReceita(updated);
       saveLocal(`local_categorias_receita_${currentUser!.email}`, updated);
     }
-    showToast(`Categoria "${nome}" adicionada com sucesso!`, 'sucesso');
+
+    if (firebaseUser) {
+      addCategoryToFirestore(firebaseUser.uid, cleanNome, tipoItem).catch(err => {
+        console.warn('Erro ao salvar categoria no Firestore:', err);
+      });
+    }
+
+    setNovaCatNome('');
+    showToast(`Categoria "${cleanNome}" adicionada com sucesso!`, 'sucesso');
   };
 
   // Delete category handler
@@ -593,6 +682,13 @@ export default function App() {
       setCategoriasReceita(updated);
       saveLocal(`local_categorias_receita_${currentUser!.email}`, updated);
     }
+
+    if (firebaseUser) {
+      deleteCategoryFromFirestore(firebaseUser.uid, nome, tipoItem).catch(err => {
+        console.warn('Erro ao excluir categoria do Firestore:', err);
+      });
+    }
+
     showToast(`Categoria "${nome}" removida com sucesso!`, 'sucesso');
   };
 
@@ -647,6 +743,62 @@ export default function App() {
     // JARVIS vocal and sound confirmation
     jarvisAudio.announceTransactionAdded(tipoItem, valor, descricao);
   };
+
+  // Bank notifications suggestions handlers (MacroDroid)
+  const handleApproveSuggestion = async (suggestion: PendingSuggestion) => {
+    await handleAddTransaction(
+      suggestion.descricao,
+      suggestion.valor,
+      suggestion.data,
+      suggestion.categoria,
+      suggestion.tipoItem,
+      suggestion.accountId
+    );
+
+    setPendingSuggestions(prev => {
+      const updated = prev.filter(p => p.id !== suggestion.id);
+      saveLocal('fintech_pending_suggestions', updated);
+      return updated;
+    });
+
+    if (firebaseUser) {
+      updatePendingSuggestionStatusInFirestore(firebaseUser.uid, suggestion.id, 'aprovada').catch(() => {});
+    }
+
+    jarvisAudio.playSound('success');
+    jarvisAudio.speak('Transação bancária aprovada e registrada com sucesso!');
+    showToast(`Transação de ${formatCurrency(suggestion.valor)} lançada no extrato!`, 'sucesso');
+  };
+
+  const handleEditSuggestion = (suggestion: PendingSuggestion) => {
+    setActiveNav('transacoes');
+    setSubpainelAberto(suggestion.tipoItem === 'receita' ? 'receitas' : 'despesas');
+    setPendingSuggestions(prev => {
+      const updated = prev.filter(p => p.id !== suggestion.id);
+      saveLocal('fintech_pending_suggestions', updated);
+      return updated;
+    });
+    if (firebaseUser) {
+      deletePendingSuggestionFromFirestore(firebaseUser.uid, suggestion.id).catch(() => {});
+    }
+    showToast('Abra o formulário para conferir e registrar a transação.', 'info');
+  };
+
+  const handleDismissSuggestion = (suggestion: PendingSuggestion) => {
+    setPendingSuggestions(prev => {
+      const updated = prev.filter(p => p.id !== suggestion.id);
+      saveLocal('fintech_pending_suggestions', updated);
+      return updated;
+    });
+
+    if (firebaseUser) {
+      updatePendingSuggestionStatusInFirestore(firebaseUser.uid, suggestion.id, 'descartada').catch(() => {});
+    }
+
+    showToast('Notificação descartada.', 'info');
+  };
+
+
 
   // Batch add transactions from statement import
   const handleBatchAddTransactions = async (
@@ -1053,55 +1205,124 @@ export default function App() {
     }
   }
 
+  const getLocalDateStr = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
   // Active Logging Streak Score
   const computeStreak = () => {
-    const dates = transactions.map((t) => t.data).filter(Boolean);
-    if (dates.length === 0) return 0;
-
-    const uniqueSorted = Array.from(new Set(dates)).sort(
-      (a: string, b: string) => new Date(b).getTime() - new Date(a).getTime()
-    );
-
     const today = new Date();
-    const formatLocalDate = (date: Date) => {
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-        date.getDate()
-      ).padStart(2, '0')}`;
-    };
-
-    const todayStr = formatLocalDate(today);
+    const todayStr = getLocalDateStr(today);
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    const yesterdayStr = formatLocalDate(yesterday);
+    const yesterdayStr = getLocalDateStr(yesterday);
 
-    if (uniqueSorted[0] < yesterdayStr && uniqueSorted[0] !== todayStr) {
-      return 0;
+    // 1. Collect all valid active dates (from transaction dates, transaction creation timestamps, and stored daily check-in)
+    const activeDates = new Set<string>();
+
+    // Activity stored in local history
+    try {
+      const stored = getLocal<string[]>('fintech_daily_active_days', []);
+      if (Array.isArray(stored)) {
+        stored.forEach(d => {
+          if (d && typeof d === 'string' && d <= todayStr) {
+            activeDates.add(d);
+          }
+        });
+      }
+    } catch {
+      // ignore
     }
 
-    let streak = 0;
-    const trackingDate = new Date(uniqueSorted[0] + 'T12:00:00');
+    transactions.forEach((t) => {
+      // Transaction date (ignore future dates > todayStr for streak)
+      if (t.data && typeof t.data === 'string') {
+        const dStr = t.data.slice(0, 10);
+        if (dStr <= todayStr) {
+          activeDates.add(dStr);
+        }
+      }
+      // Creation timestamp (local date)
+      if (t.created_at) {
+        try {
+          const createdDate = new Date(t.created_at);
+          if (!isNaN(createdDate.getTime())) {
+            const createdStr = getLocalDateStr(createdDate);
+            if (createdStr <= todayStr) {
+              activeDates.add(createdStr);
+            }
+          }
+        } catch {
+          // ignore
+        }
+      }
+    });
 
-    for (let i = 0; i < uniqueSorted.length; i++) {
-      const expectationStr = formatLocalDate(trackingDate);
-      if (uniqueSorted[i] === expectationStr) {
-        streak++;
-        trackingDate.setDate(trackingDate.getDate() - 1);
+    if (activeDates.size === 0) return 0;
+
+    // Check if user has activity today or yesterday to keep the streak alive
+    const hasToday = activeDates.has(todayStr);
+    const hasYesterday = activeDates.has(yesterdayStr);
+
+    if (!hasToday && !hasYesterday) {
+      return 0; // Streak broken: missed both yesterday and today
+    }
+
+    // Count consecutive days backwards
+    let streakCount = 0;
+    const cursor = new Date(today);
+    if (!hasToday) {
+      // User hasn't logged today yet, but streak is preserved from yesterday
+      cursor.setDate(cursor.getDate() - 1);
+    }
+
+    // Count backward day by day (safety cap of 1000 days)
+    for (let i = 0; i < 1000; i++) {
+      const checkStr = getLocalDateStr(cursor);
+      if (activeDates.has(checkStr)) {
+        streakCount++;
+        cursor.setDate(cursor.getDate() - 1);
       } else {
         break;
       }
     }
-    return streak;
+
+    return streakCount;
   };
 
   const streak = computeStreak();
 
   // Check if anything has been logged today
   const checkLoggedToday = () => {
-    const todayStr = new Date().toISOString().split('T')[0];
-    return transactions.some((t) => t.data === todayStr);
+    const todayStr = getLocalDateStr();
+    return transactions.some((t) => {
+      if (t.data && t.data.slice(0, 10) === todayStr) return true;
+      if (t.created_at) {
+        try {
+          return getLocalDateStr(new Date(t.created_at)) === todayStr;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
   };
 
   const loggedToday = checkLoggedToday();
+
+  // Automatically record today's active day if loggedToday is true
+  useEffect(() => {
+    if (loggedToday) {
+      const todayStr = getLocalDateStr();
+      const stored = getLocal<string[]>('fintech_daily_active_days', []);
+      if (!stored.includes(todayStr)) {
+        saveLocal('fintech_daily_active_days', [...stored, todayStr]);
+      }
+    }
+  }, [loggedToday]);
 
   // Automated budget & streak rules checks
   useEffect(() => {
@@ -1829,6 +2050,15 @@ export default function App() {
       <div className="space-y-3">
         {dashboardTab === 'geral' && (
           <>
+            {/* Bank Notification Pending Suggestions Banner (MacroDroid) */}
+            <BankNotificationBanner
+              suggestions={pendingSuggestions}
+              onApprove={handleApproveSuggestion}
+              onEdit={handleEditSuggestion}
+              onDismiss={handleDismissSuggestion}
+              onOpenMacroDroidModal={() => setIsMacroDroidModalOpen(true)}
+            />
+
             {/* Nudge Daily Focus */}
             <NudgeBanner streak={streak} registrouHoje={loggedToday} />
 
@@ -2036,41 +2266,43 @@ export default function App() {
       {/* MAIN VIEWPORT STAGE */}
       <div className="flex-1 h-screen flex flex-col min-w-0 overflow-hidden bg-[#F5F4EE] dark:bg-[#252530]">
         {/* HEADER BAR */}
-        <header className="h-16 flex-shrink-0 bg-[#FDFCFB]/95 border-b border-[#E8E5DC] dark:bg-[#32323F]/95 dark:border-[#4C4E5D]/60 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between z-20 shadow-xs">
-          <div className="flex items-center gap-3">
+        <header className="h-16 flex-shrink-0 bg-[#FDFCFB]/95 border-b border-[#E8E5DC] dark:bg-[#32323F]/95 dark:border-[#4C4E5D]/60 backdrop-blur-md px-3 sm:px-6 flex items-center justify-between z-20 shadow-xs">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             <button
               onClick={() => setIsMobileSidebarOpen(true)}
-              className="lg:hidden p-2 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] active:scale-95 transition-all flex items-center justify-center"
+              className="lg:hidden p-2 hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/40 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] active:scale-95 transition-all flex items-center justify-center shrink-0"
               title="Abrir Menu de Navegação"
             >
               <Menu className="w-5 h-5" />
             </button>
 
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-zinc-900 dark:text-[#DDD5D0] flex items-center gap-1.5">
-                  {activeNav === 'dashboard' && 'Dashboard Financeiro'}
-                  {activeNav === 'transacoes' && 'Lançamentos & Extrato'}
-                  {activeNav === 'sonhos' && 'Metas & Sonhos'}
-                  {activeNav === 'contas' && 'Contas & Cartões'}
-                  {activeNav === 'categorias' && 'Categorias'}
-                  {activeNav === 'ia' && 'Assistente IA'}
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 sm:gap-2">
+                <h1 className="text-sm sm:text-base font-extrabold tracking-tight text-zinc-900 dark:text-[#DDD5D0] flex items-center gap-1.5 truncate max-w-[120px] xs:max-w-[170px] sm:max-w-none">
+                  <span className="truncate">
+                    {activeNav === 'dashboard' && 'Dashboard Financeiro'}
+                    {activeNav === 'transacoes' && 'Lançamentos & Extrato'}
+                    {activeNav === 'sonhos' && 'Metas & Sonhos'}
+                    {activeNav === 'contas' && 'Contas & Cartões'}
+                    {activeNav === 'categorias' && 'Categorias'}
+                    {activeNav === 'ia' && 'Assistente IA'}
+                  </span>
                 </h1>
                 <span
-                  className={`inline-block w-2 h-2 rounded-full ${firebaseUser ? 'bg-emerald-500' : isOnline ? 'bg-blue-500' : 'bg-amber-500'}`}
+                  className={`inline-block w-2 h-2 rounded-full shrink-0 ${firebaseUser ? 'bg-emerald-500' : isOnline ? 'bg-blue-500' : 'bg-amber-500'}`}
                   title={firebaseUser ? 'Firebase Firestore Conectado (Nuvem em Tempo Real)' : isOnline ? 'Firebase Disponível' : 'Modo Local Ativo'}
                 />
               </div>
-              <p className="hidden sm:block text-[10px] text-zinc-500 dark:text-[#988E96]">
+              <p className="hidden sm:block text-[10px] text-zinc-500 dark:text-[#988E96] truncate">
                 {selectedAccountId === 'consolidado' ? 'Visão Consolidada de todas as contas' : `Conta selecionada: ${accounts.find(a => a.id === selectedAccountId)?.nome || ''}`}
               </p>
             </div>
           </div>
 
           {/* Month ruler and quick actions */}
-          <div className="flex items-center gap-2 sm:gap-3">
-            {/* Month Ruler */}
-            <div className="flex items-center gap-1 bg-[#F3F1EB] dark:bg-[#252530] p-1 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/60">
+          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
+            {/* Desktop Month Ruler (for sm and larger screens) */}
+            <div className="hidden sm:flex items-center gap-1 bg-[#F3F1EB] dark:bg-[#252530] p-1 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/60 shrink-0">
               <button
                 onClick={prevMonth}
                 className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all flex-shrink-0"
@@ -2126,6 +2358,31 @@ export default function App() {
               </span>
             </div>
 
+            {/* Mobile Compact Month Selector (< sm) */}
+            <div className="flex sm:hidden items-center bg-[#F3F1EB] dark:bg-[#252530] p-0.5 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/60 shrink-0">
+              <button
+                onClick={prevMonth}
+                aria-label="Mês anterior"
+                className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all shrink-0"
+              >
+                <ChevronLeft className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={resetToToday}
+                title="Voltar ao mês atual"
+                className="px-1.5 py-0.5 text-[11px] font-bold text-zinc-800 dark:text-[#DDD5D0] font-mono whitespace-nowrap cursor-pointer hover:underline"
+              >
+                {MONTHS[currentMonth].substring(0, 3)}/{String(currentYear).slice(-2)}
+              </button>
+              <button
+                onClick={nextMonth}
+                aria-label="Próximo mês"
+                className="p-1 hover:bg-white dark:hover:bg-[#4C4E5D]/50 rounded-lg text-zinc-500 dark:text-[#988E96] cursor-pointer transition-all shrink-0"
+              >
+                <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
             {/* Notification Center */}
             <NotificationCenter
               notifications={notifications}
@@ -2138,6 +2395,20 @@ export default function App() {
 
             {/* JARVIS Audio Controls */}
             <AudioControls />
+
+            {/* MacroDroid Bank Notification Integration Trigger */}
+            <button
+              onClick={() => setIsMacroDroidModalOpen(true)}
+              title="Integração com Notificações Bancárias (MacroDroid)"
+              className="relative p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
+            >
+              <Zap className="w-4 h-4 text-amber-500" />
+              {pendingSuggestions.length > 0 && (
+                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce shadow-xs">
+                  {pendingSuggestions.length}
+                </span>
+              )}
+            </button>
 
             {/* Streak Modal Trigger */}
             <button
@@ -2171,7 +2442,7 @@ export default function App() {
             {/* Light/Dark Toggle */}
             <button
               onClick={toggleTheme}
-              className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors"
+              className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
               title="Alternar tema"
             >
               {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-700" />}
@@ -2641,6 +2912,7 @@ export default function App() {
         onClose={() => setIsStreakModalOpen(false)}
         streak={streak}
         transactions={transactions}
+        loggedToday={loggedToday}
       />
 
       {/* BANK STATEMENT IMPORTER MODAL */}
@@ -2671,6 +2943,12 @@ export default function App() {
         onToggleRule={handleToggleRecurrentRule}
         onDeleteRule={handleDeleteRecurrentRule}
         accounts={accounts}
+      />
+
+      {/* MACRODROID BANK NOTIFICATION INTEGRATION MODAL */}
+      <MacroDroidModal
+        isOpen={isMacroDroidModalOpen}
+        onClose={() => setIsMacroDroidModalOpen(false)}
       />
     </div>
   );

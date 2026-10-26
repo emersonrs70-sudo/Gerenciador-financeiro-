@@ -75,6 +75,14 @@ service cloud.firestore {
         && (!('userId' in data) || data.userId == userId);
     }
 
+    function isValidPendingSuggestion(data, userId) {
+      return data.descricao is string && data.descricao.size() > 0 && data.descricao.size() <= 250
+        && data.valor is number
+        && (data.tipoItem == 'despesa' || data.tipoItem == 'receita')
+        && (data.status == 'pendente' || data.status == 'aprovada' || data.status == 'descartada')
+        && (!('userId' in data) || data.userId == userId);
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
@@ -112,6 +120,13 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
         allow delete: if isOwner(userId) && isValidId(ruleId);
+      }
+
+      match /pending_suggestions/{suggestionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
+        allow update: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(suggestionId);
       }
     }
   }

@@ -7,6 +7,7 @@ interface StreakModalProps {
   onClose: () => void;
   streak: number;
   transactions: Transaction[];
+  loggedToday?: boolean;
 }
 
 interface LevelConfig {
@@ -91,7 +92,7 @@ const milestones = [
   { days: 50, level: 'Soberano das Finanças', reward: 'Diamante Cósmico 💎', perk: 'Nível 6' },
 ];
 
-export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, streak, transactions }) => {
+export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, streak, transactions, loggedToday }) => {
   if (!isOpen) return null;
 
   // Find current level config
@@ -105,42 +106,52 @@ export const StreakModal: React.FC<StreakModalProps> = ({ isOpen, onClose, strea
   const getStreakHistory = () => {
     if (streak <= 0) return [];
 
-    const dates = transactions.map((t) => t.data);
-    const uniqueSorted = (Array.from(new Set(dates)) as string[]).sort((a, b) => b.localeCompare(a));
-
-    if (uniqueSorted.length === 0) return [];
-
-    const today = new Date();
-    const formatLocalDate = (date: Date) => {
-      return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(
-        date.getDate()
-      ).padStart(2, '0')}`;
+    const formatLocalDate = (date: Date = new Date()) => {
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      return `${year}-${month}-${day}`;
     };
 
+    const today = new Date();
     const todayStr = formatLocalDate(today);
     const yesterday = new Date(today);
     yesterday.setDate(today.getDate() - 1);
-    const yesterdayStr = formatLocalDate(yesterday);
 
-    // Verify if streak is active starting today or yesterday
-    if (uniqueSorted[0] < yesterdayStr && uniqueSorted[0] !== todayStr) {
-      return [];
-    }
+    // Check if user has an active transaction for today
+    const hasToday = loggedToday ?? transactions.some(t => {
+      if (t.data && t.data.slice(0, 10) === todayStr) return true;
+      if (t.created_at) {
+        try {
+          return formatLocalDate(new Date(t.created_at)) === todayStr;
+        } catch {
+          return false;
+        }
+      }
+      return false;
+    });
 
+    const startDate = hasToday ? new Date(today) : new Date(yesterday);
     const streakDates: string[] = [];
-    const latestDateStr = uniqueSorted[0];
-    const latestDate = new Date(latestDateStr + 'T12:00:00');
-
     for (let i = 0; i < streak; i++) {
-      const d = new Date(latestDate);
-      d.setDate(latestDate.getDate() - i);
-      const dateStr = formatLocalDate(d);
-      streakDates.push(dateStr);
+      const d = new Date(startDate);
+      d.setDate(startDate.getDate() - i);
+      streakDates.push(formatLocalDate(d));
     }
 
     return streakDates.map(dateStr => {
       const dayTrans = transactions
-        .filter(t => t.data === dateStr)
+        .filter(t => {
+          if (t.data && t.data.slice(0, 10) === dateStr) return true;
+          if (t.created_at) {
+            try {
+              return formatLocalDate(new Date(t.created_at)) === dateStr;
+            } catch {
+              return false;
+            }
+          }
+          return false;
+        })
         .sort((a, b) => new Date(b.created_at || b.data).getTime() - new Date(a.created_at || a.data).getTime());
       const receitasValue = dayTrans.filter(t => t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
       const despesasValue = dayTrans.filter(t => t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
