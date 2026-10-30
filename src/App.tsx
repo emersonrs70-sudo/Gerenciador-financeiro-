@@ -2163,15 +2163,6 @@ export default function App() {
       <div className="space-y-3">
         {dashboardTab === 'geral' && (
           <>
-            {/* Bank Notification Pending Suggestions Banner (MacroDroid) */}
-            <BankNotificationBanner
-              suggestions={pendingSuggestions}
-              onApprove={handleApproveSuggestion}
-              onEdit={handleEditSuggestion}
-              onDismiss={handleDismissSuggestion}
-              onOpenMacroDroidModal={() => setIsMacroDroidModalOpen(true)}
-            />
-
             {/* Nudge Daily Focus */}
             <NudgeBanner streak={streak} registrouHoje={loggedToday} />
 
@@ -2627,7 +2618,17 @@ export default function App() {
 
         {/* MAIN STAGE CONTENT - Viewport container with internal contained scroll */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4.5 custom-scrollbar pb-8 md:pb-4">
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-7xl mx-auto space-y-3">
+            {/* Bank Notification Pending Suggestions Banner (visible globally across any tab/screen) */}
+            {pendingSuggestions.length > 0 && (
+              <BankNotificationBanner
+                suggestions={pendingSuggestions}
+                onApprove={handleApproveSuggestion}
+                onEdit={handleEditSuggestion}
+                onDismiss={handleDismissSuggestion}
+                onOpenMacroDroidModal={() => setIsMacroDroidModalOpen(true)}
+              />
+            )}
             {renderMainContent()}
           </div>
         </main>

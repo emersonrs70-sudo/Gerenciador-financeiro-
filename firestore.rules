@@ -12,10 +12,13 @@ service cloud.firestore {
     }
 
     function isValidIncomingNotification(data) {
-      return data.text is string && data.text.size() > 0 && data.text.size() <= 1000
-        && (!('title' in data) || (data.title is string && data.title.size() <= 200))
-        && (!('app' in data) || (data.app is string && data.app.size() <= 100))
-        && (!('timestamp' in data) || (data.timestamp is string && data.timestamp.size() <= 50));
+      return (
+        (('text' in data) && data.text is string && data.text.size() > 0 && data.text.size() <= 2000) ||
+        (('mensagem' in data) && data.mensagem is string && data.mensagem.size() > 0 && data.mensagem.size() <= 2000) ||
+        (('conteudo' in data) && data.conteudo is string && data.conteudo.size() > 0 && data.conteudo.size() <= 2000) ||
+        (('body' in data) && data.body is string && data.body.size() > 0 && data.body.size() <= 2000) ||
+        (('not_text' in data) && data.not_text is string && data.not_text.size() > 0 && data.not_text.size() <= 2000)
+      );
     }
 
     // Direct buffer for mobile bank notifications (MacroDroid / Tasker / Webhook)
