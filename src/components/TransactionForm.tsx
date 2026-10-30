@@ -233,6 +233,15 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     }
   };
 
+  const selectedAccount = accounts.find(a => a.id === accountId);
+  const closingDay = selectedAccount?.diaFechamento || 5;
+  const dayNumber = parseInt(data.split('-')[2], 10) || new Date().getDate();
+  const isAfterClosing = dayNumber > closingDay;
+  const firstBill = getInstallmentBillMonth(data, 0, closingDay);
+  const lastBill = getInstallmentBillMonth(data, numParcelas - 1, closingDay);
+  const parsedVal = parseFloat(valor) || 0;
+  const valParcela = modoValorParcela === 'total' ? (parsedVal / numParcelas) : parsedVal;
+
   return (
     <div className="bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-2.5 self-start">
       <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-1 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
@@ -433,14 +442,11 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                     <CreditCard className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400" />
                     Parcelamento no Cartão
                   </span>
-                  {(() => {
-                    const acc = accounts.find(a => a.id === accountId);
-                    return acc && acc.diaFechamento ? (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
-                        Fechamento: dia {acc.diaFechamento}
-                      </span>
-                    ) : null;
-                  })()}
+                  {selectedAccount?.diaFechamento ? (
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                      Fechamento: dia {selectedAccount.diaFechamento}
+                    </span>
+                  ) : null}
                 </div>
 
                 <div className="grid grid-cols-2 gap-2">
@@ -477,40 +483,27 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
                 </div>
 
                 {/* Explanatory Rule Preview */}
-                {(() => {
-                  const acc = accounts.find(a => a.id === accountId);
-                  const closingDay = acc?.diaFechamento || 5;
-                  const dayNumber = parseInt(data.split('-')[2], 10) || new Date().getDate();
-                  const isAfterClosing = dayNumber > closingDay;
-                  const firstBill = getInstallmentBillMonth(data, 0, closingDay);
-                  const lastBill = getInstallmentBillMonth(data, numParcelas - 1, closingDay);
-                  const parsedVal = parseFloat(valor) || 0;
-                  const valParcela = modoValorParcela === 'total' ? (parsedVal / numParcelas) : parsedVal;
-
-                  return (
-                    <div className="pt-2 border-t border-amber-200/60 dark:border-[#4C4E5D]/50 text-[11px] space-y-1.5">
-                      <div className="flex items-center gap-1.5 font-bold">
-                        <span className={`w-2 h-2 rounded-full ${isAfterClosing ? 'bg-amber-500' : 'bg-emerald-500'}`} />
-                        <span className={isAfterClosing ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}>
-                          {isAfterClosing
-                            ? `Compra no dia ${dayNumber} (após o fechamento dia ${closingDay}):`
-                            : `Compra no dia ${dayNumber} (antes do fechamento dia ${closingDay}):`}
-                        </span>
-                      </div>
-                      <p className="text-zinc-600 dark:text-zinc-300 text-[10px] leading-relaxed">
-                        {isAfterClosing ? (
-                          <>
-                            Como a compra é após o dia {closingDay}, a fatura deste mês já fechou. A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> contará na <strong>fatura do mês seguinte ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
-                          </>
-                        ) : (
-                          <>
-                            A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> entrará na <strong>fatura atual ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
-                          </>
-                        )}
-                      </p>
-                    </div>
-                  );
-                })()}
+                <div className="pt-2 border-t border-amber-200/60 dark:border-[#4C4E5D]/50 text-[11px] space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <span className={`w-2 h-2 rounded-full ${isAfterClosing ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+                    <span className={isAfterClosing ? 'text-amber-800 dark:text-amber-300' : 'text-emerald-800 dark:text-emerald-300'}>
+                      {isAfterClosing
+                        ? `Compra no dia ${dayNumber} (após o fechamento dia ${closingDay}):`
+                        : `Compra no dia ${dayNumber} (antes do fechamento dia ${closingDay}):`}
+                    </span>
+                  </div>
+                  <p className="text-zinc-600 dark:text-zinc-300 text-[10px] leading-relaxed">
+                    {isAfterClosing ? (
+                      <>
+                        Como a compra é após o dia {closingDay}, a fatura deste mês já fechou. A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> contará na <strong>fatura do mês seguinte ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
+                      </>
+                    ) : (
+                      <>
+                        A <strong>1ª parcela (1/{numParcelas})</strong> de <strong>R$ {valParcela.toFixed(2)}</strong> entrará na <strong>fatura atual ({firstBill})</strong> e a última em <strong>{lastBill}</strong>.
+                      </>
+                    )}
+                  </p>
+                </div>
               </div>
             )}
 

@@ -15,6 +15,213 @@ interface SubPanelsProps {
   currentYear: number;
 }
 
+interface BudgetRule503020Props {
+  despesasMes: Transaction[];
+  totalReceitasMes: number;
+  formatValue: (v: number) => string;
+}
+
+const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
+  despesasMes,
+  totalReceitasMes,
+  formatValue,
+}) => {
+  const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
+  const savingsKeywords = ['investimento', 'investimentos', 'poupança', 'poupanca', 'reserva', 'fundo', 'emergência', 'emergencia', 'aporte', 'tesouro', 'cdb', 'ações', 'acoes', 'caixinha'];
+
+  // Mapear gastos reais do mês
+  const actualNeeds = despesasMes
+    .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
+    .reduce((s, d) => s + d.valor, 0);
+
+  // Aportes intencionais em reserva de emergência e investimentos
+  const actualInvested = despesasMes
+    .filter((d) =>
+      savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
+    )
+    .reduce((s, d) => s + d.valor, 0);
+
+  // Despesas de estilo de vida (exclui necessidades e aportes para reserva/investimentos)
+  const actualWants = despesasMes
+    .filter((d) =>
+      !needsCategories.includes(d.categoria.toLowerCase()) &&
+      !savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
+    )
+    .reduce((s, d) => s + d.valor, 0);
+
+  // Definir se é simulação ou real
+  const isSimulation = totalReceitasMes === 0;
+  const incomeBase = isSimulation ? 5000 : totalReceitasMes;
+
+  const idealNeeds = incomeBase * 0.50;
+  const idealWants = incomeBase * 0.30;
+  const idealSavings = incomeBase * 0.20;
+
+  // Total poupado: somatório dos aportes guardados na reserva + sobra não gasta em conta
+  const totalGastosConsumo = actualNeeds + actualWants;
+  const sobraEmConta = isSimulation
+    ? Math.max(0, 5000 - (totalGastosConsumo + actualInvested))
+    : Math.max(0, totalReceitasMes - (totalGastosConsumo + actualInvested));
+  const actualSaved = actualInvested + sobraEmConta;
+
+  // Percentuais de uso do orçamento
+  const needsPct = idealNeeds > 0 ? (actualNeeds / idealNeeds) * 100 : 0;
+  const wantsPct = idealWants > 0 ? (actualWants / idealWants) * 100 : 0;
+  const savingsPct = idealSavings > 0 ? (actualSaved / idealSavings) * 100 : 0;
+
+  return (
+    <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-3 gap-2">
+        <div>
+          <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
+            <PieChart className="w-4 h-4 text-zinc-500" />
+            Direcionador Orçamentário Estratégico (Regra 50-30-20)
+          </h4>
+          <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+            Mapeamento de despesas reais versus alocação ideal baseada em sua receita
+          </p>
+        </div>
+        <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full self-start sm:self-center uppercase tracking-wider ${
+          isSimulation
+            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+        }`}>
+          {isSimulation ? 'Simulação (Renda R$ 5.000)' : 'Orçamento Real Ativo'}
+        </span>
+      </div>
+
+      {isSimulation && (
+        <div className="bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-3 rounded-xl flex items-start gap-2">
+          <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
+          <p className="text-[10px] text-zinc-600 dark:text-zinc-300 leading-tight">
+            <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
+          </p>
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* ESSENCIAIS - 50% */}
+        <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades (50%)</span>
+              <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Essenciais</span>
+            </div>
+            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+              {formatValue(idealNeeds)}
+            </span>
+          </div>
+          <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
+            <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
+            <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              {formatValue(actualNeeds)}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${actualNeeds > idealNeeds ? 'bg-rose-500' : 'bg-zinc-800 dark:bg-zinc-300'}`}
+                style={{ width: `${needsPct}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+              <span className={actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
+                {needsPct.toFixed(0)}% Consumido
+              </span>
+              <span className="text-zinc-400">
+                {actualNeeds > idealNeeds ? 'Excedeu!' : 'No limite'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* DESEJOS - 30% */}
+        <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida (30%)</span>
+              <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Lazer & Desejos</span>
+            </div>
+            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+              {formatValue(idealWants)}
+            </span>
+          </div>
+          <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
+            <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
+            <span className={`font-bold ${actualWants > idealWants ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
+              {formatValue(actualWants)}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div
+                className={`h-full transition-all duration-500 ${actualWants > idealWants ? 'bg-rose-500' : 'bg-zinc-600 dark:bg-zinc-400'}`}
+                style={{ width: `${wantsPct}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+              <span className={actualWants > idealWants ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
+                {wantsPct.toFixed(0)}% Consumido
+              </span>
+              <span className="text-zinc-400">
+                {actualWants > idealWants ? 'Excedeu!' : 'Sob controle'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* POUPANÇA / RESERVA - 20% */}
+        <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
+          <div className="flex justify-between items-start">
+            <div>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
+              <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Reserva & Investimentos</span>
+            </div>
+            <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
+              {formatValue(idealSavings)}
+            </span>
+          </div>
+          <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
+            <span className="text-zinc-500 dark:text-zinc-400">Total Destinado:</span>
+            <span className="font-bold text-emerald-500">
+              {formatValue(actualSaved)}
+            </span>
+          </div>
+          {actualInvested > 0 && (
+            <div className="flex justify-between text-[9px] text-zinc-500 dark:text-zinc-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-mono">
+              <span>Fundo/Aportes: {formatValue(actualInvested)}</span>
+              <span>Sobra Caixa: {formatValue(sobraEmConta)}</span>
+            </div>
+          )}
+          <div className="space-y-1">
+            <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
+              <div
+                className="bg-emerald-500 h-full transition-all duration-500"
+                style={{ width: `${Math.min(100, savingsPct)}%` }}
+              ></div>
+            </div>
+            <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
+              <span className="text-emerald-500">
+                {savingsPct.toFixed(0)}% Meta Atingida
+              </span>
+              <span className="text-zinc-400">
+                {actualSaved >= idealSavings ? 'Meta batida! 🎉' : 'Abaixo da meta'}
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#252530] rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
+        <span>💡</span>
+        <span>
+          <strong>Como alimentar os 20% (Fundo de Emergência):</strong> Você pode tanto deixar o dinheiro sobrar no saldo da conta quanto registrar os depósitos criando lançamentos com a categoria <em>"Investimentos"</em>, <em>"Poupança"</em> ou <em>"Reserva"</em> (ou incluindo "fundo de emergência" na descrição). O sistema reconhece esses depósitos diretamente no pilar dos <strong>20%</strong> sem misturá-los com despesas de consumo!
+        </span>
+      </div>
+    </div>
+  );
+};
+
 export const SubPanels: React.FC<SubPanelsProps> = ({
   activeType,
   transactions,
@@ -139,202 +346,13 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
       )}
 
       {/* 2. TERMOMETRO DE SOBRA */}
-      {activeType === 'saldo' && (() => {
-        const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
-        const savingsKeywords = ['investimento', 'investimentos', 'poupança', 'poupanca', 'reserva', 'fundo', 'emergência', 'emergencia', 'aporte', 'tesouro', 'cdb', 'ações', 'acoes', 'caixinha'];
-        
-        // Mapear gastos reais do mês
-        const actualNeeds = despesasMes
-          .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
-          .reduce((s, d) => s + d.valor, 0);
-
-        // Aportes intencionais em reserva de emergência e investimentos
-        const actualInvested = despesasMes
-          .filter((d) => 
-            savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
-          )
-          .reduce((s, d) => s + d.valor, 0);
-          
-        // Despesas de estilo de vida (exclui necessidades e aportes para reserva/investimentos)
-        const actualWants = despesasMes
-          .filter((d) => 
-            !needsCategories.includes(d.categoria.toLowerCase()) &&
-            !savingsKeywords.some(k => d.categoria.toLowerCase().includes(k) || d.descricao.toLowerCase().includes(k))
-          )
-          .reduce((s, d) => s + d.valor, 0);
-
-        // Definir se é simulação ou real
-        const isSimulation = totalReceitasMes === 0;
-        const incomeBase = isSimulation ? 5000 : totalReceitasMes;
-        
-        const idealNeeds = incomeBase * 0.50;
-        const idealWants = incomeBase * 0.30;
-        const idealSavings = incomeBase * 0.20;
-        
-        // Total poupado: somatório dos aportes guardados na reserva + sobra não gasta em conta
-        const totalGastosConsumo = actualNeeds + actualWants;
-        const sobraEmConta = isSimulation
-          ? Math.max(0, 5000 - (totalGastosConsumo + actualInvested))
-          : Math.max(0, totalReceitasMes - (totalGastosConsumo + actualInvested));
-        const actualSaved = actualInvested + sobraEmConta;
-
-        // Percentuais de uso do orçamento
-        const needsPct = idealNeeds > 0 ? (actualNeeds / idealNeeds) * 100 : 0;
-        const wantsPct = idealWants > 0 ? (actualWants / idealWants) * 100 : 0;
-        const savingsPct = idealSavings > 0 ? (actualSaved / idealSavings) * 100 : 0;
-
-        return (
-          <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-3 gap-2">
-              <div>
-                <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
-                  <PieChart className="w-4 h-4 text-zinc-500" />
-                  Direcionador Orçamentário Estratégico (Regra 50-30-20)
-                </h4>
-                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                  Mapeamento de despesas reais versus alocação ideal baseada em sua receita
-                </p>
-              </div>
-              <span className={`text-[9px] font-bold px-2.5 py-1 rounded-full self-start sm:self-center uppercase tracking-wider ${
-                isSimulation 
-                  ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20' 
-                  : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-              }`}>
-                {isSimulation ? 'Simulação (Renda R$ 5.000)' : 'Orçamento Real Ativo'}
-              </span>
-            </div>
-
-            {isSimulation && (
-              <div className="bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-3 rounded-xl flex items-start gap-2">
-                <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
-                <p className="text-[10px] text-zinc-600 dark:text-zinc-300 leading-tight">
-                  <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
-                </p>
-              </div>
-            )}
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {/* ESSENCIAIS - 50% */}
-              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades (50%)</span>
-                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Essenciais</span>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                    {formatValue(idealNeeds)}
-                  </span>
-                </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
-                  <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
-                  <span className={`font-bold ${actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                    {formatValue(actualNeeds)}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${actualNeeds > idealNeeds ? 'bg-rose-500' : 'bg-zinc-800 dark:bg-zinc-300'}`} 
-                      style={{ width: `${needsPct}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
-                    <span className={actualNeeds > idealNeeds ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
-                      {needsPct.toFixed(0)}% Consumido
-                    </span>
-                    <span className="text-zinc-400">
-                      {actualNeeds > idealNeeds ? 'Excedeu!' : 'No limite'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* DESEJOS - 30% */}
-              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida (30%)</span>
-                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Lazer & Desejos</span>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                    {formatValue(idealWants)}
-                  </span>
-                </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
-                  <span className="text-zinc-500 dark:text-zinc-400">Gasto Real:</span>
-                  <span className={`font-bold ${actualWants > idealWants ? 'text-rose-500' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                    {formatValue(actualWants)}
-                  </span>
-                </div>
-                <div className="space-y-1">
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className={`h-full transition-all duration-500 ${actualWants > idealWants ? 'bg-rose-500' : 'bg-zinc-600 dark:bg-zinc-400'}`} 
-                      style={{ width: `${wantsPct}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
-                    <span className={actualWants > idealWants ? 'text-rose-500' : 'text-zinc-600 dark:text-zinc-400'}>
-                      {wantsPct.toFixed(0)}% Consumido
-                    </span>
-                    <span className="text-zinc-400">
-                      {actualWants > idealWants ? 'Excedeu!' : 'Sob controle'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-
-              {/* POUPANÇA / RESERVA - 20% */}
-              <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
-                    <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Reserva & Investimentos</span>
-                  </div>
-                  <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
-                    {formatValue(idealSavings)}
-                  </span>
-                </div>
-                <div className="border-t border-zinc-200/60 dark:border-[#4C4E5D]/60 pt-2 flex justify-between text-[10px]">
-                  <span className="text-zinc-500 dark:text-zinc-400">Total Destinado:</span>
-                  <span className="font-bold text-emerald-500">
-                    {formatValue(actualSaved)}
-                  </span>
-                </div>
-                {actualInvested > 0 && (
-                  <div className="flex justify-between text-[9px] text-zinc-500 dark:text-zinc-400 bg-emerald-500/10 px-2 py-1 rounded-md border border-emerald-500/20 font-mono">
-                    <span>Fundo/Aportes: {formatValue(actualInvested)}</span>
-                    <span>Sobra Caixa: {formatValue(sobraEmConta)}</span>
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <div className="w-full bg-zinc-200 dark:bg-zinc-800 h-2 rounded-full overflow-hidden">
-                    <div 
-                      className="bg-emerald-500 h-full transition-all duration-500" 
-                      style={{ width: `${Math.min(100, savingsPct)}%` }}
-                    ></div>
-                  </div>
-                  <div className="flex justify-between text-[8px] font-bold uppercase tracking-wide">
-                    <span className="text-emerald-500">
-                      {savingsPct.toFixed(0)}% Meta Atingida
-                    </span>
-                    <span className="text-zinc-400">
-                      {actualSaved >= idealSavings ? 'Meta batida! 🎉' : 'Abaixo da meta'}
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-1.5 p-3 bg-zinc-50 dark:bg-[#252530] rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-[10px] text-zinc-500 dark:text-zinc-400 leading-normal">
-              <span>💡</span>
-              <span>
-                <strong>Como alimentar os 20% (Fundo de Emergência):</strong> Você pode tanto deixar o dinheiro sobrar no saldo da conta quanto registrar os depósitos criando lançamentos com a categoria <em>"Investimentos"</em>, <em>"Poupança"</em> ou <em>"Reserva"</em> (ou incluindo "fundo de emergência" na descrição). O sistema reconhece esses depósitos diretamente no pilar dos <strong>20%</strong> sem misturá-los com despesas de consumo!
-              </span>
-            </div>
-          </div>
-        );
-      })()}
+      {activeType === 'saldo' && (
+        <BudgetRule503020
+          despesasMes={despesasMes}
+          totalReceitasMes={totalReceitasMes}
+          formatValue={formatValue}
+        />
+      )}
 
       {/* 3. B-A-BA DE INVESTIMENTO */}
       {activeType === 'receitas' && (

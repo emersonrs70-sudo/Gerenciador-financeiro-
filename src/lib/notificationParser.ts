@@ -157,13 +157,31 @@ export function parseBankNotification(
   const isPixOutgoing =
     lower.includes('pix enviado') ||
     lower.includes('você transferiu') ||
+    lower.includes('voce transferiu') ||
     lower.includes('você enviou') ||
+    lower.includes('voce enviou') ||
     lower.includes('você fez um pix') ||
+    lower.includes('voce fez um pix') ||
+    lower.includes('você pagou') ||
+    lower.includes('voce pagou') ||
     lower.includes('pix realizado') ||
     lower.includes('transferência realizada') ||
+    lower.includes('transferencia realizada') ||
+    lower.includes('transferência enviada') ||
+    lower.includes('transferencia enviada') ||
+    lower.includes('pagamento realizado') ||
+    lower.includes('pagamento efetuado') ||
     lower.includes('pagamento pix') ||
+    lower.includes('pagamento via pix') ||
     lower.includes('pix pago') ||
-    lower.includes('envio de pix');
+    lower.includes('pix efetuado') ||
+    lower.includes('pix concluído') ||
+    lower.includes('pix concluido') ||
+    lower.includes('envio de pix') ||
+    lower.includes('envio pix') ||
+    lower.includes('saída de pix') ||
+    lower.includes('saida de pix') ||
+    (lower.includes('pix') && (lower.includes('para ') || lower.includes('destinatário') || lower.includes('destinatario')));
 
   let tipoItem: 'despesa' | 'receita' = isIncomeKeyword && !isPixOutgoing ? 'receita' : 'despesa';
 

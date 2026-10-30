@@ -559,12 +559,17 @@ export function subscribeToIncomingNotifications(
       snapshot.docChanges().forEach((change) => {
         if (change.type === 'added') {
           const data = change.doc.data();
-          if (data && data.text) {
+          const rawText = data?.text || data?.mensagem || data?.conteudo || data?.body || data?.not_text;
+          const rawTitle = data?.title || data?.titulo || data?.not_title;
+          const rawApp = data?.app || data?.package || data?.pacote;
+
+          if (rawText && typeof rawText === 'string' && rawText.trim().length > 0) {
+            console.log(`[Notification Listener] Documento recebido do Firestore: "${rawText.slice(0, 50)}..."`);
             onNotification({
               id: change.doc.id,
-              text: data.text,
-              title: data.title,
-              app: data.app
+              text: rawText.trim(),
+              title: rawTitle ? String(rawTitle).trim() : undefined,
+              app: rawApp ? String(rawApp).trim() : undefined
             });
             // Delete from incoming buffer so it doesn't process multiple times
             deleteDoc(doc(db, 'incoming_notifications', change.doc.id)).catch(() => {});
