@@ -12,7 +12,8 @@ interface TransactionFormProps {
     categoria: string,
     tipoItem: 'despesa' | 'receita',
     accountId: string,
-    faturaMes?: string
+    faturaMes?: string,
+    transferTargetAccountId?: string
   ) => Promise<void>;
   onAddCategory: (nome: string, tipoItem: 'despesa' | 'receita') => Promise<void>;
   onAddRecurrentRule?: (rule: Omit<RecurrentRule, 'id' | 'criadaEm'>) => Promise<void>;
@@ -46,11 +47,20 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
     return accounts[0]?.id || 'geral';
   });
 
+  const [transferTargetAccountId, setTransferTargetAccountId] = useState<string>('');
+
   React.useEffect(() => {
     if (selectedAccountId && selectedAccountId !== 'consolidado') {
       setAccountId(selectedAccountId);
     }
   }, [selectedAccountId]);
+
+  // Reset transfer target if user changes main account to the same one
+  React.useEffect(() => {
+    if (transferTargetAccountId === accountId) {
+      setTransferTargetAccountId('');
+    }
+  }, [accountId, transferTargetAccountId]);
 
   const activeCategorias = modo === 'despesa' ? categoriasDespesa : categoriasReceita;
   const [categoria, setCategoria] = useState('');
@@ -70,6 +80,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
   const [modoValorParcela, setModoValorParcela] = useState<'total' | 'parcela'>('total');
   const [validadeFixo, setValidadeFixo] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Intelligent detection of target account from description text
+  const handleDescricaoChange = (val: string) => {
+    setDescricao(val);
+    if (modo === 'despesa' && !transferTargetAccountId) {
+      const lower = val.toLowerCase();
+      if (lower.includes('transf') || lower.includes('pix') || lower.includes('para ')) {
+        const matched = accounts.find(a => a.id !== accountId && lower.includes(a.nome.toLowerCase()));
+        if (matched) {
+          setTransferTargetAccountId(matched.id);
+          // Suggest category Transferência if available
+          const transfCat = categoriasDespesa.find(c => c.toLowerCase().includes('transf') || c.toLowerCase().includes('pix'));
+          if (transfCat) setCategoria(transfCat);
+        }
+      }
+    }
+  };
 
   const handleTipoGastoChange = (novoTipo: 'variavel' | 'parcelado' | 'fixo') => {
     setTipoGasto(novoTipo);
@@ -206,13 +233,23 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
         if (account && account.tipo === 'credito') {
           faturaMes = getBillMonthForDate(data, account.diaFechamento);
         }
-        await onAddTransaction(descricao.trim(), parseFloat(valor), data, catToUse, modo, accountId, faturaMes);
+        await onAddTransaction(
+          descricao.trim(),
+          parseFloat(valor),
+          data,
+          catToUse,
+          modo,
+          accountId,
+          faturaMes,
+          modo === 'despesa' && transferTargetAccountId ? transferTargetAccountId : undefined
+        );
       }
 
       // Reset fields
       setDescricao('');
       setValor('');
       setValidadeFixo('');
+      setTransferTargetAccountId('');
     } catch (err) {
       console.error('Error adding transaction:', err);
     } finally {
@@ -292,6 +329,38 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
           </select>
         </div>
 
+        {modo === 'despesa' && accounts.length > 1 && (
+          <div className="p-2.5 bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl space-y-1.5">
+            <div className="flex items-center justify-between">
+              <label className="text-[10px] font-bold text-zinc-600 dark:text-zinc-300 uppercase tracking-wider flex items-center gap-1">
+                <span>🔄 Transferir para outra conta?</span>
+              </label>
+              {transferTargetAccountId && (
+                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  Lançamento duplo ativo
+                </span>
+              )}
+            </div>
+            <select
+              value={transferTargetAccountId}
+              onChange={(e) => setTransferTargetAccountId(e.target.value)}
+              className="w-full bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-lg px-2.5 py-1.5 text-xs font-medium focus:outline-none"
+            >
+              <option value="">Não é transferência (saída normal)</option>
+              {accounts.filter(a => a.id !== accountId).map((acc) => (
+                <option key={acc.id} value={acc.id}>
+                  Transferir para: {acc.nome} ({acc.tipo === 'credito' ? 'Crédito' : `Saldo: R$ ${acc.saldoInicial.toFixed(0)}`})
+                </option>
+              ))}
+            </select>
+            {transferTargetAccountId && (
+              <p className="text-[9.5px] text-zinc-500 dark:text-zinc-400 leading-tight">
+                💡 Ao salvar, será gerada uma <strong>saída</strong> nesta conta e uma <strong>entrada (receita)</strong> correspondente na conta de destino com vínculo de exclusão mútua.
+              </p>
+            )}
+          </div>
+        )}
+
         <div>
           <label className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider block mb-1">
             Descrição
@@ -300,8 +369,8 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({
             type="text"
             required
             value={descricao}
-            onChange={(e) => setDescricao(e.target.value)}
-            placeholder="Ex: Supermercado, Aluguel, Freelance"
+            onChange={(e) => handleDescricaoChange(e.target.value)}
+            placeholder="Ex: Supermercado, Pix para Poupança, etc."
             className="w-full bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-white rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 transition-all font-medium placeholder:text-zinc-400"
           />
         </div>

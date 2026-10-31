@@ -598,127 +598,136 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
           </div>
         </div>
 
-        {/* SIDE PANELS: PERIOD STATS SUMMARY & ACTIVE SELECTED DAY DETAILS */}
-        <div className="w-full lg:w-72 flex flex-col gap-4">
+        {/* SIDE PANELS: COMPACT PERIOD STATS & EXPANDED ACTIVE SELECTED DAY DETAILS */}
+        <div className="w-full lg:w-80 xl:w-96 flex flex-col gap-3">
           
-          {/* DYNAMIC RELATÓRIO DE CALORIAS */}
-          <div className="bg-zinc-50 dark:bg-[#252530] rounded-xl p-3.5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-3">
-            <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
-              Calorias Financeiras ({periodoFiltro === '7dias' ? '7D' : periodoFiltro === '15dias' ? '15D' : periodoFiltro === '3meses' ? 'Trimestre' : periodoFiltro === 'ano' ? 'Ano' : 'Mês'})
-            </h3>
+          {/* COMPACT RELATÓRIO DE CALORIAS */}
+          <div className="bg-zinc-50 dark:bg-[#252530] rounded-xl p-2.5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-2">
+            <div className="flex items-center justify-between">
+              <h3 className="text-[10px] font-black text-zinc-500 dark:text-zinc-400 uppercase tracking-widest">
+                Calorias Financeiras ({periodoFiltro === '7dias' ? '7D' : periodoFiltro === '15dias' ? '15D' : periodoFiltro === '3meses' ? 'Trimestre' : periodoFiltro === 'ano' ? 'Ano' : 'Mês'})
+              </h3>
+              {highestSpendVal > 0 ? (
+                <span className="text-[9px] font-bold text-orange-600 dark:text-orange-400 flex items-center gap-1">
+                  <Flame className="w-3 h-3 text-orange-500" /> Pico: R$ {highestSpendVal.toFixed(0)}
+                </span>
+              ) : (
+                <span className="text-[9px] font-bold text-emerald-600 dark:text-emerald-400">
+                  Zero gastos! 🎉
+                </span>
+              )}
+            </div>
             
             <div className="grid grid-cols-2 gap-2">
-              <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-2 rounded-xl text-center shadow-3xs">
-                <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Dias Limpos 🌿</p>
-                <p className="text-sm font-black text-emerald-600 dark:text-emerald-400 mt-0.5">{noSpendDays} d</p>
-                <p className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-medium">Gastou R$ 0,00</p>
+              <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 px-2 py-1.5 rounded-lg flex items-center justify-between shadow-3xs">
+                <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Dias Limpos 🌿</span>
+                <span className="text-xs font-black text-emerald-600 dark:text-emerald-400">{noSpendDays} d</span>
               </div>
-              <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-2 rounded-xl text-center shadow-3xs">
-                <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Média Diária</p>
-                <p className="text-sm font-black text-zinc-900 dark:text-white mt-0.5">R$ {Math.round(averageDailySpend)}</p>
-                <p className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-medium">Alvo &lt; R$ 100/dia</p>
+              <div className="bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 px-2 py-1.5 rounded-lg flex items-center justify-between shadow-3xs">
+                <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase">Média Diária</span>
+                <span className="text-xs font-black text-zinc-900 dark:text-white">R$ {Math.round(averageDailySpend)}</span>
               </div>
             </div>
+          </div>
 
-            {highestSpendVal > 0 ? (
-              <div className="bg-orange-50/50 dark:bg-orange-950/10 border border-orange-100 dark:border-orange-950/30 p-2.5 rounded-xl flex items-center justify-between gap-2 shadow-3xs">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400 flex items-center justify-center">
-                    <Flame className="w-4 h-4 animate-bounce" />
-                  </div>
+          {/* ACTIVE DAY DETAILS - EXPANDED TO UTILIZE FULL AVAILABLE CARD SPACE */}
+          <div className="flex-1 bg-zinc-50 dark:bg-[#252530] rounded-xl p-3.5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col min-h-[360px]">
+            {selectedDateStr && activeFinances && activeThermometer ? (
+              <div className="flex-1 flex flex-col h-full space-y-3">
+                {/* Header with Date and Thermal Badge */}
+                <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 pb-2.5">
                   <div>
-                    <p className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase leading-none">Pico do Período</p>
-                    <p className="text-[10px] font-black text-zinc-800 dark:text-zinc-200 mt-1">
-                      {highestSpendDayStr ? `${highestSpendDayStr.split('-')[2]}/${highestSpendDayStr.split('-')[1]}` : ''}
+                    <span className="text-xs font-black text-zinc-900 dark:text-zinc-100 block">
+                      {getReadableDate(selectedDateStr)}
+                    </span>
+                    <span className="text-[9px] text-zinc-400 dark:text-zinc-500 font-medium">
+                      {activeFinances.items.length} {activeFinances.items.length === 1 ? 'lançamento registrado' : 'lançamentos registrados'}
+                    </span>
+                  </div>
+                  <span className={`text-[8px] px-2 py-0.5 rounded-md font-black uppercase ${activeThermometer.badge}`}>
+                    {activeThermometer.desc}
+                  </span>
+                </div>
+
+                {/* Day financial summaries */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-white dark:bg-[#32323F] px-2.5 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#4C4E5D]/60 shadow-3xs">
+                    <span className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-1">
+                      <TrendingDown className="w-2.5 h-2.5 text-rose-500" /> Gastos
+                    </span>
+                    <p className="text-xs font-black text-rose-600 dark:text-rose-400 mt-0.5">
+                      R$ {activeFinances.despesas.toFixed(2)}
+                    </p>
+                  </div>
+                  <div className="bg-white dark:bg-[#32323F] px-2.5 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#4C4E5D]/60 shadow-3xs">
+                    <span className="text-[7.5px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-1">
+                      <TrendingUp className="w-2.5 h-2.5 text-emerald-500" /> Recebido
+                    </span>
+                    <p className="text-xs font-black text-emerald-600 dark:text-emerald-400 mt-0.5">
+                      R$ {activeFinances.receitas.toFixed(2)}
                     </p>
                   </div>
                 </div>
-                <div className="text-right">
-                  <span className="text-xs font-black text-orange-600 dark:text-orange-400">R$ {highestSpendVal.toFixed(2)}</span>
-                </div>
-              </div>
-            ) : (
-              <div className="bg-emerald-50/50 dark:bg-emerald-950/10 border border-emerald-100 dark:border-emerald-950/30 p-2.5 rounded-xl text-center text-[9px] font-bold text-emerald-600 dark:text-emerald-400 shadow-3xs">
-                Parabéns! Zero gastos no período! 🎉
-              </div>
-            )}
-          </div>
 
-          {/* ACTIVE DAY DETAILS */}
-          <div className="flex-1 bg-zinc-50 dark:bg-[#252530] rounded-xl p-3.5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col justify-between min-h-[160px]">
-            {selectedDateStr && activeFinances && activeThermometer ? (
-              <div className="space-y-3 flex-1 flex flex-col justify-between">
-                <div>
-                  <div className="flex items-center justify-between border-b border-zinc-200/80 dark:border-[#4C4E5D]/60 pb-2">
-                    <span className="text-[10.5px] font-black text-zinc-800 dark:text-zinc-200">
-                      {getReadableDate(selectedDateStr)}
-                    </span>
-                    <span className={`text-[7px] px-1.5 py-0.5 rounded-md font-black uppercase ${activeThermometer.badge}`}>
-                      {activeThermometer.desc}
-                    </span>
-                  </div>
-
-                  {/* Day financial summaries */}
-                  <div className="grid grid-cols-2 gap-2 mt-2">
-                    <div className="bg-white dark:bg-[#32323F] px-2 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#4C4E5D]/60 shadow-3xs">
-                      <span className="text-[7px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-0.5">
-                        <TrendingDown className="w-2.5 h-2.5 text-rose-500" /> Gastos
-                      </span>
-                      <p className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-0.5">
-                        R$ {activeFinances.despesas.toFixed(2)}
-                      </p>
-                    </div>
-                    <div className="bg-white dark:bg-[#32323F] px-2 py-1.5 rounded-lg border border-zinc-200/60 dark:border-[#4C4E5D]/60 shadow-3xs">
-                      <span className="text-[7px] text-zinc-400 dark:text-zinc-500 font-bold uppercase flex items-center gap-0.5">
-                        <TrendingUp className="w-2.5 h-2.5 text-emerald-500" /> Recebido
-                      </span>
-                      <p className="text-xs font-black text-zinc-800 dark:text-zinc-200 mt-0.5">
-                        R$ {activeFinances.receitas.toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* List of transactions */}
-                  <div className="mt-3 space-y-1.5 max-h-[130px] overflow-y-auto no-scrollbar">
+                {/* List of transactions - expanded to occupy all available space */}
+                <div className="flex-1 flex flex-col min-h-0">
+                  <span className="text-[8px] font-bold text-zinc-400 dark:text-zinc-500 uppercase tracking-wider mb-1.5 block">
+                    Movimentações do Dia
+                  </span>
+                  
+                  <div className="flex-1 overflow-y-auto space-y-1.5 pr-1 custom-scrollbar min-h-[180px] max-h-[380px]">
                     {activeFinances.items.length > 0 ? (
                       activeFinances.items.map((item) => (
                         <div 
                           key={item.id}
-                          className="flex items-center justify-between text-[10px] p-2 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl shadow-3xs"
+                          className="flex items-center justify-between text-xs p-2.5 bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl shadow-3xs hover:border-zinc-300 dark:hover:border-zinc-600 transition-all"
                         >
-                          <div className="flex flex-col gap-0.5">
-                            <span className="font-bold text-zinc-900 dark:text-zinc-200 leading-tight">
+                          <div className="flex flex-col gap-0.5 min-w-0 pr-2">
+                            <span className="font-bold text-zinc-900 dark:text-zinc-100 text-[11px] leading-tight truncate">
                               {item.descricao}
                             </span>
-                            <span className="text-[8px] text-zinc-400 dark:text-zinc-500 font-bold uppercase">
-                              {item.categoria}
-                            </span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-[8px] text-zinc-500 dark:text-zinc-400 font-bold uppercase px-1.5 py-0.5 bg-zinc-100 dark:bg-zinc-800 rounded">
+                                {item.categoria}
+                              </span>
+                              {item.faturaMes && (
+                                <span className="text-[8px] text-purple-600 dark:text-purple-400 font-mono">
+                                  Fatura {item.faturaMes}
+                                </span>
+                              )}
+                            </div>
                           </div>
-                          <span className={`font-black ${
-                            item.tipoItem === 'despesa' ? 'text-rose-500' : 'text-emerald-500'
+                          <span className={`font-black font-mono whitespace-nowrap text-xs ${
+                            item.tipoItem === 'despesa' ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                           }`}>
                             {item.tipoItem === 'despesa' ? '-' : '+'} R$ {item.valor.toFixed(2)}
                           </span>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-5 text-zinc-400 dark:text-zinc-500 text-[10px] font-bold italic border border-dashed border-zinc-200 dark:border-[#4C4E5D]/60 rounded-xl">
-                        Sem lançamentos neste dia
+                      <div className="h-full flex flex-col items-center justify-center py-8 text-zinc-400 dark:text-zinc-500 text-[11px] font-bold italic border border-dashed border-zinc-200 dark:border-[#4C4E5D]/60 rounded-xl">
+                        <span>Sem movimentações financeiras</span>
+                        <span className="text-[9px] font-normal text-zinc-400 mt-0.5">Nenhum gasto ou receita registrado nesta data</span>
                       </div>
                     )}
                   </div>
                 </div>
 
-                <div className="pt-2 text-[8px] text-zinc-400 dark:text-zinc-500 flex items-center gap-1">
-                  <Info className="w-3 h-3 text-zinc-400" />
-                  <span>Clique nas células para carregar os detalhes do dia!</span>
+                <div className="pt-2 border-t border-zinc-200/60 dark:border-[#4C4E5D]/40 text-[8.5px] text-zinc-400 dark:text-zinc-500 flex items-center justify-between">
+                  <div className="flex items-center gap-1">
+                    <Info className="w-3 h-3 text-zinc-400 shrink-0" />
+                    <span>Clique em qualquer dia do mês para inspecionar</span>
+                  </div>
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
-                <CalendarIcon className="w-7 h-7 text-zinc-300 dark:text-zinc-700 mb-1.5" />
-                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 font-bold italic">
-                  Selecione um dia do termômetro para detalhar os lançamentos realizados!
+              <div className="flex-1 flex flex-col items-center justify-center text-center p-6 space-y-2">
+                <CalendarIcon className="w-8 h-8 text-zinc-300 dark:text-zinc-600" />
+                <p className="text-xs text-zinc-600 dark:text-zinc-300 font-bold">
+                  Nenhum dia selecionado
+                </p>
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 max-w-[200px]">
+                  Clique em um dia na grade do termômetro para carregar todos os lançamentos em tamanho completo.
                 </p>
               </div>
             )}

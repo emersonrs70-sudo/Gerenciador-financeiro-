@@ -192,7 +192,10 @@ export function subscribeToUserFinance(
           tipoItem: data.tipoItem,
           accountId: data.accountId,
           faturaMes: data.faturaMes,
-          created_at: data.created_at
+          created_at: data.created_at,
+          transferTargetAccountId: data.transferTargetAccountId,
+          transferLinkedId: data.transferLinkedId,
+          isTransferCounterpart: data.isTransferCounterpart
         });
       });
       callbacks.onTransactions(list);
@@ -348,23 +351,31 @@ export function subscribeToUserFinance(
   };
 }
 
+function buildTransactionDoc(item: Transaction, userId: string) {
+  const docData: any = {
+    descricao: item.descricao,
+    valor: item.valor,
+    data: item.data,
+    categoria: item.categoria,
+    tipoItem: item.tipoItem,
+    accountId: item.accountId || 'santander',
+    faturaMes: item.faturaMes || '',
+    userId: userId,
+    created_at: item.created_at || new Date().toISOString()
+  };
+  if (item.transferTargetAccountId) docData.transferTargetAccountId = item.transferTargetAccountId;
+  if (item.transferLinkedId) docData.transferLinkedId = item.transferLinkedId;
+  if (item.isTransferCounterpart !== undefined) docData.isTransferCounterpart = item.isTransferCounterpart;
+  return docData;
+}
+
 /**
  * Firestore CRUD helpers
  */
 export async function addTransactionToFirestore(userId: string, item: Transaction): Promise<void> {
   const path = `users/${userId}/transactions/${item.id}`;
   try {
-    await setDoc(doc(db, `users/${userId}/transactions`, item.id), {
-      descricao: item.descricao,
-      valor: item.valor,
-      data: item.data,
-      categoria: item.categoria,
-      tipoItem: item.tipoItem,
-      accountId: item.accountId || 'santander',
-      faturaMes: item.faturaMes || '',
-      userId: userId,
-      created_at: item.created_at || new Date().toISOString()
-    });
+    await setDoc(doc(db, `users/${userId}/transactions`, item.id), buildTransactionDoc(item, userId));
   } catch (err) {
     handleFirestoreError(err, OperationType.CREATE, path);
   }
@@ -376,17 +387,7 @@ export async function batchAddTransactionsToFirestore(userId: string, items: Tra
     const batch = writeBatch(db);
     for (const item of items) {
       const docRef = doc(db, path, item.id);
-      batch.set(docRef, {
-        descricao: item.descricao,
-        valor: item.valor,
-        data: item.data,
-        categoria: item.categoria,
-        tipoItem: item.tipoItem,
-        accountId: item.accountId || 'santander',
-        faturaMes: item.faturaMes || '',
-        userId: userId,
-        created_at: item.created_at || new Date().toISOString()
-      });
+      batch.set(docRef, buildTransactionDoc(item, userId));
     }
     await batch.commit();
   } catch (err) {
@@ -406,17 +407,7 @@ export async function deleteTransactionFromFirestore(userId: string, transaction
 export async function updateTransactionInFirestore(userId: string, item: Transaction): Promise<void> {
   const path = `users/${userId}/transactions/${item.id}`;
   try {
-    await setDoc(doc(db, `users/${userId}/transactions`, item.id), {
-      descricao: item.descricao,
-      valor: item.valor,
-      data: item.data,
-      categoria: item.categoria,
-      tipoItem: item.tipoItem,
-      accountId: item.accountId || 'santander',
-      faturaMes: item.faturaMes || '',
-      userId: userId,
-      created_at: item.created_at || new Date().toISOString()
-    }, { merge: true });
+    await setDoc(doc(db, `users/${userId}/transactions`, item.id), buildTransactionDoc(item, userId), { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.UPDATE, path);
   }

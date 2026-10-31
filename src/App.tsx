@@ -8,7 +8,7 @@ import {
   Layers, CheckCircle2, ChevronDown, Zap
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion, BANK_COLOR_OPTIONS
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -470,10 +470,16 @@ export default function App() {
         }
       },
       onProjects: (liveProjects) => {
-        if (liveProjects.length > 0) {
-          setProjects(liveProjects);
-          saveLocal(`local_projects_${currentUser.email}`, liveProjects);
+        // Automatically purge any mock projects from Firestore and local cache
+        const mockProjects = liveProjects.filter(p => ['p1', 'p2'].includes(p.id) || ['Viagem de Fim de Ano', 'Notebook Novo'].includes(p.nome));
+        if (mockProjects.length > 0 && firebaseUser) {
+          mockProjects.forEach(mp => {
+            deleteProjectFromFirestore(firebaseUser.uid, mp.id).catch(() => {});
+          });
         }
+        const cleanProjects = liveProjects.filter(p => !['p1', 'p2'].includes(p.id) && !['Viagem de Fim de Ano', 'Notebook Novo'].includes(p.nome));
+        setProjects(cleanProjects);
+        saveLocal(`local_projects_${currentUser.email}`, cleanProjects);
       },
       onAccounts: (liveAccounts) => {
         if (liveAccounts.length > 0) {
@@ -712,7 +718,7 @@ export default function App() {
     showToast(`Categoria "${nome}" removida com sucesso!`, 'sucesso');
   };
 
-  // Add transaction (despesa or receita) handler
+  // Add transaction (despesa or receita) handler with inter-account transfer support
   const handleAddTransaction = async (
     descricao: string,
     valor: number,
@@ -720,7 +726,8 @@ export default function App() {
     categoria: string,
     tipoItem: 'despesa' | 'receita',
     accountId: string = 'geral',
-    faturaMes?: string
+    faturaMes?: string,
+    transferTargetAccountId?: string
   ) => {
     // Automatically compute faturaMes for credit card transactions if not provided
     let finalFaturaMes = faturaMes;
@@ -731,6 +738,10 @@ export default function App() {
     }
 
     const transactionId = safeRandomUUID();
+    const counterpartId = safeRandomUUID();
+
+    const isTransfer = tipoItem === 'despesa' && !!transferTargetAccountId && transferTargetAccountId !== accountId;
+
     const newTransaction: Transaction = {
       id: transactionId,
       descricao,
@@ -740,33 +751,78 @@ export default function App() {
       tipoItem,
       accountId,
       faturaMes: finalFaturaMes,
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      ...(isTransfer ? {
+        transferTargetAccountId,
+        transferLinkedId: counterpartId,
+        isTransferCounterpart: false
+      } : {})
     };
+
+    let counterpartTransaction: Transaction | null = null;
+    if (isTransfer) {
+      const sourceAcc = accounts.find(a => a.id === accountId);
+      const isPix = descricao.toLowerCase().includes('pix');
+      const counterpartDesc = isPix
+        ? `Pix recebido de ${sourceAcc?.nome || 'Conta de Origem'}`
+        : `Transferência recebida de ${sourceAcc?.nome || 'Conta de Origem'}`;
+
+      const destAcc = accounts.find(a => a.id === transferTargetAccountId);
+      let destFaturaMes = undefined;
+      if (destAcc && destAcc.tipo === 'credito') {
+        destFaturaMes = getBillMonthForDate(data, destAcc.diaFechamento || 5);
+      }
+
+      counterpartTransaction = {
+        id: counterpartId,
+        descricao: counterpartDesc,
+        valor,
+        data,
+        categoria: 'Transferência',
+        tipoItem: 'receita',
+        accountId: transferTargetAccountId,
+        faturaMes: destFaturaMes,
+        created_at: new Date().toISOString(),
+        transferTargetAccountId: accountId,
+        transferLinkedId: transactionId,
+        isTransferCounterpart: true
+      };
+    }
 
     if (firebaseUser) {
       try {
         await addTransactionToFirestore(firebaseUser.uid, newTransaction);
+        if (counterpartTransaction) {
+          await addTransactionToFirestore(firebaseUser.uid, counterpartTransaction);
+        }
       } catch (err) {
         console.warn('Firebase transaction insertion error, saving locally:', err);
       }
     }
 
+    const toAdd = counterpartTransaction ? [newTransaction, counterpartTransaction] : [newTransaction];
+
     setTransactions(prev => {
-      if (prev.some(t => t.id === newTransaction.id)) {
-        return prev;
-      }
-      const updated = deduplicateTransactions([...prev, newTransaction]);
+      const existingIds = new Set(prev.map(t => t.id));
+      const fresh = toAdd.filter(t => !existingIds.has(t.id));
+      if (fresh.length === 0) return prev;
+      const updated = deduplicateTransactions([...prev, ...fresh]);
       saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
       saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
       return updated;
     });
 
-    showToast(
-      tipoItem === 'despesa'
-        ? `Despesa "${descricao}" registrada!`
-        : `Receita "${descricao}" injetada com sucesso! 🚀`,
-      'sucesso'
-    );
+    if (counterpartTransaction) {
+      const destAcc = accounts.find(a => a.id === transferTargetAccountId);
+      showToast(`Transferência registrada e lançamento de Pix recebido gerado em ${destAcc?.nome || 'conta destino'}! 🔄`, 'sucesso');
+    } else {
+      showToast(
+        tipoItem === 'despesa'
+          ? `Despesa "${descricao}" registrada!`
+          : `Receita "${descricao}" injetada com sucesso! 🚀`,
+        'sucesso'
+      );
+    }
 
     // JARVIS vocal and sound confirmation
     jarvisAudio.announceTransactionAdded(tipoItem, valor, descricao);
@@ -965,29 +1021,39 @@ export default function App() {
     jarvisAudio.speak(`${createdTransactions.length} movimentações importadas com sucesso, senhor.`, { interrupt: true });
   };
 
-  // Delete transaction handler
+  // Delete transaction handler with linked transfer counterpart deletion
   const handleDeleteTransaction = async (id: string, tipoItem: 'despesa' | 'receita') => {
-    if (!window.confirm('Deseja remover este lançamento permanentemente?')) return;
+    const toDelete = transactions.find(t => t.id === id);
+    const linkedId = toDelete?.transferLinkedId;
+
+    if (!window.confirm(linkedId 
+      ? 'Este lançamento faz parte de uma transferência vinculada entre contas. Deseja remover ambos os lançamentos vinculados?' 
+      : 'Deseja remover este lançamento permanentemente?')) {
+      return;
+    }
 
     if (firebaseUser) {
       try {
         await deleteTransactionFromFirestore(firebaseUser.uid, id);
+        if (linkedId) {
+          await deleteTransactionFromFirestore(firebaseUser.uid, linkedId);
+        }
       } catch (err) {
         console.warn('Firebase delete error, fallback local:', err);
       }
     }
 
-    const updated = transactions.filter((t) => t.id !== id);
+    const updated = transactions.filter((t) => t.id !== id && (!linkedId || t.id !== linkedId));
     setTransactions(updated);
 
     saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
     saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
 
-    showToast('Lançamento removido com sucesso!', 'info');
+    showToast(linkedId ? 'Transferência e lançamento vinculado removidos com sucesso!' : 'Lançamento removido com sucesso!', 'info');
     jarvisAudio.announceTransactionDeleted();
   };
 
-  // Update transaction handler
+  // Update transaction handler with linked transfer synchronization
   const handleUpdateTransaction = async (
     id: string,
     tipoItem: 'despesa' | 'receita',
@@ -1002,6 +1068,7 @@ export default function App() {
     }
 
     const updatedTransaction: Transaction = {
+      ...existing,
       id,
       descricao: updatedData.descricao,
       valor: updatedData.valor,
@@ -1013,21 +1080,41 @@ export default function App() {
       created_at: existing?.created_at || new Date().toISOString()
     };
 
+    // If this transaction is linked to a transfer counterpart, sync the counterpart's value and date
+    let updatedCounterpart: Transaction | null = null;
+    if (existing?.transferLinkedId) {
+      const counterpart = transactions.find(t => t.id === existing.transferLinkedId);
+      if (counterpart) {
+        updatedCounterpart = {
+          ...counterpart,
+          valor: updatedData.valor,
+          data: updatedData.data
+        };
+      }
+    }
+
     if (firebaseUser) {
       try {
         await updateTransactionInFirestore(firebaseUser.uid, updatedTransaction);
+        if (updatedCounterpart) {
+          await updateTransactionInFirestore(firebaseUser.uid, updatedCounterpart);
+        }
       } catch (err) {
         console.warn('Firebase update error, fallback local:', err);
       }
     }
 
-    const updated = transactions.map((t) => (t.id === id ? updatedTransaction : t));
+    const updated = transactions.map((t) => {
+      if (t.id === id) return updatedTransaction;
+      if (updatedCounterpart && t.id === updatedCounterpart.id) return updatedCounterpart;
+      return t;
+    });
     setTransactions(updated);
 
     saveLocal(`local_despesas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'despesa'));
     saveLocal(`local_receitas_${currentUser!.email}`, updated.filter((t) => t.tipoItem === 'receita'));
 
-    showToast('Lançamento atualizado com sucesso!', 'sucesso');
+    showToast(updatedCounterpart ? 'Transferência e lançamento vinculado sincronizados!' : 'Lançamento atualizado com sucesso!', 'sucesso');
     jarvisAudio.announceTransactionUpdated();
   };
 
@@ -1158,10 +1245,28 @@ export default function App() {
     showToast('Projeto de meta deletado.', 'info');
   };
 
-  // --- STATS ANALYSERS ---
-
   const currentYear = dataAncorada.getFullYear();
   const currentMonth = dataAncorada.getMonth();
+
+  // Desktop month ruler sliding navigation refs & boundary effect
+  const monthContainerRef = React.useRef<HTMLDivElement>(null);
+  const monthButtonsRef = React.useRef<(HTMLButtonElement | null)[]>([]);
+
+  useEffect(() => {
+    const container = monthContainerRef.current;
+    const targetBtn = monthButtonsRef.current[currentMonth];
+    if (!container || !targetBtn) return;
+
+    const containerRect = container.getBoundingClientRect();
+    const btnRect = targetBtn.getBoundingClientRect();
+
+    // Check if the selected month button reaches or is outside the ruler boundary
+    if (btnRect.right > containerRect.right - 8) {
+      targetBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    } else if (btnRect.left < containerRect.left + 8) {
+      targetBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    }
+  }, [currentMonth]);
 
   // Automated monthly generation of active continuous recurring expenses
   useEffect(() => {
@@ -2414,13 +2519,17 @@ export default function App() {
                 <ChevronLeft className="w-3.5 h-3.5" />
               </button>
 
-              <div className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5 px-0.5 max-w-[120px] xs:max-w-[180px] sm:max-w-[280px] md:max-w-[360px] select-none">
+              <div
+                ref={monthContainerRef}
+                className="flex items-center gap-0.5 overflow-x-auto scrollbar-none py-0.5 px-0.5 max-w-[120px] xs:max-w-[180px] sm:max-w-[280px] md:max-w-[360px] select-none scroll-smooth"
+              >
                 {MONTHS.map((m, idx) => {
                   const isSelected = currentMonth === idx;
                   const abbrev = m.substring(0, 3);
                   return (
                     <button
                       key={m}
+                      ref={(el) => { monthButtonsRef.current[idx] = el; }}
                       onClick={() => selectMonth(idx)}
                       className={`relative px-2 py-1 text-[11px] font-semibold rounded-md cursor-pointer transition-colors z-10 flex-shrink-0 select-none ${
                         isSelected
@@ -2745,12 +2854,11 @@ export default function App() {
                     required
                     className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
-                    <option value="bg-zinc-700">Preto Grafite</option>
-                    <option value="bg-red-600">Vermelho Santander</option>
-                    <option value="bg-emerald-600">Verde Esmeralda</option>
-                    <option value="bg-blue-600">Azul Royal</option>
-                    <option value="bg-orange-500">Laranja Inter</option>
-                    <option value="bg-purple-600">Roxo Nubank</option>
+                    {BANK_COLOR_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -2917,12 +3025,11 @@ export default function App() {
                     defaultValue={editingAccount.cor}
                     className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
-                    <option value="bg-zinc-700">Preto Grafite</option>
-                    <option value="bg-red-600">Vermelho Santander</option>
-                    <option value="bg-emerald-600">Verde Esmeralda</option>
-                    <option value="bg-blue-600">Azul Royal</option>
-                    <option value="bg-orange-500">Laranja Inter</option>
-                    <option value="bg-purple-600">Roxo Nubank</option>
+                    {BANK_COLOR_OPTIONS.map((c) => (
+                      <option key={c.value} value={c.value}>
+                        {c.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

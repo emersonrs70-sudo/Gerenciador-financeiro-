@@ -8,6 +8,9 @@ export interface Transaction {
   created_at?: string;
   accountId?: string; // Links to a BankAccount
   faturaMes?: string; // Links to a specific credit card bill (e.g. "2026-07")
+  transferTargetAccountId?: string; // For transfers: ID of the other account
+  transferLinkedId?: string; // Linked reciprocal transaction ID
+  isTransferCounterpart?: boolean; // True if this was automatically generated as counterpart
 }
 
 export interface BankAccount {
@@ -20,6 +23,32 @@ export interface BankAccount {
   diaFechamento?: number; // For credit cards (e.g., 5)
   diaVencimento?: number; // For credit cards (e.g., 12)
 }
+
+export interface BankColorOption {
+  value: string;
+  label: string;
+  bank: string;
+  bgClass: string;
+  dotClass: string;
+}
+
+export const BANK_COLOR_OPTIONS: BankColorOption[] = [
+  { value: 'bg-red-600', label: 'Vermelho', bank: 'Santander / Bradesco', bgClass: 'bg-red-600', dotClass: 'bg-red-600' },
+  { value: 'bg-purple-600', label: 'Roxo', bank: 'Nubank', bgClass: 'bg-purple-600', dotClass: 'bg-purple-600' },
+  { value: 'bg-orange-500', label: 'Laranja', bank: 'Inter', bgClass: 'bg-orange-500', dotClass: 'bg-orange-500' },
+  { value: 'bg-blue-600', label: 'Azul Royal', bank: 'Itaú', bgClass: 'bg-blue-600', dotClass: 'bg-blue-600' },
+  { value: 'bg-amber-400', label: 'Amarelo Ouro', bank: 'Banco do Brasil', bgClass: 'bg-amber-400', dotClass: 'bg-amber-400' },
+  { value: 'bg-sky-700', label: 'Azul Marinho', bank: 'Caixa Econômica', bgClass: 'bg-sky-700', dotClass: 'bg-sky-700' },
+  { value: 'bg-zinc-900', label: 'Preto Carbon', bank: 'C6 Bank', bgClass: 'bg-zinc-900', dotClass: 'bg-zinc-900' },
+  { value: 'bg-emerald-500', label: 'Verde Neon', bank: 'PicPay', bgClass: 'bg-emerald-500', dotClass: 'bg-emerald-500' },
+  { value: 'bg-cyan-600', label: 'Ciano', bank: 'Mercado Pago', bgClass: 'bg-cyan-600', dotClass: 'bg-cyan-600' },
+  { value: 'bg-teal-500', label: 'Azul Turquesa', bank: 'Neon', bgClass: 'bg-teal-500', dotClass: 'bg-teal-500' },
+  { value: 'bg-slate-800', label: 'Azul Noite', bank: 'BTG Pactual', bgClass: 'bg-slate-800', dotClass: 'bg-slate-800' },
+  { value: 'bg-amber-600', label: 'Dourado Escuro', bank: 'XP Investimentos', bgClass: 'bg-amber-600', dotClass: 'bg-amber-600' },
+  { value: 'bg-green-700', label: 'Verde Floresta', bank: 'Sicredi', bgClass: 'bg-green-700', dotClass: 'bg-green-700' },
+  { value: 'bg-rose-800', label: 'Bordô / Vinho', bank: 'Banco Original', bgClass: 'bg-rose-800', dotClass: 'bg-rose-800' },
+  { value: 'bg-zinc-700', label: 'Grafite Neutro', bank: 'Carteira / Outros', bgClass: 'bg-zinc-700', dotClass: 'bg-zinc-700' },
+];
 
 export function getBillMonthForDate(dateStr: string, closingDay: number = 5): string {
   const date = new Date(dateStr + 'T12:00:00'); // avoid timezone offsets

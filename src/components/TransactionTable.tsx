@@ -426,8 +426,13 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             </span>
                           )}
                         </div>
-                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate">
-                          {item.descricao}
+                        <p className="text-xs font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1.5">
+                          <span className="truncate">{item.descricao}</span>
+                          {item.transferLinkedId && (
+                            <span className="px-1 py-0.2 rounded text-[8px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-bold shrink-0">
+                              🔄 Transf.
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
@@ -495,6 +500,11 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                           <td className="p-3 font-semibold text-zinc-800 dark:text-zinc-200">
                             <div className="flex items-center gap-1.5 flex-wrap">
                               <span>{item.descricao}</span>
+                              {item.transferLinkedId && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold shrink-0 flex items-center gap-1" title="Transferência vinculada entre contas">
+                                  🔄 Transferência
+                                </span>
+                              )}
                               {item.faturaMes && (
                                 <span className="px-1.5 py-0.5 rounded text-[9px] bg-[#F0EEE6] dark:bg-[#252530] text-zinc-600 dark:text-zinc-400 font-medium shrink-0">
                                   💳 Fatura {item.faturaMes}
@@ -679,7 +689,14 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             {formatDate(item.data)}
                           </td>
                           <td className="p-3 font-semibold text-zinc-800 dark:text-zinc-200">
-                            {item.descricao}
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              <span>{item.descricao}</span>
+                              {item.transferLinkedId && (
+                                <span className="px-1.5 py-0.5 rounded text-[9px] bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 font-semibold shrink-0 flex items-center gap-1" title="Transferência vinculada entre contas">
+                                  🔄 Transferência
+                                </span>
+                              )}
+                            </div>
                           </td>
                           <td className="p-3 whitespace-nowrap text-zinc-500 dark:text-zinc-400">
                             {account ? (
