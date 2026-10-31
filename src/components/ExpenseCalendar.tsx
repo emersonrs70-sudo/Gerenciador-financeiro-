@@ -8,7 +8,7 @@ import {
   Info, 
   Sparkles
 } from 'lucide-react';
-import { Transaction } from '../types';
+import { Transaction, isTransferTransaction } from '../types';
 
 interface ExpenseCalendarProps {
   transactions: Transaction[];
@@ -106,11 +106,11 @@ export const ExpenseCalendar: React.FC<ExpenseCalendarProps> = ({
     });
     
     const despesas = dayTransactions
-      .filter(t => t.tipoItem === 'despesa')
+      .filter(t => t.tipoItem === 'despesa' && !isTransferTransaction(t))
       .reduce((sum, t) => sum + t.valor, 0);
 
     const receitas = dayTransactions
-      .filter(t => t.tipoItem === 'receita')
+      .filter(t => t.tipoItem === 'receita' && !isTransferTransaction(t))
       .reduce((sum, t) => sum + t.valor, 0);
 
     return {

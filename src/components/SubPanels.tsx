@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   ShieldCheck, PieChart, GraduationCap, Scissors, Rocket, Trash2, HelpCircle
 } from 'lucide-react';
-import { Transaction, Project, SubPainelType } from '../types';
+import { Transaction, Project, SubPainelType, BudgetRuleConfig, isTransferTransaction } from '../types';
 
 interface SubPanelsProps {
   activeType: SubPainelType;
@@ -13,18 +13,21 @@ interface SubPanelsProps {
   saldoReal: number;
   currentMonth: number;
   currentYear: number;
+  budgetConfig?: BudgetRuleConfig;
 }
 
 interface BudgetRule503020Props {
   despesasMes: Transaction[];
   totalReceitasMes: number;
   formatValue: (v: number) => string;
+  budgetConfig?: BudgetRuleConfig;
 }
 
 const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
   despesasMes,
   totalReceitasMes,
   formatValue,
+  budgetConfig
 }) => {
   const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
   const savingsKeywords = ['investimento', 'investimentos', 'poupança', 'poupanca', 'reserva', 'fundo', 'emergência', 'emergencia', 'aporte', 'tesouro', 'cdb', 'ações', 'acoes', 'caixinha'];
@@ -53,9 +56,13 @@ const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
   const isSimulation = totalReceitasMes === 0;
   const incomeBase = isSimulation ? 5000 : totalReceitasMes;
 
-  const idealNeeds = incomeBase * 0.50;
-  const idealWants = incomeBase * 0.30;
-  const idealSavings = incomeBase * 0.20;
+  const targetNeedsPct = budgetConfig?.needsPct ?? 50;
+  const targetWantsPct = budgetConfig?.wantsPct ?? 30;
+  const targetSavingsPct = budgetConfig?.savingsPct ?? 20;
+
+  const idealNeeds = incomeBase * (targetNeedsPct / 100);
+  const idealWants = incomeBase * (targetWantsPct / 100);
+  const idealSavings = incomeBase * (targetSavingsPct / 100);
 
   // Total poupado: somatório dos aportes guardados na reserva + sobra não gasta em conta
   const totalGastosConsumo = actualNeeds + actualWants;
@@ -75,7 +82,7 @@ const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
         <div>
           <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
             <PieChart className="w-4 h-4 text-zinc-500" />
-            Direcionador Orçamentário Estratégico (Regra 50-30-20)
+            Direcionador Orçamentário Estratégico (Regra {targetNeedsPct}-{targetWantsPct}-{targetSavingsPct})
           </h4>
           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
             Mapeamento de despesas reais versus alocação ideal baseada em sua receita
@@ -94,17 +101,17 @@ const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
         <div className="bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 p-3 rounded-xl flex items-start gap-2">
           <HelpCircle className="w-4 h-4 text-amber-500 shrink-0 mt-0.5" />
           <p className="text-[10px] text-zinc-600 dark:text-zinc-300 leading-tight">
-            <strong>Por que tudo marcava R$ 0?</strong> A regra 50-30-20 calcula as divisões a partir das suas <strong>Receitas/Entradas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
+            <strong>Por que tudo marcava R$ 0?</strong> A regra orçamentária calcula as divisões a partir das suas <strong>Receitas/Entradas externas</strong> do mês. Como você não possui receitas cadastradas neste mês ainda, ativamos esta <strong>simulação educativa com renda padrão de R$ 5.000,00</strong> para demonstrar o seu direcionamento! Adicione lançamentos de receita para ver seu orçamento real.
           </p>
         </div>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* ESSENCIAIS - 50% */}
+        {/* ESSENCIAIS */}
         <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades (50%)</span>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Necessidades ({targetNeedsPct}%)</span>
               <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Essenciais</span>
             </div>
             <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -135,11 +142,11 @@ const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
           </div>
         </div>
 
-        {/* DESEJOS - 30% */}
+        {/* DESEJOS */}
         <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida (30%)</span>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Estilo de Vida ({targetWantsPct}%)</span>
               <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Lazer & Desejos</span>
             </div>
             <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -170,11 +177,11 @@ const BudgetRule503020: React.FC<BudgetRule503020Props> = ({
           </div>
         </div>
 
-        {/* POUPANÇA / RESERVA - 20% */}
+        {/* POUPANÇA / RESERVA */}
         <div className="bg-zinc-50/70 dark:bg-[#252530] p-4 rounded-xl border border-zinc-200/70 dark:border-[#4C4E5D]/60 shadow-2xs space-y-2">
           <div className="flex justify-between items-start">
             <div>
-              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva (20%)</span>
+              <span className="text-[9px] font-bold text-zinc-400 dark:text-zinc-500 uppercase block">Futuro / Reserva ({targetSavingsPct}%)</span>
               <span className="text-[10px] font-semibold text-zinc-700 dark:text-zinc-300">Reserva & Investimentos</span>
             </div>
             <span className="text-xs font-bold text-zinc-900 dark:text-zinc-100">
@@ -230,7 +237,8 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
   onDeleteProject,
   saldoReal,
   currentMonth,
-  currentYear
+  currentYear,
+  budgetConfig
 }) => {
   // Draggable sliders state for Fat Cutter
   const [lazerCorte, setLazerCorte] = useState<number>(0);
@@ -247,9 +255,10 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
   const formatValue = (v: number) =>
     `R$ ${v.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
-  // Filter current month transactions for localized calculations
+  // Filter current month transactions for localized calculations (excluding internal transfers!)
   const currentMonthTrans = transactions.filter(t => {
     if (!t.data) return false;
+    if (isTransferTransaction(t)) return false;
     const parts = t.data.split('-');
     if (parts.length < 3) return false;
     const year = parseInt(parts[0], 10);
@@ -351,6 +360,7 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
           despesasMes={despesasMes}
           totalReceitasMes={totalReceitasMes}
           formatValue={formatValue}
+          budgetConfig={budgetConfig}
         />
       )}
 

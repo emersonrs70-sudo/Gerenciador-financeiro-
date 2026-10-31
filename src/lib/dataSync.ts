@@ -1,5 +1,5 @@
 import {
-  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, writeBatch
+  collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc, writeBatch
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, getLocal, saveLocal } from './firebase';
 import { Transaction, Project, BankAccount, RecurrentRule, PendingSuggestion } from '../types';
@@ -574,6 +574,27 @@ export function subscribeToIncomingNotifications(
   } catch (err) {
     console.warn('Failed to subscribe to incoming notifications:', err);
     return () => {};
+  }
+}
+
+export async function saveBudgetConfigToFirestore(userId: string, config: { needsPct: number; wantsPct: number; savingsPct: number }): Promise<void> {
+  const path = `users/${userId}/preferences/budgetConfig`;
+  try {
+    await setDoc(doc(db, `users/${userId}/preferences`, 'budgetConfig'), config, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+export async function getBudgetConfigFromFirestore(userId: string): Promise<{ needsPct: number; wantsPct: number; savingsPct: number } | null> {
+  try {
+    const snap = await getDoc(doc(db, `users/${userId}/preferences`, 'budgetConfig'));
+    if (snap.exists()) {
+      return snap.data() as any;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

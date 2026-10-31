@@ -50,6 +50,32 @@ export const BANK_COLOR_OPTIONS: BankColorOption[] = [
   { value: 'bg-zinc-700', label: 'Grafite Neutro', bank: 'Carteira / Outros', bgClass: 'bg-zinc-700', dotClass: 'bg-zinc-700' },
 ];
 
+export interface BudgetRuleConfig {
+  needsPct: number;       // default 50
+  wantsPct: number;       // default 30
+  savingsPct: number;     // default 20
+}
+
+export const DEFAULT_BUDGET_CONFIG: BudgetRuleConfig = {
+  needsPct: 50,
+  wantsPct: 30,
+  savingsPct: 20
+};
+
+/**
+ * Checks if a transaction is an internal transfer between accounts.
+ * Internal transfers must NOT be counted as revenues or consumption expenses of the period.
+ */
+export function isTransferTransaction(item?: Partial<Transaction> | null): boolean {
+  if (!item) return false;
+  if (item.isTransferCounterpart) return true;
+  if (item.transferLinkedId) return true;
+  if (item.transferTargetAccountId) return true;
+  const cat = (item.categoria || '').toLowerCase().trim();
+  if (cat === 'transferência' || cat === 'transferencia') return true;
+  return false;
+}
+
 export function getBillMonthForDate(dateStr: string, closingDay: number = 5): string {
   const date = new Date(dateStr + 'T12:00:00'); // avoid timezone offsets
   if (isNaN(date.getTime())) return dateStr.substring(0, 7);

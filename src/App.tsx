@@ -8,7 +8,7 @@ import {
   Layers, CheckCircle2, ChevronDown, Zap
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion, BANK_COLOR_OPTIONS
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion, BANK_COLOR_OPTIONS, BudgetRuleConfig, DEFAULT_BUDGET_CONFIG, isTransferTransaction
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -23,7 +23,7 @@ import {
   saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore,
   addCategoryToFirestore, deleteCategoryFromFirestore,
   savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore,
-  subscribeToIncomingNotifications
+  subscribeToIncomingNotifications, saveBudgetConfigToFirestore, getBudgetConfigFromFirestore
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
@@ -45,6 +45,7 @@ import { ManageRecurrentModal } from './components/ManageRecurrentModal';
 import { BankNotificationBanner } from './components/BankNotificationBanner';
 import { MacroDroidModal } from './components/MacroDroidModal';
 import { AdjustSuggestionModal } from './components/AdjustSuggestionModal';
+import { BudgetGoalSelector } from './components/BudgetGoalSelector';
 import { createPendingSuggestionFromNotification } from './lib/notificationParser';
 
 interface Toast {
@@ -153,6 +154,20 @@ export default function App() {
     return getLocal<string[]>(`local_categorias_receita_${DEFAULT_PERSONAL_USER.email}`, DEFAULT_CATEGORIES_RECEITA);
   });
   const [projects, setProjects] = useState<Project[]>([]);
+
+  // Budget rule allocation percentages (Necessidades, Lazer, Investimentos)
+  const [budgetConfig, setBudgetConfig] = useState<BudgetRuleConfig>(() => {
+    return getLocal<BudgetRuleConfig>(`local_budget_config_${DEFAULT_PERSONAL_USER.email}`, DEFAULT_BUDGET_CONFIG);
+  });
+
+  const handleUpdateBudgetConfig = async (newConfig: BudgetRuleConfig) => {
+    setBudgetConfig(newConfig);
+    saveLocal(`local_budget_config_${currentUser.email}`, newConfig);
+    if (firebaseUser) {
+      saveBudgetConfigToFirestore(firebaseUser.uid, newConfig).catch(() => {});
+    }
+    showToast(`Metas orçamentárias atualizadas: ${newConfig.needsPct}% / ${newConfig.wantsPct}% / ${newConfig.savingsPct}%! 🎯`, 'sucesso');
+  };
 
   // Bank Accounts state (loaded from cache)
   const [accounts, setAccounts] = useState<BankAccount[]>(() => {
@@ -394,6 +409,13 @@ export default function App() {
         } finally {
           setIsSyncingFirebase(false);
         }
+
+        getBudgetConfigFromFirestore(user.uid).then(cloudConfig => {
+          if (cloudConfig && typeof cloudConfig.needsPct === 'number') {
+            setBudgetConfig(cloudConfig);
+            saveLocal(`local_budget_config_${user.email}`, cloudConfig);
+          }
+        }).catch(() => {});
       } else {
         setFirebaseUser(null);
         // Load local cache for personal user
@@ -402,6 +424,8 @@ export default function App() {
         const cachedProj = getLocal<Project[]>(`local_projects_${currentUser.email}`, []);
         const cachedCatDesp = getLocal<string[]>(`local_categorias_despesa_${currentUser.email}`, DEFAULT_CATEGORIES_DESPESA);
         const cachedCatRec = getLocal<string[]>(`local_categorias_receita_${currentUser.email}`, DEFAULT_CATEGORIES_RECEITA);
+        const cachedBudget = getLocal<BudgetRuleConfig>(`local_budget_config_${currentUser.email}`, DEFAULT_BUDGET_CONFIG);
+        setBudgetConfig(cachedBudget);
 
         if (cachedDesp.length === 0 && cachedRec.length === 0 && !localStorage.getItem(`fintech_initialized_${currentUser.email}`)) {
           // Initialize with default template data
@@ -1395,8 +1419,10 @@ export default function App() {
     return month === currentMonth && year === currentYear;
   });
 
-  // For consolidated views, we ignore credit card transactions when computing monthly cash flow metrics (revenues, expenses, and end-of-month projection)
+  // For cash flow metrics, ignore credit cards on consolidated view AND ignore internal transfers between accounts
+  // (values transferred/received internally do NOT count as period revenues or expenses, differing from external money flow)
   const periodTransactionsForCashFlow = currentMonthTransactions.filter((t) => {
+    if (isTransferTransaction(t)) return false;
     if (selectedAccountId === 'consolidado') {
       const acc = accounts.find((a) => a.id === t.accountId);
       return !acc || acc.tipo !== 'credito';
@@ -1560,9 +1586,9 @@ export default function App() {
       );
     }
 
-    // 2. Budget Thresholds Warning (50-30-20 Rules)
+    // 2. Budget Thresholds Warning (Custom Budget Rules)
     const currentMonthTrans = transactions.filter((t) => {
-      if (!t.data) return false;
+      if (!t.data || isTransferTransaction(t)) return false;
       const parts = t.data.split('-');
       if (parts.length < 3) return false;
       const year = parseInt(parts[0], 10);
@@ -1583,19 +1609,21 @@ export default function App() {
       .reduce((s, d) => s + d.valor, 0);
 
     const incomeBase = totalIncome === 0 ? 5000 : totalIncome;
-    const idealNeeds = incomeBase * 0.50;
-    const idealWants = incomeBase * 0.30;
+    const targetNeedsPct = budgetConfig.needsPct;
+    const targetWantsPct = budgetConfig.wantsPct;
+    const idealNeeds = incomeBase * (targetNeedsPct / 100);
+    const idealWants = incomeBase * (targetWantsPct / 100);
 
     // Check Needs
     if (actualNeeds > idealNeeds) {
-      const warnedNeedsKey = `warn-needs-${currentYear}-${currentMonth}`;
+      const warnedNeedsKey = `warn-needs-${currentYear}-${currentMonth}-${targetNeedsPct}`;
       const alreadyWarnedNeeds = notifications.some(n => n.id === warnedNeedsKey);
       if (!alreadyWarnedNeeds) {
         const excess = actualNeeds - idealNeeds;
         const newNotif: AppNotification = {
           id: warnedNeedsKey,
           titulo: '⚠️ Limite de Necessidades Excedido',
-          mensagem: `Seus gastos essenciais (R$ ${actualNeeds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassaram a recomendação de 50% do seu orçamento em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          mensagem: `Seus gastos essenciais (R$ ${actualNeeds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassaram a sua meta de ${targetNeedsPct}% do seu orçamento em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
           data: new Date().toISOString(),
           lida: false,
           tipo: 'alerta'
@@ -1605,20 +1633,20 @@ export default function App() {
           saveLocal('local_notifications', updated);
           return updated;
         });
-        showToast('Atenção: Limite de Necessidades (50%) foi excedido!', 'erro');
+        showToast(`Atenção: Limite de Necessidades (${targetNeedsPct}%) foi excedido!`, 'erro');
       }
     }
 
     // Check Wants
     if (actualWants > idealWants) {
-      const warnedWantsKey = `warn-wants-${currentYear}-${currentMonth}`;
+      const warnedWantsKey = `warn-wants-${currentYear}-${currentMonth}-${targetWantsPct}`;
       const alreadyWarnedWants = notifications.some(n => n.id === warnedWantsKey);
       if (!alreadyWarnedWants) {
         const excess = actualWants - idealWants;
         const newNotif: AppNotification = {
           id: warnedWantsKey,
           titulo: '⚠️ Limite de Lazer Excedido',
-          mensagem: `Seus gastos de estilo de vida (R$ ${actualWants.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excederam o limite ideal de 30% em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          mensagem: `Seus gastos de estilo de vida (R$ ${actualWants.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excederam a sua meta de ${targetWantsPct}% em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
           data: new Date().toISOString(),
           lida: false,
           tipo: 'alerta'
@@ -1628,7 +1656,7 @@ export default function App() {
           saveLocal('local_notifications', updated);
           return updated;
         });
-        showToast('Atenção: Limite de Lazer & Desejos (30%) foi excedido!', 'erro');
+        showToast(`Atenção: Limite de Lazer & Desejos (${targetWantsPct}%) foi excedido!`, 'erro');
       }
     }
 
@@ -2288,7 +2316,7 @@ export default function App() {
                 id="card-saldo"
                 title="Projeção Mês"
                 value={formatCurrency(saldoProjetadoFimDoMes)}
-                subValue="Regra orçamentária 50-30-20"
+                subValue={`Meta ${budgetConfig.needsPct}-${budgetConfig.wantsPct}-${budgetConfig.savingsPct}`}
                 icon={TrendingUp}
                 isActive={subpainelAberto === 'saldo'}
                 onClick={() => handleSubPanelToggle('saldo')}
@@ -2334,6 +2362,13 @@ export default function App() {
               />
             </section>
 
+            {/* Seletor Visual de Metas Orçamentárias (% de Renda) */}
+            <BudgetGoalSelector
+              budgetConfig={budgetConfig}
+              onUpdateBudgetConfig={handleUpdateBudgetConfig}
+              monthlyIncome={totalReceitasMes}
+            />
+
             {/* SubPanels Rich Expansion */}
             <div id="container-subpaineis" className="w-full">
               <SubPanels
@@ -2345,6 +2380,7 @@ export default function App() {
                 saldoReal={saldoRealAcumulado}
                 currentMonth={currentMonth}
                 currentYear={currentYear}
+                budgetConfig={budgetConfig}
               />
             </div>
 

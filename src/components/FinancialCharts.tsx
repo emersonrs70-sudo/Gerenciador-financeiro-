@@ -9,7 +9,7 @@ import {
   Filter, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Transaction, BankAccount } from '../types';
+import { Transaction, BankAccount, isTransferTransaction } from '../types';
 import { ExpenseCalendar } from './ExpenseCalendar';
 
 interface FinancialChartsProps {
@@ -85,6 +85,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   const getFilteredTransactions = () => {
     return filteredByAccount.filter((t) => {
       if (!t.data) return false;
+      if (isTransferTransaction(t)) return false; // Exclude internal transfers between accounts
       const parts = t.data.split('-');
       if (parts.length < 3) return false;
       const y = parseInt(parts[0], 10);
@@ -151,7 +152,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     for (let m = 0; m < 12; m++) {
       const mDespesas = filteredByAccount
         .filter(t => {
-          if (!t.data) return false;
+          if (!t.data || isTransferTransaction(t)) return false;
           const p = t.data.split('-');
           const matchDate = parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m;
           const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
@@ -161,7 +162,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
       const mReceitas = filteredByAccount
         .filter(t => {
-          if (!t.data) return false;
+          if (!t.data || isTransferTransaction(t)) return false;
           const p = t.data.split('-');
           const matchDate = parseInt(p[0], 10) === currentYear && (parseInt(p[1], 10) - 1) === m;
           const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
@@ -184,7 +185,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
       const mDespesas = filteredByAccount
         .filter(t => {
-          if (!t.data) return false;
+          if (!t.data || isTransferTransaction(t)) return false;
           const p = t.data.split('-');
           const matchDate = parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx;
           const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
@@ -194,7 +195,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
 
       const mReceitas = filteredByAccount
         .filter(t => {
-          if (!t.data) return false;
+          if (!t.data || isTransferTransaction(t)) return false;
           const p = t.data.split('-');
           const matchDate = parseInt(p[0], 10) === yVal && (parseInt(p[1], 10) - 1) === mIdx;
           const matchCat = !isCategoryFiltered || t.categoria === fluxoCategoriaFiltro;
