@@ -6,6 +6,7 @@ interface BudgetGoalSelectorProps {
   budgetConfig: BudgetRuleConfig;
   onUpdateBudgetConfig: (newConfig: BudgetRuleConfig) => void;
   monthlyIncome: number;
+  compactHeader?: boolean;
 }
 
 const PRESETS: Array<{
@@ -38,7 +39,8 @@ const PRESETS: Array<{
 export function BudgetGoalSelector({
   budgetConfig,
   onUpdateBudgetConfig,
-  monthlyIncome
+  monthlyIncome,
+  compactHeader = false
 }: BudgetGoalSelectorProps) {
   const { needsPct, wantsPct, savingsPct } = budgetConfig;
   const total = needsPct + wantsPct + savingsPct;
@@ -82,7 +84,7 @@ export function BudgetGoalSelector({
     p.needsPct === needsPct && p.wantsPct === wantsPct && p.savingsPct === savingsPct;
 
   return (
-    <div className="bg-white dark:bg-[#32323F] rounded-2xl p-4 sm:p-5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 shadow-xs space-y-4">
+    <div className={`bg-white dark:bg-[#32323F] rounded-2xl p-4 sm:p-5 border border-zinc-200/80 dark:border-[#4C4E5D]/60 shadow-xs space-y-4 ${compactHeader ? 'bg-zinc-50/50 dark:bg-[#282834]' : ''}`}>
       {/* Header and Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-3">
         <div className="flex items-center gap-2.5">
@@ -92,14 +94,14 @@ export function BudgetGoalSelector({
           <div>
             <div className="flex items-center gap-2">
               <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider">
-                Personalizar Meta de Renda
+                Definir Meta de Renda
               </h3>
               <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
                 {needsPct}% / {wantsPct}% / {savingsPct}%
               </span>
             </div>
             <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-              Defina a alocação de receita ideal para Necessidades, Lazer e Investimentos
+              Escolha um preset ou use os sliders para personalizar a divisão da sua receita
             </p>
           </div>
         </div>

@@ -331,6 +331,36 @@
         }
       },
       "required": ["text"]
+    },
+    "BudgetConfig": {
+      "title": "BudgetConfig",
+      "description": "User custom budget percentage allocation",
+      "type": "object",
+      "properties": {
+        "needsPct": {
+          "type": "number",
+          "description": "Percentage for needs (0-100)"
+        },
+        "wantsPct": {
+          "type": "number",
+          "description": "Percentage for wants (0-100)"
+        },
+        "savingsPct": {
+          "type": "number",
+          "description": "Percentage for savings and investments (0-100)"
+        },
+        "userId": {
+          "type": "string",
+          "maxLength": 128,
+          "description": "Firebase user ID"
+        },
+        "updatedAt": {
+          "type": "string",
+          "maxLength": 50,
+          "description": "Timestamp ISO string"
+        }
+      },
+      "required": ["needsPct", "wantsPct", "savingsPct"]
     }
   },
   "firestore": {
@@ -365,6 +395,10 @@
     "/users/{userId}/pending_suggestions/{suggestionId}": {
       "schema": "PendingSuggestion",
       "description": "User pending bank notification suggestions"
+    },
+    "/users/{userId}/preferences/{prefId}": {
+      "schema": "BudgetConfig",
+      "description": "User preferences including custom budget allocations"
     }
   }
 }

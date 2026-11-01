@@ -99,6 +99,13 @@ service cloud.firestore {
         && (!('userId' in data) || data.userId == userId);
     }
 
+    function isValidBudgetConfig(data, userId) {
+      return data.needsPct is number && data.needsPct >= 0 && data.needsPct <= 100
+        && data.wantsPct is number && data.wantsPct >= 0 && data.wantsPct <= 100
+        && data.savingsPct is number && data.savingsPct >= 0 && data.savingsPct <= 100
+        && (!('userId' in data) || data.userId == userId);
+    }
+
     match /users/{userId} {
       allow get: if isOwner(userId);
       allow create, update: if isOwner(userId) && isValidId(userId) && isValidUserProfile(incoming());
@@ -143,6 +150,12 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
         allow delete: if isOwner(userId) && isValidId(suggestionId);
+      }
+
+      match /preferences/{prefId} {
+        allow get, list: if isOwner(userId);
+        allow create, update: if isOwner(userId) && isValidId(prefId) && isValidBudgetConfig(incoming(), userId);
+        allow delete: if isOwner(userId) && isValidId(prefId);
       }
     }
   }

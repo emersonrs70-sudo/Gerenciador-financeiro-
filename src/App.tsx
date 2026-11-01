@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import {
   Wallet, TrendingUp, ArrowUpCircle, ArrowDownCircle, Rocket,
   ChevronLeft, ChevronRight, Sun, Moon, Flame, Download, User, Sparkles,
   Cloud, RefreshCw, LogIn, LogOut, LayoutDashboard, Receipt, Target,
   Landmark, Tags, Bot, Calendar, CreditCard, BarChart3, Menu, X, Plus,
-  Layers, CheckCircle2, ChevronDown, Zap
+  Layers, CheckCircle2, ChevronDown, Zap, MoreVertical, ShieldCheck
 } from 'lucide-react';
 import {
   Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion, BANK_COLOR_OPTIONS, BudgetRuleConfig, DEFAULT_BUDGET_CONFIG, isTransferTransaction
@@ -46,6 +46,7 @@ import { BankNotificationBanner } from './components/BankNotificationBanner';
 import { MacroDroidModal } from './components/MacroDroidModal';
 import { AdjustSuggestionModal } from './components/AdjustSuggestionModal';
 import { BudgetGoalSelector } from './components/BudgetGoalSelector';
+import { MobileHeaderMenu } from './components/MobileHeaderMenu';
 import { createPendingSuggestionFromNotification } from './lib/notificationParser';
 
 interface Toast {
@@ -230,6 +231,7 @@ export default function App() {
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => getLocal<boolean>('app_theme_dark', true));
   const [mobileTabActive, setMobileTabActive] = useState<'dashboard' | 'transacoes' | 'planejador'>('dashboard');
   const [isStreakModalOpen, setIsStreakModalOpen] = useState<boolean>(false);
+  const [isMobileNotifsOpen, setIsMobileNotifsOpen] = useState<boolean>(false);
 
   const handleNavigateNav = (nav: 'dashboard' | 'transacoes' | 'sonhos' | 'contas' | 'categorias' | 'ia') => {
     setActiveNav(nav);
@@ -1391,10 +1393,18 @@ export default function App() {
 
   const accountBalances = getAccountBalances();
 
-  // Consolidated checking/savings accounts cash
-  const totalCashConsolidated = accounts
-    .filter(acc => acc.tipo !== 'credito')
+  // Checking & wallet accounts cash (money available for everyday spending / uso diário)
+  const totalCheckingCashConsolidated = accounts
+    .filter(acc => acc.tipo === 'corrente' || acc.tipo === 'carteira')
     .reduce((sum, acc) => sum + (accountBalances[acc.id] ?? 0), 0);
+
+  // Savings & investment reserves (protected funds, not for everyday spending)
+  const totalSavingsFundConsolidated = accounts
+    .filter(acc => acc.tipo === 'poupanca' || acc.tipo === 'investimento')
+    .reduce((sum, acc) => sum + (accountBalances[acc.id] ?? 0), 0);
+
+  // Total cash consolidated across checking & savings
+  const totalCashConsolidated = totalCheckingCashConsolidated + totalSavingsFundConsolidated;
 
   // Consolidated credit cards spent
   const totalCardSpentConsolidated = accounts
@@ -1439,8 +1449,10 @@ export default function App() {
   // Expected cash surplus at the end of the month
   const saldoProjetadoFimDoMes = totalReceitasMes - totalDespesasMes;
 
-  // Real available cash or available credit depending on active account selection
-  let saldoRealAcumulado = totalCashConsolidated;
+  // Real available cash or available credit depending on active account selection.
+  // When 'consolidado' is selected, ONLY liquid checking/wallet accounts (totalCheckingCashConsolidated)
+  // are counted as money available for everyday spending. Savings accounts (like 99 pay) are protected reserves.
+  let saldoRealAcumulado = totalCheckingCashConsolidated;
   if (selectedAccountId !== 'consolidado' && activeAccount) {
     if (activeAccount.tipo === 'credito') {
       saldoRealAcumulado = Math.max((activeAccount.limiteCredito || 0) - (accountBalances[activeAccount.id] ?? 0), 0);
@@ -1838,16 +1850,24 @@ export default function App() {
             >
               <div className="flex items-center gap-2 truncate">
                 <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" />
-                <span className="truncate">Consolidado</span>
+                <span className="truncate">Consolidado (Uso)</span>
               </div>
-              <span className="text-[10px] font-mono tabular-nums shrink-0 opacity-80">
-                {formatCurrency(totalCashConsolidated)}
-              </span>
+              <div className="text-right shrink-0">
+                <span className="text-[10px] font-mono tabular-nums opacity-90 block">
+                  {formatCurrency(totalCheckingCashConsolidated)}
+                </span>
+                {totalSavingsFundConsolidated > 0 && (
+                  <span className="text-[9px] font-mono text-emerald-600 dark:text-emerald-400 font-normal block">
+                    +{formatCurrency(totalSavingsFundConsolidated)} poupança
+                  </span>
+                )}
+              </div>
             </button>
 
             {accounts.map(acc => {
               const isSelected = selectedAccountId === acc.id;
               const isCard = acc.tipo === 'credito';
+              const isSavings = acc.tipo === 'poupanca' || acc.tipo === 'investimento';
               const bal = accountBalances[acc.id] ?? 0;
               return (
                 <button
@@ -1862,9 +1882,14 @@ export default function App() {
                       : 'text-zinc-600 dark:text-[#988E96] hover:bg-zinc-100 dark:hover:bg-[#4C4E5D]/30'
                   }`}
                 >
-                  <div className="flex items-center gap-2 truncate">
+                  <div className="flex items-center gap-1.5 truncate">
                     <span className={`w-2 h-2 rounded-full shrink-0 ${acc.cor || 'bg-zinc-400'}`} />
                     <span className="truncate">{acc.nome}</span>
+                    {isSavings && (
+                      <span className="text-[8px] px-1 py-0.2 rounded bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 font-bold shrink-0">
+                        Poupança
+                      </span>
+                    )}
                   </div>
                   <span className="text-[10px] font-mono tabular-nums shrink-0 opacity-80">
                     {isCard ? (acc.limiteCredito ? `R$ ${Math.round(Math.max(acc.limiteCredito - bal, 0))}` : 'Cartão') : formatCurrency(bal)}
@@ -1995,6 +2020,7 @@ export default function App() {
           onAddProject={handleAddProject}
           onDeleteProject={handleDeleteProject}
           saldoReal={saldoRealAcumulado}
+          saldoPoupanca={totalSavingsFundConsolidated}
           currentMonth={currentMonth}
           currentYear={currentYear}
         />
@@ -2033,6 +2059,7 @@ export default function App() {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 max-h-[calc(100vh-220px)] overflow-y-auto pr-1 custom-scrollbar">
           {accounts.map(acc => {
             const isCard = acc.tipo === 'credito';
+            const isSavings = acc.tipo === 'poupanca' || acc.tipo === 'investimento';
             const bal = accountBalances[acc.id] ?? 0;
             return (
               <div
@@ -2044,19 +2071,39 @@ export default function App() {
                     <span className={`w-3 h-3 rounded-full ${acc.cor || 'bg-zinc-400'}`} />
                     <div>
                       <h3 className="text-xs font-bold text-zinc-900 dark:text-[#DDD5D0]">{acc.nome}</h3>
-                      <p className="text-[10px] uppercase font-bold text-[#988E96]">
-                        {isCard ? 'Cartão de Crédito' : acc.tipo === 'poupanca' ? 'Poupança' : 'Conta Corrente'}
+                      <p className="text-[10px] uppercase font-bold text-[#988E96] flex items-center gap-1">
+                        {isCard
+                          ? 'Cartão de Crédito'
+                          : acc.tipo === 'poupanca'
+                          ? '🛡️ Fundo de Poupança'
+                          : acc.tipo === 'investimento'
+                          ? '📈 Investimentos'
+                          : 'Conta Corrente'}
                       </p>
                     </div>
                   </div>
-                  <span className="text-sm">{isCard ? '💳' : '🏦'}</span>
+                  <span className="text-sm">{isCard ? '💳' : isSavings ? '🛡️' : '🏦'}</span>
                 </div>
 
                 <div className="pt-2 border-t border-zinc-200/60 dark:border-[#4C4E5D]/40 space-y-1">
-                  <p className="text-[10px] text-[#988E96]">{isCard ? 'Fatura Aberta' : 'Saldo Atual'}</p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] text-[#988E96]">
+                      {isCard ? 'Fatura Aberta' : isSavings ? 'Fundo Guardado' : 'Saldo Disponível'}
+                    </p>
+                    {isSavings && (
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border border-emerald-500/20">
+                        Reserva Protegida
+                      </span>
+                    )}
+                  </div>
                   <p className="text-lg font-bold font-mono text-zinc-900 dark:text-[#DDD5D0]">
                     {formatCurrency(bal)}
                   </p>
+                  {isSavings && (
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">
+                      Montante reservado: não infla o total de disponível para uso diário.
+                    </p>
+                  )}
                   {isCard && acc.limiteCredito && (
                     <div className="text-[10px] text-[#988E96] flex justify-between">
                       <span>Limite: {formatCurrency(acc.limiteCredito)}</span>
@@ -2303,14 +2350,40 @@ export default function App() {
             <section className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-5 gap-2.5">
               <MetricCard
                 id="card-saldo-real"
-                title="Disponível Hoje"
+                title={
+                  selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'poupanca'
+                    ? 'Fundo de Poupança'
+                    : selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'investimento'
+                    ? 'Investimentos'
+                    : selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'credito'
+                    ? 'Limite Disponível'
+                    : 'Disponível Hoje'
+                }
                 value={formatCurrency(saldoRealAcumulado)}
-                subValue="Limite diário de gastos"
-                icon={Wallet}
+                subValue={
+                  selectedAccountId === 'consolidado'
+                    ? totalSavingsFundConsolidated > 0
+                      ? `+ ${formatCurrency(totalSavingsFundConsolidated)} guardado em poupança`
+                      : 'Limite diário de gastos'
+                    : selectedAccountId !== 'consolidado' && (activeAccount?.tipo === 'poupanca' || activeAccount?.tipo === 'investimento')
+                    ? 'Reserva protegida de gastos'
+                    : selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'credito'
+                    ? 'Limite livre do cartão'
+                    : 'Conta corrente / carteira'
+                }
+                icon={selectedAccountId !== 'consolidado' && (activeAccount?.tipo === 'poupanca' || activeAccount?.tipo === 'investimento') ? ShieldCheck : Wallet}
                 isActive={subpainelAberto === 'saldo-real'}
                 onClick={() => handleSubPanelToggle('saldo-real')}
                 sparklineType="wave"
-                trend={{ value: 'Em conta', neutral: true }}
+                trend={{
+                  value:
+                    selectedAccountId === 'consolidado' && totalSavingsFundConsolidated > 0
+                      ? `Poupança: ${formatCurrency(totalSavingsFundConsolidated)}`
+                      : selectedAccountId !== 'consolidado' && (activeAccount?.tipo === 'poupanca' || activeAccount?.tipo === 'investimento')
+                      ? 'Protegido'
+                      : 'Em conta',
+                  neutral: true
+                }}
               />
               <MetricCard
                 id="card-saldo"
@@ -2362,27 +2435,35 @@ export default function App() {
               />
             </section>
 
-            {/* Seletor Visual de Metas Orçamentárias (% de Renda) */}
-            <BudgetGoalSelector
-              budgetConfig={budgetConfig}
-              onUpdateBudgetConfig={handleUpdateBudgetConfig}
-              monthlyIncome={totalReceitasMes}
-            />
-
-            {/* SubPanels Rich Expansion */}
-            <div id="container-subpaineis" className="w-full">
-              <SubPanels
-                activeType={subpainelAberto}
-                transactions={transactions}
-                projects={projects}
-                onAddProject={handleAddProject}
-                onDeleteProject={handleDeleteProject}
-                saldoReal={saldoRealAcumulado}
-                currentMonth={currentMonth}
-                currentYear={currentYear}
-                budgetConfig={budgetConfig}
-              />
-            </div>
+            {/* Organic Animated SubPanels Rich Expansion */}
+            <AnimatePresence mode="wait">
+              {subpainelAberto && (
+                <motion.div
+                  key={subpainelAberto}
+                  id="container-subpaineis"
+                  initial={{ opacity: 0, y: -12, scale: 0.99 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.99 }}
+                  transition={{ type: 'spring', stiffness: 350, damping: 28 }}
+                  className="w-full overflow-hidden"
+                >
+                  <SubPanels
+                    activeType={subpainelAberto}
+                    transactions={transactions}
+                    projects={projects}
+                    onAddProject={handleAddProject}
+                    onDeleteProject={handleDeleteProject}
+                    saldoReal={saldoRealAcumulado}
+                    saldoPoupanca={totalSavingsFundConsolidated}
+                    currentMonth={currentMonth}
+                    currentYear={currentYear}
+                    budgetConfig={budgetConfig}
+                    onUpdateBudgetConfig={handleUpdateBudgetConfig}
+                    onClose={() => setSubpainelAberto(null)}
+                  />
+                </motion.div>
+              )}
+            </AnimatePresence>
 
             {/* Quick 2-Column: Form + Ledger */}
             <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
@@ -2632,70 +2713,106 @@ export default function App() {
               </button>
             </div>
 
-            {/* Notification Center */}
-            <NotificationCenter
-              notifications={notifications}
-              onMarkAllRead={handleMarkAllRead}
-              onMarkRead={handleMarkRead}
-              onDeleteNotification={handleDeleteNotification}
-              onClearAll={handleClearAllNotifications}
-              onSendTestNotification={handleSendTestNotification}
-            />
+            {/* Desktop Action Buttons (sm and larger screens) */}
+            <div className="hidden sm:flex items-center gap-1.5 sm:gap-2.5 shrink-0">
+              {/* Notification Center */}
+              <NotificationCenter
+                notifications={notifications}
+                onMarkAllRead={handleMarkAllRead}
+                onMarkRead={handleMarkRead}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAll={handleClearAllNotifications}
+                onSendTestNotification={handleSendTestNotification}
+              />
 
-            {/* JARVIS Audio Controls */}
-            <AudioControls />
+              {/* JARVIS Audio Controls */}
+              <AudioControls />
 
-            {/* MacroDroid Bank Notification Integration Trigger */}
-            <button
-              onClick={() => setIsMacroDroidModalOpen(true)}
-              title="Integração com Notificações Bancárias (MacroDroid)"
-              className="relative p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
-            >
-              <Zap className="w-4 h-4 text-amber-500" />
-              {pendingSuggestions.length > 0 && (
-                <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce shadow-xs">
-                  {pendingSuggestions.length}
-                </span>
-              )}
-            </button>
-
-            {/* Streak Modal Trigger */}
-            <button
-              onClick={() => {
-                setIsStreakModalOpen(true);
-                jarvisAudio.announceStreak(streak);
-              }}
-              title="Clique para ver níveis, medalhas e resumo"
-              className={`hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
-                streak > 0
-                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15'
-                  : 'bg-zinc-100 dark:bg-[#252530] text-zinc-500 dark:text-[#988E96] border-zinc-200/80 dark:border-[#4C4E5D]/60'
-              }`}
-            >
-              <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
-              <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
-            </button>
-
-            {/* PWA Install */}
-            {deferredPrompt && (
+              {/* MacroDroid Bank Notification Integration Trigger */}
               <button
-                onClick={triggerInstallApp}
-                className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
-                title="Instalar FintechCore como aplicativo"
+                onClick={() => setIsMacroDroidModalOpen(true)}
+                title="Integração com Notificações Bancárias (MacroDroid)"
+                className="relative p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
               >
-                <Download className="w-3.5 h-3.5" />
-                <span>Instalar</span>
+                <Zap className="w-4 h-4 text-amber-500" />
+                {pendingSuggestions.length > 0 && (
+                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce shadow-xs">
+                    {pendingSuggestions.length}
+                  </span>
+                )}
               </button>
-            )}
 
-            {/* Light/Dark Toggle */}
-            <button
-              onClick={toggleTheme}
-              className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
-              title="Alternar tema"
-            >
-              {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-700" />}
-            </button>
+              {/* Streak Modal Trigger */}
+              <button
+                onClick={() => {
+                  setIsStreakModalOpen(true);
+                  jarvisAudio.announceStreak(streak);
+                }}
+                title="Clique para ver níveis, medalhas e resumo"
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold border transition-all duration-200 cursor-pointer active:scale-95 ${
+                  streak > 0
+                    ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400 hover:bg-amber-500/15'
+                    : 'bg-zinc-100 dark:bg-[#252530] text-zinc-500 dark:text-[#988E96] border-zinc-200/80 dark:border-[#4C4E5D]/60'
+                }`}
+              >
+                <Flame className={`w-3.5 h-3.5 ${streak > 0 ? 'fill-amber-500 text-amber-500' : ''}`} />
+                <span>{streak} {streak === 1 ? 'dia' : 'dias'}</span>
+              </button>
+
+              {/* PWA Install */}
+              {deferredPrompt && (
+                <button
+                  onClick={triggerInstallApp}
+                  className="hidden md:flex items-center gap-1.5 px-2.5 py-1.5 bg-[#32323F] hover:bg-[#4C4E5D] dark:bg-[#4C4E5D] dark:hover:bg-[#5B5D6E] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-xs active:scale-95"
+                  title="Instalar FintechCore como aplicativo"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Instalar</span>
+                </button>
+              )}
+
+              {/* Light/Dark Toggle */}
+              <button
+                onClick={toggleTheme}
+                className="p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
+                title="Alternar tema"
+              >
+                {isDarkMode ? <Sun className="w-4 h-4 text-amber-300" /> : <Moon className="w-4 h-4 text-zinc-700" />}
+              </button>
+            </div>
+
+            {/* Mobile Three-Dots Action Menu (< sm screens) */}
+            <div className="flex sm:hidden items-center shrink-0">
+              <MobileHeaderMenu
+                notifications={notifications}
+                unreadNotificationsCount={notifications.filter(n => !n.lida).length}
+                onOpenNotifications={() => setIsMobileNotifsOpen(true)}
+                pendingSuggestionsCount={pendingSuggestions.length}
+                onOpenMacroDroid={() => setIsMacroDroidModalOpen(true)}
+                isDarkMode={isDarkMode}
+                onToggleTheme={toggleTheme}
+                streak={streak}
+                onOpenStreak={() => {
+                  setIsStreakModalOpen(true);
+                  jarvisAudio.announceStreak(streak);
+                }}
+                deferredPrompt={deferredPrompt}
+                onInstallApp={triggerInstallApp}
+              />
+
+              {/* Mobile Notification Center Dropdown */}
+              <NotificationCenter
+                hideTrigger
+                isOpenControlled={isMobileNotifsOpen}
+                onOpenChange={setIsMobileNotifsOpen}
+                notifications={notifications}
+                onMarkAllRead={handleMarkAllRead}
+                onMarkRead={handleMarkRead}
+                onDeleteNotification={handleDeleteNotification}
+                onClearAll={handleClearAllNotifications}
+                onSendTestNotification={handleSendTestNotification}
+              />
+            </div>
           </div>
         </header>
 
@@ -2753,10 +2870,20 @@ export default function App() {
             </div>
 
             <div className="hidden md:flex items-center gap-2 text-xs">
-              <span className="text-[#988E96] text-[11px]">Disponível:</span>
-              <span className="font-mono font-bold text-zinc-900 dark:text-[#DDD5D0] bg-[#F3F1EB] dark:bg-[#252530] px-2.5 py-1 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
-                {formatCurrency(saldoRealAcumulado)}
-              </span>
+              <div className="flex items-center gap-1.5 bg-[#F3F1EB] dark:bg-[#252530] px-2.5 py-1 rounded-lg border border-[#E8E5DC] dark:border-[#4C4E5D]/50">
+                <span className="text-[#988E96] text-[11px]">Disponível:</span>
+                <span className="font-mono font-bold text-zinc-900 dark:text-[#DDD5D0]">
+                  {formatCurrency(saldoRealAcumulado)}
+                </span>
+              </div>
+              {selectedAccountId === 'consolidado' && totalSavingsFundConsolidated > 0 && (
+                <div className="flex items-center gap-1.5 bg-emerald-500/10 px-2.5 py-1 rounded-lg border border-emerald-500/20 text-emerald-700 dark:text-emerald-300">
+                  <span className="text-[11px] font-semibold">🛡️ Poupança:</span>
+                  <span className="font-mono font-bold">
+                    {formatCurrency(totalSavingsFundConsolidated)}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
@@ -2875,10 +3002,14 @@ export default function App() {
                     className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
                     <option value="corrente">Conta Corrente</option>
-                    <option value="poupanca">Conta Poupança</option>
+                    <option value="poupanca">Conta Poupança (Protegida)</option>
+                    <option value="investimento">Investimentos / Fundo</option>
                     <option value="carteira">Dinheiro em Carteira</option>
                     <option value="credito">Cartão de Crédito</option>
                   </select>
+                  <p className="text-[9px] text-[#988E96] mt-1">
+                    Poupança e investimentos ficam protegidos fora dos gastos diários.
+                  </p>
                 </div>
 
                 <div>
@@ -3045,10 +3176,14 @@ export default function App() {
                     className="w-full bg-zinc-50 dark:bg-[#252530] border border-zinc-200/80 dark:border-[#4C4E5D]/60 text-zinc-900 dark:text-[#DDD5D0] rounded-xl px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#BCABA8]/20 font-medium"
                   >
                     <option value="corrente">Conta Corrente</option>
-                    <option value="poupanca">Conta Poupança</option>
+                    <option value="poupanca">Conta Poupança (Protegida)</option>
+                    <option value="investimento">Investimentos / Fundo</option>
                     <option value="carteira">Dinheiro em Carteira</option>
                     <option value="credito">Cartão de Crédito</option>
                   </select>
+                  <p className="text-[9px] text-[#988E96] mt-1">
+                    Poupança e investimentos ficam protegidos fora dos gastos diários.
+                  </p>
                 </div>
 
                 <div>

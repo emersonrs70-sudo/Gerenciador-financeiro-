@@ -16,7 +16,7 @@ export interface Transaction {
 export interface BankAccount {
   id: string;
   nome: string;
-  tipo: 'corrente' | 'poupanca' | 'carteira' | 'credito';
+  tipo: 'corrente' | 'poupanca' | 'carteira' | 'credito' | 'investimento';
   saldoInicial: number;
   cor: string; // Tailwind bg color class
   limiteCredito?: number; // For credit cards

@@ -10,6 +10,9 @@ interface NotificationCenterProps {
   onDeleteNotification: (id: string) => void;
   onClearAll: () => void;
   onSendTestNotification: () => void;
+  isOpenControlled?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
 export const NotificationCenter: React.FC<NotificationCenterProps> = ({
@@ -18,9 +21,17 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   onMarkRead,
   onDeleteNotification,
   onClearAll,
-  onSendTestNotification
+  onSendTestNotification,
+  isOpenControlled,
+  onOpenChange,
+  hideTrigger = false
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
+  const [internalIsOpen, setInternalIsOpen] = useState(false);
+  const isOpen = isOpenControlled !== undefined ? isOpenControlled : internalIsOpen;
+  const setIsOpen = (val: boolean) => {
+    if (onOpenChange) onOpenChange(val);
+    setInternalIsOpen(val);
+  };
   const [permission, setPermission] = useState<NotificationPermission>('default');
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -98,18 +109,20 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
   return (
     <div className="relative" ref={containerRef} id="notification-center-container">
       {/* Trigger Bell Button */}
-      <button
-        onClick={() => setIsOpen(!isOpen)}
-        className="relative p-2.5 bg-white dark:bg-[#32323F] hover:bg-zinc-50 dark:hover:bg-[#222226] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl hover:shadow-2xs cursor-pointer text-zinc-600 dark:text-zinc-300 transition-all font-bold"
-        title="Central de Notificações"
-      >
-        <Bell className="w-4 h-4" />
-        {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#32323F] animate-bounce">
-            {unreadCount}
-          </span>
-        )}
-      </button>
+      {!hideTrigger && (
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="relative p-2.5 bg-white dark:bg-[#32323F] hover:bg-zinc-50 dark:hover:bg-[#222226] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl hover:shadow-2xs cursor-pointer text-zinc-600 dark:text-zinc-300 transition-all font-bold"
+          title="Central de Notificações"
+        >
+          <Bell className="w-4 h-4" />
+          {unreadCount > 0 && (
+            <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-rose-600 text-[9px] font-black text-white ring-2 ring-white dark:ring-[#32323F] animate-bounce">
+              {unreadCount}
+            </span>
+          )}
+        </button>
+      )}
 
       {/* Popover Card */}
       <AnimatePresence>

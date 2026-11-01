@@ -580,20 +580,28 @@ export function subscribeToIncomingNotifications(
 export async function saveBudgetConfigToFirestore(userId: string, config: { needsPct: number; wantsPct: number; savingsPct: number }): Promise<void> {
   const path = `users/${userId}/preferences/budgetConfig`;
   try {
-    await setDoc(doc(db, `users/${userId}/preferences`, 'budgetConfig'), config, { merge: true });
+    await setDoc(doc(db, `users/${userId}/preferences`, 'budgetConfig'), {
+      needsPct: Number(config.needsPct),
+      wantsPct: Number(config.wantsPct),
+      savingsPct: Number(config.savingsPct),
+      userId: userId,
+      updatedAt: new Date().toISOString()
+    }, { merge: true });
   } catch (err) {
     handleFirestoreError(err, OperationType.WRITE, path);
   }
 }
 
 export async function getBudgetConfigFromFirestore(userId: string): Promise<{ needsPct: number; wantsPct: number; savingsPct: number } | null> {
+  const path = `users/${userId}/preferences/budgetConfig`;
   try {
     const snap = await getDoc(doc(db, `users/${userId}/preferences`, 'budgetConfig'));
     if (snap.exists()) {
       return snap.data() as any;
     }
     return null;
-  } catch {
+  } catch (err) {
+    handleFirestoreError(err, OperationType.GET, path);
     return null;
   }
 }

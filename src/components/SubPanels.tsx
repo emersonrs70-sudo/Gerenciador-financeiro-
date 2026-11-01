@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  ShieldCheck, PieChart, GraduationCap, Scissors, Rocket, Trash2, HelpCircle
+  ShieldCheck, PieChart, GraduationCap, Scissors, Rocket, Trash2, HelpCircle, ChevronUp
 } from 'lucide-react';
 import { Transaction, Project, SubPainelType, BudgetRuleConfig, isTransferTransaction } from '../types';
+import { BudgetGoalSelector } from './BudgetGoalSelector';
 
 interface SubPanelsProps {
   activeType: SubPainelType;
@@ -11,9 +12,12 @@ interface SubPanelsProps {
   onAddProject: (nome: string, valor: number, dataAlvo: string) => Promise<void>;
   onDeleteProject: (id: string) => Promise<void>;
   saldoReal: number;
+  saldoPoupanca?: number;
   currentMonth: number;
   currentYear: number;
   budgetConfig?: BudgetRuleConfig;
+  onUpdateBudgetConfig?: (newConfig: BudgetRuleConfig) => void;
+  onClose?: () => void;
 }
 
 interface BudgetRule503020Props {
@@ -236,9 +240,12 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
   onAddProject,
   onDeleteProject,
   saldoReal,
+  saldoPoupanca,
   currentMonth,
   currentYear,
-  budgetConfig
+  budgetConfig,
+  onUpdateBudgetConfig,
+  onClose
 }) => {
   // Draggable sliders state for Fat Cutter
   const [lazerCorte, setLazerCorte] = useState<number>(0);
@@ -321,9 +328,22 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               <ShieldCheck className="w-4 h-4 text-emerald-500" />
               Modo Hardcore: Gasto Diário Seguro
             </h4>
-            <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-[#3B3B49] text-zinc-700 dark:text-zinc-300 rounded-full">
-              Saúde Financeira
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[9px] font-bold px-2 py-0.5 bg-zinc-100 dark:bg-[#3B3B49] text-zinc-700 dark:text-zinc-300 rounded-full">
+                Saúde Financeira
+              </span>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/60 transition-colors cursor-pointer"
+                  title="Recolher card"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>Recolher</span>
+                </button>
+              )}
+            </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-5 items-center">
             <div className="space-y-1">
@@ -347,6 +367,25 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               </div>
             </div>
           </div>
+          {saldoPoupanca !== undefined && saldoPoupanca > 0 && (
+            <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs">
+              <div className="flex items-center gap-2.5">
+                <span className="text-base">🛡️</span>
+                <div>
+                  <p className="font-bold text-emerald-800 dark:text-emerald-300">
+                    Fundo de Poupança Protegido: {formatValue(saldoPoupanca)}
+                  </p>
+                  <p className="text-[10px] text-emerald-700/80 dark:text-emerald-400">
+                    Segregado com sucesso da sua margem de consumo e do cálculo do limite de gastos diário.
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-bold px-2 py-0.5 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 rounded-full shrink-0">
+                Reserva Intocada
+              </span>
+            </div>
+          )}
+
           <p className="text-[10px] text-zinc-500 dark:text-zinc-400 pt-2 border-t border-zinc-100 dark:border-[#4C4E5D]/60">
             Fórmula inteligente baseada em sua liquidez acumulada real dividida pelos{' '}
             <strong className="text-zinc-700 dark:text-zinc-300">{diasRestantes} dias restantes</strong> do mês. Gastar abaixo de {formatValue(limiteDiario)} hoje melhora a sua projeção amanhã!
@@ -354,24 +393,82 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
         </div>
       )}
 
-      {/* 2. TERMOMETRO DE SOBRA */}
+      {/* 2. PROJEÇÃO MÊS & DIRECIONADOR ORÇAMENTÁRIO (CARD FUNDIDO) */}
       {activeType === 'saldo' && (
-        <BudgetRule503020
-          despesasMes={despesasMes}
-          totalReceitasMes={totalReceitasMes}
-          formatValue={formatValue}
-          budgetConfig={budgetConfig}
-        />
+        <div className="space-y-4">
+          {/* Header Unificado do Card de Projeção Mês */}
+          <div className="p-4 sm:p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 rounded-xl bg-gradient-to-tr from-blue-600 to-purple-600 text-white flex items-center justify-center font-black shadow-xs shrink-0">
+                <PieChart className="w-5 h-5" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h4 className="text-xs font-black text-zinc-900 dark:text-white uppercase tracking-wider">
+                    Central de Projeção & Gestão Orçamentária
+                  </h4>
+                  <span className="text-[10px] font-mono font-bold px-2 py-0.5 rounded-md bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 border border-blue-200/60 dark:border-blue-900/40">
+                    Alocação {budgetConfig?.needsPct ?? 50}% / {budgetConfig?.wantsPct ?? 30}% / {budgetConfig?.savingsPct ?? 20}%
+                  </span>
+                </div>
+                <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Personalize a divisão percentual da sua renda e veja o reflexo imediato nos limites e no termômetro real de despesas
+                </p>
+              </div>
+            </div>
+
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/60 transition-colors cursor-pointer self-start sm:self-center shrink-0"
+                title="Recolher card"
+              >
+                <ChevronUp className="w-4 h-4" />
+                <span>Recolher</span>
+              </button>
+            )}
+          </div>
+
+          {/* 1. Seletor Visual Integrado de Metas (% de Renda) */}
+          {budgetConfig && onUpdateBudgetConfig && (
+            <BudgetGoalSelector
+              budgetConfig={budgetConfig}
+              onUpdateBudgetConfig={onUpdateBudgetConfig}
+              monthlyIncome={totalReceitasMes}
+              compactHeader
+            />
+          )}
+
+          {/* 2. Termômetro Real de Consumo do Mês vs Metas */}
+          <BudgetRule503020
+            despesasMes={despesasMes}
+            totalReceitasMes={totalReceitasMes}
+            formatValue={formatValue}
+            budgetConfig={budgetConfig}
+          />
+        </div>
       )}
 
       {/* 3. B-A-BA DE INVESTIMENTO */}
       {activeType === 'receitas' && (
         <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-3.5 shadow-xs">
-          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2">
+          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2 flex justify-between items-center">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <GraduationCap className="w-4.5 h-4.5 text-zinc-500" />
               Proporção de Investimentos: Projeção Anual
             </h4>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/60 transition-colors cursor-pointer"
+                title="Recolher card"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>Recolher</span>
+              </button>
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <div className="bg-zinc-50/70 dark:bg-[#252530] p-3.5 rounded-xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 flex flex-col justify-between gap-2 text-[11px]">
@@ -419,8 +516,21 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
               <Scissors className="w-4 h-4 text-zinc-500" />
               Cortador de Gordura Opcional
             </h4>
-            <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
-              Economia Imediata: {formatValue(totalEconomia)}
+            <div className="flex items-center gap-2">
+              <div className="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-md border border-emerald-500/20">
+                Economia Imediata: {formatValue(totalEconomia)}
+              </div>
+              {onClose && (
+                <button
+                  type="button"
+                  onClick={onClose}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/60 transition-colors cursor-pointer"
+                  title="Recolher card"
+                >
+                  <ChevronUp className="w-3.5 h-3.5" />
+                  <span>Recolher</span>
+                </button>
+              )}
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -472,11 +582,22 @@ export const SubPanels: React.FC<SubPanelsProps> = ({
       {/* 5. PLANEJADOR DE SONHOS (DREAM PLANNER) */}
       {activeType === 'metas' && (
         <div className="p-5 bg-white dark:bg-[#32323F] rounded-2xl border border-zinc-200/80 dark:border-[#4C4E5D]/60 space-y-4 shadow-xs">
-          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2">
+          <div className="border-b border-zinc-150 dark:border-[#4C4E5D]/60 pb-2 flex justify-between items-center">
             <h4 className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5 uppercase tracking-wide">
               <Rocket className="w-4 h-4 text-zinc-500" />
               Planejador de Sonhos Multimetas
             </h4>
+            {onClose && (
+              <button
+                type="button"
+                onClick={onClose}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-xl text-[10px] font-bold text-zinc-600 dark:text-zinc-300 bg-zinc-100 hover:bg-zinc-200 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/60 transition-colors cursor-pointer"
+                title="Recolher card"
+              >
+                <ChevronUp className="w-3.5 h-3.5" />
+                <span>Recolher</span>
+              </button>
+            )}
           </div>
           
           <form onSubmit={handleProjectSubmit} className="grid grid-cols-1 sm:grid-cols-4 gap-3 items-end">
