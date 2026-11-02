@@ -110,56 +110,68 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
     });
   }, [transactions, selectedAccountId]);
 
-  // Compute cumulative running balance chronologically across filtered transactions
-  const transactionBalances: { [id: string]: number } = {};
-  
-  const activeAccountObj = accounts.find(a => a.id === selectedAccountId);
-  const isActiveCard = activeAccountObj && activeAccountObj.tipo === 'credito';
-  
-  let accumulatedBalance = 0;
-  if (selectedAccountId === 'consolidado') {
-    accumulatedBalance = accounts
-      .filter(acc => acc.tipo !== 'credito')
-      .reduce((sum, acc) => sum + acc.saldoInicial, 0);
-  } else if (activeAccountObj) {
-    if (isActiveCard) {
-      accumulatedBalance = 0;
-    } else {
-      accumulatedBalance = activeAccountObj.saldoInicial;
-    }
+  // Compute cumulative running balance chronologically for EACH account from its initial balance
+  interface TxAccountBalanceInfo {
+    balance: number;
+    isCard: boolean;
+    accountName: string;
   }
+  const transactionBalances: { [id: string]: TxAccountBalanceInfo } = {};
 
-  const chronologicalAll = [...filteredByAccount].sort((a, b) => {
+  // Group all transactions by accountId for precise chronological balance per account
+  const txByAccount: { [accountId: string]: Transaction[] } = {};
+  transactions.forEach((tx) => {
+    const accId = tx.accountId || 'sem_conta';
+    if (!txByAccount[accId]) txByAccount[accId] = [];
+    txByAccount[accId].push(tx);
+  });
+
+  const sortChronologicalAsc = (a: Transaction, b: Transaction) => {
     const timeA = new Date(a.data).getTime();
     const timeB = new Date(b.data).getTime();
     if (timeA !== timeB) return timeA - timeB;
-    
     const createdA = getCreatedTime(a);
     const createdB = getCreatedTime(b);
     if (createdA !== createdB) return createdA - createdB;
-
     return (a.id || '').localeCompare(b.id || '');
+  };
+
+  accounts.forEach((acc) => {
+    const isCard = acc.tipo === 'credito';
+    let running = isCard ? 0 : (acc.saldoInicial ?? 0);
+    const list = (txByAccount[acc.id] || []).slice().sort(sortChronologicalAsc);
+    list.forEach((item) => {
+      if (isCard) {
+        // Credit card bills: expenses increase debt, receipts/payments decrease debt
+        const val = item.tipoItem === 'despesa' ? item.valor : -item.valor;
+        running += val;
+      } else {
+        // Bank accounts: receipts add cash, expenses subtract cash
+        const val = item.tipoItem === 'receita' ? item.valor : -item.valor;
+        running += val;
+      }
+      transactionBalances[item.id] = {
+        balance: running,
+        isCard,
+        accountName: acc.nome
+      };
+    });
   });
 
-  chronologicalAll.forEach((item) => {
-    const itemAccount = accounts.find(a => a.id === item.accountId);
-    const isItemCard = itemAccount && itemAccount.tipo === 'credito';
-
-    if (selectedAccountId === 'consolidado') {
-      if (!isItemCard) {
-        const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
-        accumulatedBalance += value;
-      }
-      transactionBalances[item.id] = accumulatedBalance;
-    } else {
-      if (isActiveCard) {
-        const value = item.tipoItem === 'despesa' ? item.valor : -item.valor;
-        accumulatedBalance += value;
-      } else {
-        const value = item.tipoItem === 'despesa' ? -item.valor : item.valor;
-        accumulatedBalance += value;
-      }
-      transactionBalances[item.id] = accumulatedBalance;
+  // Handle any orphan/legacy transactions without a matched accountId
+  Object.keys(txByAccount).forEach((accId) => {
+    if (!accounts.some(a => a.id === accId)) {
+      let running = 0;
+      const list = txByAccount[accId].slice().sort(sortChronologicalAsc);
+      list.forEach((item) => {
+        const val = item.tipoItem === 'receita' ? item.valor : -item.valor;
+        running += val;
+        transactionBalances[item.id] = {
+          balance: running,
+          isCard: false,
+          accountName: 'Geral'
+        };
+      });
     }
   });
 
@@ -256,9 +268,9 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
   };
 
   return (
-    <div className="w-full bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3.5 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-3">
+    <div className="w-full max-w-full overflow-hidden bg-white dark:bg-[#32323F] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-2xl p-3 sm:p-4 shadow-[0_1px_3px_rgba(0,0,0,0.03)] space-y-3">
       {/* INTEGRATED TAB BAR & TOOLBAR HEADER */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 border-b border-[#EAE7E0] dark:border-[#4C4E5D]/50 pb-2.5 w-full min-w-0">
         {/* TAB BUTTONS (EXTRATO DO PERÍODO vs HISTÓRICO GERAL) */}
         <div className="flex bg-[#F3F1EB] dark:bg-[#252530] p-1 rounded-xl border border-[#E8E5DC] dark:border-[#4C4E5D]/60 flex-shrink-0">
           <button
@@ -341,8 +353,8 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             )}
           </div>
         ) : (
-          <div className="flex flex-wrap items-center gap-2 w-full xl:w-auto min-w-0 flex-1 justify-end">
-            <div className="relative flex-1 min-w-[180px] w-full sm:w-auto max-w-full">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto min-w-0 flex-1 justify-end">
+            <div className="relative flex-1 w-full sm:min-w-[160px] sm:max-w-xs">
               <Search className="w-3.5 h-3.5 absolute left-3 top-2.5 text-zinc-400" />
               <input
                 type="text"
@@ -352,7 +364,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                 className="bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 dark:text-white rounded-xl pl-8 pr-3 py-1.5 text-xs focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-white/10 w-full font-medium"
               />
             </div>
-            <div className="relative flex-1 min-w-[160px] w-full sm:w-auto max-w-full flex items-center">
+            <div className="relative w-full sm:w-auto sm:min-w-[150px] flex items-center">
               <Filter className="w-3.5 h-3.5 absolute left-3 text-zinc-400 pointer-events-none" />
               <select
                 value={filtroCatHistorico}
@@ -401,7 +413,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             )}
 
             {/* Mobile list */}
-            <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+            <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto overflow-x-hidden pr-0.5 custom-scrollbar w-full max-w-full">
               {displayedLedgerTransactions.length === 0 ? (
                 <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 font-medium text-xs">
                   Nenhum lançamento registrado neste mês.
@@ -413,7 +425,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3 bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-xl flex items-center justify-between gap-3 shadow-xs"
+                      className="p-3 bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-xl flex items-center justify-between gap-2.5 shadow-xs w-full min-w-0 overflow-hidden"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
@@ -439,9 +451,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         <p className={`text-xs font-bold font-mono tabular-nums ${isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                         </p>
-                        <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">
-                          {formatCurrency(transactionBalances[item.id] ?? 0)}
-                        </p>
+                        {transactionBalances[item.id] && (
+                          <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">
+                            {transactionBalances[item.id].isCard ? 'Fatura: ' : 'Saldo: '}
+                            {formatCurrency(transactionBalances[item.id].balance)}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0 border-l border-[#E8E5DC] dark:border-[#4C4E5D]/60 pl-1.5">
                         <button
@@ -534,9 +549,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             >
                               {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                             </div>
-                            <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">
-                              Saldo: {formatCurrency(transactionBalances[item.id] ?? 0)}
-                            </div>
+                            {transactionBalances[item.id] && (
+                              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">
+                                {transactionBalances[item.id].isCard ? 'Fatura: ' : 'Saldo: '}
+                                {formatCurrency(transactionBalances[item.id].balance)}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1">
@@ -600,7 +618,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
             className="space-y-3"
           >
             {/* Mobile-optimized global history list */}
-            <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto pr-1 custom-scrollbar">
+            <div className="block sm:hidden space-y-2 max-h-64 overflow-y-auto overflow-x-hidden pr-0.5 custom-scrollbar w-full max-w-full">
               {searchedTransactions.length === 0 ? (
                 <div className="p-6 text-center text-zinc-400 dark:text-zinc-600 font-medium text-xs">
                   Nenhum registro corresponde aos filtros de pesquisa informados.
@@ -612,7 +630,7 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                   return (
                     <div
                       key={item.id}
-                      className="p-3 bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-xl flex items-center justify-between gap-3 shadow-xs"
+                      className="p-3 bg-[#F8F7F4] dark:bg-[#252530] border border-[#E8E5DC] dark:border-[#4C4E5D]/60 rounded-xl flex items-center justify-between gap-2.5 shadow-xs w-full min-w-0 overflow-hidden"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 mb-1 text-[10px] text-zinc-500 dark:text-zinc-400 font-medium">
@@ -633,6 +651,12 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                         <p className={`text-xs font-bold font-mono tabular-nums ${isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                           {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
                         </p>
+                        {transactionBalances[item.id] && (
+                          <p className="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">
+                            {transactionBalances[item.id].isCard ? 'Fatura: ' : 'Saldo: '}
+                            {formatCurrency(transactionBalances[item.id].balance)}
+                          </p>
+                        )}
                       </div>
                       <div className="flex items-center gap-0.5 shrink-0 border-l border-[#E8E5DC] dark:border-[#4C4E5D]/60 pl-1.5">
                         <button
@@ -713,13 +737,19 @@ export const TransactionTable: React.FC<TransactionTableProps> = ({
                             </span>
                           </td>
                           <td className="p-3 text-right font-mono tabular-nums">
-                            <span
+                            <div
                               className={`font-bold ${
                                 isDesp ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400'
                               }`}
                             >
                               {isDesp ? '-' : '+'} {formatCurrency(item.valor)}
-                            </span>
+                            </div>
+                            {transactionBalances[item.id] && (
+                              <div className="text-[10px] text-zinc-400 dark:text-zinc-500 font-normal mt-0.5">
+                                {transactionBalances[item.id].isCard ? 'Fatura: ' : 'Saldo: '}
+                                {formatCurrency(transactionBalances[item.id].balance)}
+                              </div>
+                            )}
                           </td>
                           <td className="p-3 text-center">
                             <div className="flex items-center justify-center gap-1">

@@ -2466,8 +2466,8 @@ export default function App() {
             </AnimatePresence>
 
             {/* Quick 2-Column: Form + Ledger */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start">
-              <div className="lg:col-span-4">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 items-start w-full min-w-0 max-w-full">
+              <div className="lg:col-span-4 w-full min-w-0">
                 <TransactionForm
                   categoriasDespesa={categoriasDespesa}
                   categoriasReceita={categoriasReceita}
@@ -2480,7 +2480,7 @@ export default function App() {
                   selectedAccountId={selectedAccountId}
                 />
               </div>
-              <div className="lg:col-span-8">
+              <div className="lg:col-span-8 w-full min-w-0 max-w-full overflow-hidden">
                 <TransactionTable
                   transactions={transactions}
                   onDeleteTransaction={handleDeleteTransaction}
