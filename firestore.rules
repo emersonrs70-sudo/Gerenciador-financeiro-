@@ -76,7 +76,7 @@ service cloud.firestore {
 
     function isValidBankAccount(data, userId) {
       return data.nome is string && data.nome.size() > 0 && data.nome.size() <= 80
-        && (data.tipo == 'corrente' || data.tipo == 'credito' || data.tipo == 'poupanca' || data.tipo == 'investimento')
+        && (data.tipo == 'corrente' || data.tipo == 'credito' || data.tipo == 'poupanca' || data.tipo == 'investimento' || data.tipo == 'carteira')
         && data.saldoInicial is number
         && data.userId == userId;
     }

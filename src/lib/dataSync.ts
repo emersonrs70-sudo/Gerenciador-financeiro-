@@ -244,9 +244,7 @@ export function subscribeToUserFinance(
           diaVencimento: data.diaVencimento
         });
       });
-      if (list.length > 0) {
-        callbacks.onAccounts(list);
-      }
+      callbacks.onAccounts(list);
     },
     (err) => {
       callbacks.onError(err);
@@ -432,6 +430,36 @@ export async function deleteProjectFromFirestore(userId: string, projectId: stri
   const path = `users/${userId}/projects/${projectId}`;
   try {
     await deleteDoc(doc(db, `users/${userId}/projects`, projectId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, path);
+  }
+}
+
+export async function saveAccountToFirestore(userId: string, account: BankAccount): Promise<void> {
+  const path = `users/${userId}/accounts/${account.id}`;
+  try {
+    const docData: any = {
+      nome: account.nome.trim(),
+      tipo: account.tipo,
+      saldoInicial: Number(account.saldoInicial) || 0,
+      cor: account.cor || 'bg-red-600',
+      userId: userId
+    };
+    if (account.tipo === 'credito') {
+      if (account.limiteCredito !== undefined) docData.limiteCredito = Number(account.limiteCredito);
+      if (account.diaFechamento !== undefined) docData.diaFechamento = Number(account.diaFechamento);
+      if (account.diaVencimento !== undefined) docData.diaVencimento = Number(account.diaVencimento);
+    }
+    await setDoc(doc(db, `users/${userId}/accounts`, account.id), docData, { merge: true });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+export async function deleteAccountFromFirestore(userId: string, accountId: string): Promise<void> {
+  const path = `users/${userId}/accounts/${accountId}`;
+  try {
+    await deleteDoc(doc(db, `users/${userId}/accounts`, accountId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
   }

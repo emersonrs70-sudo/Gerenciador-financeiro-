@@ -145,7 +145,7 @@
         },
         "tipo": {
           "type": "string",
-          "enum": ["corrente", "credito", "poupanca", "investimento"],
+          "enum": ["corrente", "credito", "poupanca", "investimento", "carteira"],
           "description": "Account type"
         },
         "saldoInicial": {

@@ -23,7 +23,8 @@ import {
   saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore,
   addCategoryToFirestore, deleteCategoryFromFirestore,
   savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore,
-  subscribeToIncomingNotifications, saveBudgetConfigToFirestore, getBudgetConfigFromFirestore
+  subscribeToIncomingNotifications, saveBudgetConfigToFirestore, getBudgetConfigFromFirestore,
+  saveAccountToFirestore, deleteAccountFromFirestore
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { NudgeBanner } from './components/NudgeBanner';
@@ -211,8 +212,14 @@ export default function App() {
       return;
     }
     if (window.confirm('Tem certeza que deseja apagar essa conta? Todas as transações vinculadas a ela serão mantidas, mas sem vínculo de conta.')) {
+      if (firebaseUser) {
+        deleteAccountFromFirestore(firebaseUser.uid, id).catch(err => {
+          console.warn('Error deleting account from Firestore:', err);
+        });
+      }
       const updated = accounts.filter(acc => acc.id !== id);
       setAccounts(updated);
+      saveLocal('local_bank_accounts', updated);
       if (selectedAccountId === id) {
         setSelectedAccountId('consolidado');
       }
@@ -511,6 +518,14 @@ export default function App() {
         if (liveAccounts.length > 0) {
           setAccounts(liveAccounts);
           saveLocal('local_bank_accounts', liveAccounts);
+        } else if (firebaseUser) {
+          // If Firestore is empty for this user, seed it with current local accounts so they persist
+          const currentLocalAccounts = getLocal<BankAccount[]>('local_bank_accounts', accounts);
+          if (currentLocalAccounts.length > 0) {
+            currentLocalAccounts.forEach(acc => {
+              saveAccountToFirestore(firebaseUser.uid, acc).catch(console.warn);
+            });
+          }
         }
       },
       onRecurrentRules: (liveRules) => {
@@ -744,6 +759,98 @@ export default function App() {
     showToast(`Categoria "${nome}" removida com sucesso!`, 'sucesso');
   };
 
+  // Check budget limits ONLY when a new transaction is actively registered in the real current month.
+  // Retroactive months or historical month navigation NEVER trigger budget warning notifications or toasts.
+  const checkBudgetThresholdsOnNewExpense = (newTx: Transaction, allTransactions: Transaction[]) => {
+    if (newTx.tipoItem !== 'despesa' || isTransferTransaction(newTx)) return;
+    if (!newTx.data) return;
+
+    const now = new Date();
+    const realCurrentYear = now.getFullYear();
+    const realCurrentMonth = now.getMonth();
+
+    const parts = newTx.data.split('-');
+    if (parts.length < 3) return;
+    const txYear = parseInt(parts[0], 10);
+    const txMonth = parseInt(parts[1], 10) - 1;
+
+    // Strictly ensure the transaction is for the current actual calendar month
+    if (txYear !== realCurrentYear || txMonth !== realCurrentMonth) {
+      return;
+    }
+
+    const currentMonthTrans = allTransactions.filter((t) => {
+      if (!t.data || isTransferTransaction(t)) return false;
+      const p = t.data.split('-');
+      if (p.length < 3) return false;
+      const y = parseInt(p[0], 10);
+      const m = parseInt(p[1], 10) - 1;
+      return m === realCurrentMonth && y === realCurrentYear;
+    });
+
+    const totalIncome = currentMonthTrans.filter(t => t.tipoItem === 'receita').reduce((s, t) => s + t.valor, 0);
+    const despesasMes = currentMonthTrans.filter(t => t.tipoItem === 'despesa');
+
+    const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
+    const actualNeeds = despesasMes
+      .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
+      .reduce((s, d) => s + d.valor, 0);
+
+    const actualWants = despesasMes
+      .filter((d) => !needsCategories.includes(d.categoria.toLowerCase()))
+      .reduce((s, d) => s + d.valor, 0);
+
+    const incomeBase = totalIncome === 0 ? 5000 : totalIncome;
+    const targetNeedsPct = budgetConfig.needsPct;
+    const targetWantsPct = budgetConfig.wantsPct;
+    const idealNeeds = incomeBase * (targetNeedsPct / 100);
+    const idealWants = incomeBase * (targetWantsPct / 100);
+
+    const isNeedsCategory = needsCategories.includes(newTx.categoria.toLowerCase());
+
+    if (isNeedsCategory && actualNeeds > idealNeeds) {
+      const warnedNeedsKey = `warn-needs-${realCurrentYear}-${realCurrentMonth}-${targetNeedsPct}`;
+      const alreadyWarnedNeeds = notifications.some(n => n.id === warnedNeedsKey);
+      if (!alreadyWarnedNeeds) {
+        const excess = actualNeeds - idealNeeds;
+        const newNotif: AppNotification = {
+          id: warnedNeedsKey,
+          titulo: '⚠️ Limite de Necessidades Excedido',
+          mensagem: `Seus gastos essenciais deste mês (R$ ${actualNeeds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassaram a sua meta de ${targetNeedsPct}% do seu orçamento em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          data: new Date().toISOString(),
+          lida: false,
+          tipo: 'alerta'
+        };
+        setNotifications(prev => {
+          const updated = [newNotif, ...prev];
+          saveLocal('local_notifications', updated);
+          return updated;
+        });
+        showToast(`Atenção: Limite de Necessidades (${targetNeedsPct}%) foi excedido no mês atual!`, 'erro');
+      }
+    } else if (!isNeedsCategory && actualWants > idealWants) {
+      const warnedWantsKey = `warn-wants-${realCurrentYear}-${realCurrentMonth}-${targetWantsPct}`;
+      const alreadyWarnedWants = notifications.some(n => n.id === warnedWantsKey);
+      if (!alreadyWarnedWants) {
+        const excess = actualWants - idealWants;
+        const newNotif: AppNotification = {
+          id: warnedWantsKey,
+          titulo: '⚠️ Limite de Lazer Excedido',
+          mensagem: `Seus gastos de estilo de vida deste mês (R$ ${actualWants.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excederam a sua meta de ${targetWantsPct}% em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
+          data: new Date().toISOString(),
+          lida: false,
+          tipo: 'alerta'
+        };
+        setNotifications(prev => {
+          const updated = [newNotif, ...prev];
+          saveLocal('local_notifications', updated);
+          return updated;
+        });
+        showToast(`Atenção: Limite de Lazer & Desejos (${targetWantsPct}%) foi excedido no mês atual!`, 'erro');
+      }
+    }
+  };
+
   // Add transaction (despesa or receita) handler with inter-account transfer support
   const handleAddTransaction = async (
     descricao: string,
@@ -835,6 +942,7 @@ export default function App() {
       const updated = deduplicateTransactions([...prev, ...fresh]);
       saveLocal(`local_despesas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'despesa'));
       saveLocal(`local_receitas_${currentUser!.email}`, updated.filter(t => t.tipoItem === 'receita'));
+      checkBudgetThresholdsOnNewExpense(newTransaction, updated);
       return updated;
     });
 
@@ -1298,7 +1406,12 @@ export default function App() {
   useEffect(() => {
     if (recurrentRules.length === 0) return;
 
+    // Only generate recurring rules for current or future months, never retroactively into past history
+    const realNow = new Date();
+    const realYearMonth = `${realNow.getFullYear()}-${String(realNow.getMonth() + 1).padStart(2, '0')}`;
     const currentYearMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+    if (currentYearMonth < realYearMonth) return;
+
     const newTransactionsToCreate: Transaction[] = [];
     const updatedRules: RecurrentRule[] = [];
 
@@ -1580,13 +1693,13 @@ export default function App() {
     }
   }, [loggedToday]);
 
-  // Automated budget & streak rules checks
+  // Automated streak rule check for today (runs once per day if not yet logged, independent of month navigation)
   useEffect(() => {
     if (transactions.length === 0) return;
 
-    const todayStr = new Date().toISOString().split('T')[0];
+    const todayStr = getLocalDateStr();
 
-    // 1. Streak Alert (Lembrete de Registro Diário)
+    // Streak Alert (Lembrete de Registro Diário para a data de hoje)
     const alreadyStreakWarned = notifications.some(
       (n) => n.tipo === 'ofensiva' && n.data.startsWith(todayStr)
     );
@@ -1597,103 +1710,7 @@ export default function App() {
         'ofensiva'
       );
     }
-
-    // 2. Budget Thresholds Warning (Custom Budget Rules)
-    const currentMonthTrans = transactions.filter((t) => {
-      if (!t.data || isTransferTransaction(t)) return false;
-      const parts = t.data.split('-');
-      if (parts.length < 3) return false;
-      const year = parseInt(parts[0], 10);
-      const month = parseInt(parts[1], 10) - 1;
-      return month === currentMonth && year === currentYear;
-    });
-
-    const totalIncome = currentMonthTrans.filter(t => t.tipoItem === 'receita').reduce((s, t) => s + t.valor, 0);
-    const despesasMes = currentMonthTrans.filter(t => t.tipoItem === 'despesa');
-
-    const needsCategories = ['moradia', 'alimentação', 'alimentacao', 'transporte', 'saúde', 'saude', 'educação', 'educacao', 'contas'];
-    const actualNeeds = despesasMes
-      .filter((d) => needsCategories.includes(d.categoria.toLowerCase()))
-      .reduce((s, d) => s + d.valor, 0);
-      
-    const actualWants = despesasMes
-      .filter((d) => !needsCategories.includes(d.categoria.toLowerCase()))
-      .reduce((s, d) => s + d.valor, 0);
-
-    const incomeBase = totalIncome === 0 ? 5000 : totalIncome;
-    const targetNeedsPct = budgetConfig.needsPct;
-    const targetWantsPct = budgetConfig.wantsPct;
-    const idealNeeds = incomeBase * (targetNeedsPct / 100);
-    const idealWants = incomeBase * (targetWantsPct / 100);
-
-    // Check Needs
-    if (actualNeeds > idealNeeds) {
-      const warnedNeedsKey = `warn-needs-${currentYear}-${currentMonth}-${targetNeedsPct}`;
-      const alreadyWarnedNeeds = notifications.some(n => n.id === warnedNeedsKey);
-      if (!alreadyWarnedNeeds) {
-        const excess = actualNeeds - idealNeeds;
-        const newNotif: AppNotification = {
-          id: warnedNeedsKey,
-          titulo: '⚠️ Limite de Necessidades Excedido',
-          mensagem: `Seus gastos essenciais (R$ ${actualNeeds.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) ultrapassaram a sua meta de ${targetNeedsPct}% do seu orçamento em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
-          data: new Date().toISOString(),
-          lida: false,
-          tipo: 'alerta'
-        };
-        setNotifications(prev => {
-          const updated = [newNotif, ...prev];
-          saveLocal('local_notifications', updated);
-          return updated;
-        });
-        showToast(`Atenção: Limite de Necessidades (${targetNeedsPct}%) foi excedido!`, 'erro');
-      }
-    }
-
-    // Check Wants
-    if (actualWants > idealWants) {
-      const warnedWantsKey = `warn-wants-${currentYear}-${currentMonth}-${targetWantsPct}`;
-      const alreadyWarnedWants = notifications.some(n => n.id === warnedWantsKey);
-      if (!alreadyWarnedWants) {
-        const excess = actualWants - idealWants;
-        const newNotif: AppNotification = {
-          id: warnedWantsKey,
-          titulo: '⚠️ Limite de Lazer Excedido',
-          mensagem: `Seus gastos de estilo de vida (R$ ${actualWants.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}) excederam a sua meta de ${targetWantsPct}% em R$ ${excess.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
-          data: new Date().toISOString(),
-          lida: false,
-          tipo: 'alerta'
-        };
-        setNotifications(prev => {
-          const updated = [newNotif, ...prev];
-          saveLocal('local_notifications', updated);
-          return updated;
-        });
-        showToast(`Atenção: Limite de Lazer & Desejos (${targetWantsPct}%) foi excedido!`, 'erro');
-      }
-    }
-
-    // 3. Projected Balance Warning
-    if (saldoProjetadoFimDoMes < 0) {
-      const warnedBalanceKey = `warn-balance-${currentYear}-${currentMonth}`;
-      const alreadyWarnedBalance = notifications.some(n => n.id === warnedBalanceKey);
-      if (!alreadyWarnedBalance) {
-        const newNotif: AppNotification = {
-          id: warnedBalanceKey,
-          titulo: '🔴 Saldo Projetado Negativo',
-          mensagem: `Suas despesas superaram suas receitas neste mês. Sua projeção atual é de fechar o mês com saldo negativo de R$ ${Math.abs(saldoProjetadoFimDoMes).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}.`,
-          data: new Date().toISOString(),
-          lida: false,
-          tipo: 'alerta'
-        };
-        setNotifications(prev => {
-          const updated = [newNotif, ...prev];
-          saveLocal('local_notifications', updated);
-          return updated;
-        });
-        showToast('Atenção: Seu saldo projetado está negativo para este mês!', 'erro');
-      }
-    }
-  }, [transactions, currentMonth, currentYear, loggedToday, saldoProjetadoFimDoMes]);
+  }, [loggedToday, transactions.length]);
 
   // Dreams overall progress ratio compared to real accumulative total balance
   const totalDreamCost = projects.reduce((sum, p) => sum + p.valor, 0);
@@ -2956,7 +2973,18 @@ export default function App() {
                 diaVencimento: tipo === 'credito' ? diaVencimento : undefined
               };
 
-              setAccounts(prev => [...prev, newAcc]);
+              setAccounts(prev => {
+                const updated = [...prev, newAcc];
+                saveLocal('local_bank_accounts', updated);
+                return updated;
+              });
+
+              if (firebaseUser) {
+                saveAccountToFirestore(firebaseUser.uid, newAcc).catch(err => {
+                  console.warn('Error saving new account to Firestore:', err);
+                });
+              }
+
               setIsAddAccountModalOpen(false);
               showToast(`Conta "${nome}" cadastrada com sucesso!`, 'sucesso');
             }} className="space-y-3.5">
@@ -3130,9 +3158,10 @@ export default function App() {
 
               if (!nome.trim()) return;
 
+              let updatedAcc: BankAccount | null = null;
               const updatedAccounts = accounts.map((acc) => {
                 if (acc.id === editingAccount.id) {
-                  return {
+                  updatedAcc = {
                     ...acc,
                     nome: nome.trim(),
                     tipo,
@@ -3142,11 +3171,20 @@ export default function App() {
                     diaFechamento: tipo === 'credito' ? diaFechamento : undefined,
                     diaVencimento: tipo === 'credito' ? diaVencimento : undefined,
                   };
+                  return updatedAcc;
                 }
                 return acc;
               });
 
               setAccounts(updatedAccounts);
+              saveLocal('local_bank_accounts', updatedAccounts);
+
+              if (firebaseUser && updatedAcc) {
+                saveAccountToFirestore(firebaseUser.uid, updatedAcc).catch(err => {
+                  console.warn('Error saving updated account to Firestore:', err);
+                });
+              }
+
               setEditingAccount(null);
               showToast(`Conta "${nome}" atualizada com sucesso!`, 'sucesso');
             }} className="space-y-3.5">
