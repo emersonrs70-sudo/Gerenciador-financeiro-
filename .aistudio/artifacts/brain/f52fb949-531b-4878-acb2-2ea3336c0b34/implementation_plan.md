@@ -1,81 +1,106 @@
-# Saldo Cronológico por Conta e Ajuste Responsivo do Histórico Mobile
+# Remoção Completa da Integração com MacroDroid e Notificações Bancárias
 
-Este plano detalha as melhorias no histórico de transações para calcular e exibir o saldo específico da respectiva conta após cada lançamento (evitando o acúmulo genérico) e corrigir o transbordo das bordas do card em telas mobile.
+Plano estruturado para remover em definitivo do sistema toda a lógica, interface, endpoints de webhook, funções de parser e coleções no Firestore associadas ao aplicativo MacroDroid e ao fluxo de captura de notificações móveis.
 
-## User Review & Critical Decisions
+---
+
+### Decisões do Usuário & Confirmações
 
 > [!IMPORTANT]
-> **Decisão sobre a exibição de saldo por lançamento**: 
-> - Cada transação pertence a uma conta específica (`item.accountId`). O sistema agora mantém o extrato cronológico individualizado de cada conta bancária a partir de seu `saldoInicial`, garantindo que uma transação da Conta A exiba o saldo da Conta A imediatamente após aquela transação (ex: R$ 100 inicial + R$ 10 Pix = R$ 110 exibido logo abaixo de +R$ 10,00).
-> - Para cartões de crédito, será exibida a fatura acumulada do cartão correspondente após o lançamento.
-> - Na visualização mobile do Histórico Geral, a barra de busca e o seletor de categorias serão ajustados com `w-full min-w-0` e layout flex-col responsivo para assegurar contenção estrita dentro das margens do card.
+> - **Escopo Confirmado**: Remoção integral de todo o subsistema de captura e webhook (UI, parser, rotas do servidor Express e endpoints).
+> - **Limpeza de Dados**: Desativação e exclusão das regras e estruturas das coleções de buffer de notificações (`incoming_notifications` e `pending_suggestions`), além da limpeza do armazenamento local (`localStorage`).
+> - **Preservação**: O extrato de transações (`transactions`), as contas (`accounts`), os projetos (`projects`) e as metas orçamentárias (`budgetConfig`) permanecem 100% intactos e funcionais.
 
 ---
 
-## 1. Overview & Core Concept
+## 1. Visão Geral & Escopo da Remoção
 
-- **O que faz**:
-  1. No Extrato do Período e no Histórico Geral (tanto no mobile quanto no desktop), abaixo do valor da transação (+ R$ X ou - R$ Y), exibe o saldo exato que aquela conta passou a ter imediatamente após a execução do lançamento.
-  2. Redimensiona e ajusta os limites do Histórico Geral em smartphones, eliminando o estouro horizontal que ultrapassava as bordas do card contenedor.
-- **Público-alvo**: Usuários que controlam múltiplas contas bancárias e precisam conferir o saldo resultante de cada movimentação como em um extrato bancário oficial.
-- **Principal valor**: Rastreabilidade precisa de cada movimentação sem inconsistências de saldos consolidados misturados e usabilidade mobile perfeita sem rolagem lateral indesejada.
+O FintechCore possuía um fluxo experimental que conectava um aplicativo Android (MacroDroid) via webhook HTTP ou gravação direta no Firestore para capturar notificações de push bancárias (Pix, compras no cartão) e transformá-las em sugestões pendentes de aprovação.
 
----
-
-## 2. User Experience & Visual Design
-
-- **Exibição do Saldo por Lançamento**:
-  - No valor da transação:
-    - Linha superior: Valor do lançamento em negrito (`+ R$ 10,00` em verde ou `- R$ 45,00` em vermelho).
-    - Linha inferior: Saldo resultante daquela conta em tipografia mono discreta (`Saldo: R$ 110,00` ou para cartões `Fatura: R$ 145,00`).
-  - No modo **Consolidado**, o saldo exibido abaixo é o saldo da **conta do lançamento** (ex: se o Pix foi no Santander, exibe o saldo do Santander naquele instante; se o almoço foi no Nubank, exibe o saldo do Nubank naquele instante).
-- **Correção da Interface Mobile**:
-  - No Histórico Geral em telas pequenas (`sm` e menores), a barra de pesquisa (`Search`) e o filtro de categoria (`Select`) passam a ocupar `w-full` empilhados, sem restrições de `min-w-[180px]` que forçavam a expansão da largura da tela.
-  - A coluna do container pai em `App.tsx` recebe `min-w-0 max-w-full overflow-hidden`, eliminando o overflow de grid nativo do CSS.
-  - As listas com scroll em `TransactionTable.tsx` recebem contenção estrita (`w-full max-w-full overflow-x-hidden`).
-
----
-
-## 3. Key Product Decisions & Trade-Offs
-
-- **Cálculo por Conta vs. Consolidado Linear**:
-  - *Abordagem escolhida*: Calcular cronologicamente (`data` + `created_at` / `id`) a timeline individual de cada conta bancária a partir de seu `saldoInicial`.
-  - *Motivo*: Atende diretamente ao requisito de que a Conta A com 100 ao receber 10 mostre 110, mesmo se houver transações de outras contas intercaladas no mesmo dia.
-- **Contenção CSS Grid no Mobile**:
-  - *Abordagem escolhida*: Aplicar `min-w-0` no grid item pai (`lg:col-span-8`) e `flex-col sm:flex-row` no cabeçalho do Histórico Geral.
-  - *Motivo*: No padrão CSS Grid, os itens possuem `min-width: auto` por padrão; qualquer elemento interno com largura mínima rígida faz a coluna expandir além da viewport mobile.
+A remoção eliminará:
+1. **Componentes e Telas de UI**:
+   - `MacroDroidModal.tsx`: modal com guia de configuração, passo a passo no Android e webhook URL.
+   - `BankNotificationBanner.tsx`: banner fixo no topo do dashboard que exibia sugestões pendentes capturadas.
+   - `AdjustSuggestionModal.tsx`: modal para editar descrição, parcelas e categoria da notificação antes de aprovar.
+   - Botão e gatilho do MacroDroid no cabeçalho desktop (`App.tsx`) e no menu de ações mobile (`MobileHeaderMenu.tsx`).
+2. **Servidor Backend (`server.ts`)**:
+   - Rotas de webhook: `POST /api/webhook/bank-notification`, `GET /api/webhook/bank-notification`, `GET /api/webhook/status` e `GET /api/webhook/pending`.
+   - Buffer em memória `pendingWebhookNotifications`.
+3. **Bibliotecas e Tipos Frontend**:
+   - `src/lib/notificationParser.ts`: parser regex de SMS e notificações bancárias.
+   - Tipo `PendingSuggestion` em `src/types.ts`.
+   - Listeners e funções de persistência de sugestões em `src/lib/dataSync.ts`.
+4. **Segurança e Nuvem (Firestore)**:
+   - Coleções `incoming_notifications` e `users/{userId}/pending_suggestions` em `firestore.rules` e `firebase-blueprint.json`.
+   - Limpeza do cache local (`fintech_pending_suggestions`).
 
 ---
 
-## 4. Technical Architecture & Data Strategy
+## 2. Experiência do Usuário (UX) Pós-Remoção
+
+- **Interface Mais Leve e Limpa**:
+  - O cabeçalho mobile (`MobileHeaderMenu`) perde o item "Captura Bancária (MacroDroid)", ficando focado exclusivamente em ações essenciais (Notificações, Áudio JARVIS, Modo Escuro e Exportação).
+  - No desktop, o ícone de sincronização de notificações bancárias é removido do cabeçalho, deixando a barra superior despoluída.
+  - O dashboard deixa de exibir o banner de sugestões pendentes, mantendo foco direto nos cartões de métricas consolidados e no extrato financeiro.
+- **Fluxo de Lançamentos Preservado**:
+  - Lançamento manual (Formulário rápido), importação de extrato bancário em PDF e lançamentos fixos recorrentes continuam funcionando perfeitamente.
+
+---
+
+## 3. Arquitetura e Limpeza Técnica
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│                    TransactionTable                          │
-│                                                              │
-│  1. Agrupamento cronológico por accountId:                   │
-│     accounts.forEach(acc => {                                │
-│       let running = acc.saldoInicial;                        │
-│       txsOfAccount.forEach(tx => {                           │
-│         running += (tx.tipoItem === 'receita' ? +val : -val);│
-│         accountTransactionBalances[tx.id] = running;         │
-│       });                                                    │
-│     });                                                      │
-│                                                              │
-│  2. Renderização nos cards e tabelas:                        │
-│     ┌────────────────────────────────────────────────────┐   │
-│     │ Descrição Transação                     + R$ 10,00 │   │
-│     │ Categoria · Conta                   Saldo: R$ 110  │   │
-│     └────────────────────────────────────────────────────┘   │
-│                                                              │
-│  3. Contenção Mobile (w-full, min-w-0, flex-col sm:flex-row) │
-└──────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────┐
+│                      FintechCore                       │
+├────────────────────────────────────────────────────────┤
+│ REMOVIDO:                                              │
+│  ✖ MacroDroidModal.tsx                                 │
+│  ✖ BankNotificationBanner.tsx                          │
+│  ✖ AdjustSuggestionModal.tsx                           │
+│  ✖ notificationParser.ts                               │
+│  ✖ server.ts: /api/webhook/*                           │
+│  ✖ firestore.rules: incoming_notifications             │
+│  ✖ firestore.rules: pending_suggestions                │
+│                                                        │
+│ MANTIDO:                                               │
+│  ✔ Dashboard Financeiro (Métricas + Subpainéis)       │
+│  ✔ Extrato & Lançamento de Transações (Manual e PDF)   │
+│  ✔ Sincronização em Nuvem (Firebase Firestore + Auth)  │
+│  ✔ Gerenciador de Contas, Cartões e Fundo Protegido    │
+│  ✔ Assistente por Voz JARVIS & Inteligência Orçamentária│
+└────────────────────────────────────────────────────────┘
 ```
 
-- **Mapeamento de Estado e Arquivos Impactados**:
-  - `src/components/TransactionTable.tsx`:
-    - Atualizar a lógica de `transactionBalances` para calcular o saldo cronológico de cada conta individualmente a partir de `acc.saldoInicial`.
-    - Exibir o saldo resultante no Histórico Geral (mobile e desktop) e no Extrato.
-    - Atualizar classes dos inputs da aba `historico` para `w-full min-w-0` e ajustar o container mobile para impedir transbordo.
-  - `src/App.tsx`:
-    - Adicionar `min-w-0 max-w-full overflow-hidden` no container da coluna da tabela de transações.
+### Detalhamento das Alterações:
+
+1. **Remoção de Arquivos**:
+   - `src/components/MacroDroidModal.tsx`
+   - `src/components/BankNotificationBanner.tsx`
+   - `src/components/AdjustSuggestionModal.tsx`
+   - `src/lib/notificationParser.ts`
+2. **Atualização em `src/components/MobileHeaderMenu.tsx`**:
+   - Remover `onOpenMacroDroid` das props e da interface `MobileHeaderMenuProps`.
+   - Remover o botão correspondente do menu dropdown.
+3. **Atualização em `server.ts`**:
+   - Remover as rotas `/api/webhook/*` e o array de notificações pendentes.
+   - Manter `/api/health` e o middleware de dev do Vite intactos.
+4. **Atualização em `src/lib/dataSync.ts`**:
+   - Remover `subscribeToIncomingNotifications`, `savePendingSuggestionToFirestore`, `updatePendingSuggestionStatusInFirestore` e `deletePendingSuggestionFromFirestore`.
+   - Remover `onPendingSuggestions` e o listener `unsubPendingSuggestions` em `subscribeToUserFinance`.
+5. **Atualização em `src/types.ts`**:
+   - Remover a interface `PendingSuggestion`.
+6. **Atualização em `src/App.tsx`**:
+   - Remover imports dos 3 componentes e do parser.
+   - Remover estados `isMacroDroidModalOpen`, `pendingSuggestions` e `adjustingSuggestion`.
+   - Remover polling `/api/webhook/pending` e listener `subscribeToIncomingNotifications`.
+   - Remover handlers `handleApproveSuggestion`, `handleEditSuggestion` e `handleDismissSuggestion`.
+   - Remover botão do MacroDroid no cabeçalho desktop e prop no `MobileHeaderMenu`.
+   - Remover tags JSX `<MacroDroidModal>`, `<BankNotificationBanner>` e `<AdjustSuggestionModal>`.
+   - Adicionar rotina única para limpar chave `'fintech_pending_suggestions'` do `localStorage`.
+7. **Atualização em `firestore.rules` & `firebase-blueprint.json`**:
+   - Remover regras e esquemas de `incoming_notifications` e `pending_suggestions`.
+   - Re-implantar as regras atualizadas no Firebase via `deploy_firebase`.
+8. **Verificação & Testes**:
+   - Executar validação de tipos TypeScript (`tsc --noEmit`).
+   - Compilar aplicação (`compile_applet`).
+   - Verificar saúde do servidor (`/api/health`).

@@ -11,8 +11,6 @@ interface MobileHeaderMenuProps {
   notifications: AppNotification[];
   unreadNotificationsCount: number;
   onOpenNotifications: () => void;
-  pendingSuggestionsCount: number;
-  onOpenMacroDroid: () => void;
   isDarkMode: boolean;
   onToggleTheme: () => void;
   streak: number;
@@ -25,8 +23,6 @@ export const MobileHeaderMenu: React.FC<MobileHeaderMenuProps> = ({
   notifications,
   unreadNotificationsCount,
   onOpenNotifications,
-  pendingSuggestionsCount,
-  onOpenMacroDroid,
   isDarkMode,
   onToggleTheme,
   streak,
@@ -58,7 +54,7 @@ export const MobileHeaderMenu: React.FC<MobileHeaderMenuProps> = ({
     };
   }, [isOpen]);
 
-  const hasAlertBadge = unreadNotificationsCount > 0 || pendingSuggestionsCount > 0;
+  const hasAlertBadge = unreadNotificationsCount > 0;
 
   const handleToggleAudio = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -155,37 +151,7 @@ export const MobileHeaderMenu: React.FC<MobileHeaderMenuProps> = ({
                   )}
                 </button>
 
-                {/* 2. Captura Bancária MacroDroid */}
-                <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    onOpenMacroDroid();
-                  }}
-                  className="w-full flex items-center justify-between p-2.5 rounded-xl hover:bg-zinc-100 dark:hover:bg-[#252530] transition-colors cursor-pointer text-left"
-                >
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/10 text-amber-500 flex items-center justify-center shrink-0">
-                      <Zap className="w-4 h-4" />
-                    </div>
-                    <div>
-                      <p className="text-xs font-bold text-zinc-900 dark:text-[#DDD5D0] leading-tight">
-                        Captura Bancária (MacroDroid)
-                      </p>
-                      <p className="text-[10px] text-zinc-500 dark:text-[#988E96]">
-                        Pix e cartões detectados
-                      </p>
-                    </div>
-                  </div>
-                  {pendingSuggestionsCount > 0 ? (
-                    <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-rose-500 text-white animate-bounce">
-                      {pendingSuggestionsCount} pendentes
-                    </span>
-                  ) : (
-                    <ChevronRight className="w-4 h-4 text-zinc-400" />
-                  )}
-                </button>
-
-                {/* 3. Efeitos Sci-Fi & Voz JARVIS */}
+                {/* 2. Efeitos Sci-Fi & Voz JARVIS */}
                 <div className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-50/70 dark:bg-[#252530]/50 border border-zinc-200/60 dark:border-[#4C4E5D]/40">
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${

@@ -2,7 +2,7 @@ import {
   collection, doc, setDoc, deleteDoc, onSnapshot, getDocs, getDoc, writeBatch
 } from 'firebase/firestore';
 import { db, auth, handleFirestoreError, OperationType, getLocal, saveLocal } from './firebase';
-import { Transaction, Project, BankAccount, RecurrentRule, PendingSuggestion } from '../types';
+import { Transaction, Project, BankAccount, RecurrentRule } from '../types';
 
 export interface SyncDataState {
   transactions: Transaction[];
@@ -173,7 +173,6 @@ export function subscribeToUserFinance(
     onAccounts: (items: BankAccount[]) => void;
     onRecurrentRules?: (items: RecurrentRule[]) => void;
     onCategories?: (despesas: string[], receitas: string[]) => void;
-    onPendingSuggestions?: (items: PendingSuggestion[]) => void;
     onError: (err: any) => void;
   }
 ): () => void {
@@ -304,48 +303,12 @@ export function subscribeToUserFinance(
     }
   );
 
-  const unsubSuggestions = onSnapshot(
-    collection(db, `users/${userId}/pending_suggestions`),
-    (snapshot) => {
-      const list: PendingSuggestion[] = [];
-      snapshot.forEach((d) => {
-        const data = d.data();
-        if (data.status === 'pendente') {
-          list.push({
-            id: d.id,
-            rawText: data.rawText || '',
-            banco: data.banco || 'Banco',
-            descricao: data.descricao || 'Lançamento',
-            valor: Number(data.valor) || 0,
-            tipoItem: data.tipoItem === 'receita' ? 'receita' : 'despesa',
-            categoria: data.categoria || 'Outros',
-            accountId: data.accountId || 'santander',
-            data: data.data || new Date().toISOString().split('T')[0],
-            status: data.status,
-            userId: data.userId,
-            createdAt: data.createdAt || new Date().toISOString()
-          });
-        }
-      });
-      // Sort newest first
-      list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-      if (callbacks.onPendingSuggestions) {
-        callbacks.onPendingSuggestions(list);
-      }
-    },
-    (err) => {
-      callbacks.onError(err);
-      handleFirestoreError(err, OperationType.LIST, `users/${userId}/pending_suggestions`);
-    }
-  );
-
   return () => {
     unsubTransactions();
     unsubProjects();
     unsubAccounts();
     unsubRecurrentRules();
     unsubCategories();
-    unsubSuggestions();
   };
 }
 
@@ -516,92 +479,6 @@ export async function deleteCategoryFromFirestore(userId: string, nome: string, 
     await deleteDoc(doc(db, `users/${userId}/categories`, safeId));
   } catch (err) {
     handleFirestoreError(err, OperationType.DELETE, path);
-  }
-}
-
-export async function savePendingSuggestionToFirestore(userId: string, item: PendingSuggestion): Promise<void> {
-  const path = `users/${userId}/pending_suggestions/${item.id}`;
-  try {
-    await setDoc(doc(db, `users/${userId}/pending_suggestions`, item.id), {
-      id: item.id,
-      rawText: item.rawText,
-      banco: item.banco,
-      descricao: item.descricao,
-      valor: item.valor,
-      tipoItem: item.tipoItem,
-      categoria: item.categoria,
-      accountId: item.accountId,
-      data: item.data,
-      status: item.status,
-      userId: userId,
-      createdAt: item.createdAt || new Date().toISOString()
-    });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.WRITE, path);
-  }
-}
-
-export async function updatePendingSuggestionStatusInFirestore(
-  userId: string,
-  suggestionId: string,
-  status: 'aprovada' | 'descartada'
-): Promise<void> {
-  const path = `users/${userId}/pending_suggestions/${suggestionId}`;
-  try {
-    await setDoc(doc(db, `users/${userId}/pending_suggestions`, suggestionId), {
-      status
-    }, { merge: true });
-  } catch (err) {
-    handleFirestoreError(err, OperationType.UPDATE, path);
-  }
-}
-
-export async function deletePendingSuggestionFromFirestore(userId: string, suggestionId: string): Promise<void> {
-  const path = `users/${userId}/pending_suggestions/${suggestionId}`;
-  try {
-    await deleteDoc(doc(db, `users/${userId}/pending_suggestions`, suggestionId));
-  } catch (err) {
-    handleFirestoreError(err, OperationType.DELETE, path);
-  }
-}
-
-/**
- * Real-time listener for incoming bank notifications from mobile MacroDroid directly via Firestore.
- * Works seamlessly on static GitHub Pages, local dev, or anywhere without an Express server.
- */
-export function subscribeToIncomingNotifications(
-  onNotification: (notif: { id: string; text: string; title?: string; app?: string }) => void
-): () => void {
-  try {
-    const notifsCol = collection(db, 'incoming_notifications');
-    const unsubscribe = onSnapshot(notifsCol, (snapshot) => {
-      snapshot.docChanges().forEach((change) => {
-        if (change.type === 'added') {
-          const data = change.doc.data();
-          const rawText = data?.text || data?.mensagem || data?.conteudo || data?.body || data?.not_text;
-          const rawTitle = data?.title || data?.titulo || data?.not_title;
-          const rawApp = data?.app || data?.package || data?.pacote;
-
-          if (rawText && typeof rawText === 'string' && rawText.trim().length > 0) {
-            console.log(`[Notification Listener] Documento recebido do Firestore: "${rawText.slice(0, 50)}..."`);
-            onNotification({
-              id: change.doc.id,
-              text: rawText.trim(),
-              title: rawTitle ? String(rawTitle).trim() : undefined,
-              app: rawApp ? String(rawApp).trim() : undefined
-            });
-            // Delete from incoming buffer so it doesn't process multiple times
-            deleteDoc(doc(db, 'incoming_notifications', change.doc.id)).catch(() => {});
-          }
-        }
-      });
-    }, (err) => {
-      console.warn('Incoming notifications listener notice:', err);
-    });
-    return unsubscribe;
-  } catch (err) {
-    console.warn('Failed to subscribe to incoming notifications:', err);
-    return () => {};
   }
 }
 

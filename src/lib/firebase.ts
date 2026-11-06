@@ -1,7 +1,7 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import {
-  getFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc,
+  initializeFirestore, doc, getDoc, getDocFromServer, setDoc, deleteDoc,
   collection, query, onSnapshot, Unsubscribe
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
@@ -9,7 +9,9 @@ import { Transaction, Project, BankAccount } from '../types';
 
 // Initialize Firebase App and Services
 export const app = initializeApp(firebaseConfig);
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+export const db = initializeFirestore(app, {
+  experimentalAutoDetectLongPolling: true
+}, firebaseConfig.firestoreDatabaseId);
 export const auth = getAuth(app);
 
 export const googleProvider = new GoogleAuthProvider();
@@ -65,10 +67,14 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
 // Validate Connection to Firestore on startup
 export async function testConnection(): Promise<boolean> {
   try {
-    await getDocFromServer(doc(db, 'test', 'connection'));
+    const testPromise = getDocFromServer(doc(db, 'test', 'connection'));
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('the client is offline or timed out')), 5000)
+    );
+    await Promise.race([testPromise, timeoutPromise]);
     return true;
   } catch (error) {
-    if (error instanceof Error && error.message.includes('the client is offline')) {
+    if (error instanceof Error && (error.message.includes('the client is offline') || error.message.includes('timed out') || error.message.includes('Could not reach Cloud Firestore'))) {
       console.warn('Firestore offline:', error.message);
       return false;
     }

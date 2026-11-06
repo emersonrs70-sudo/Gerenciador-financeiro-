@@ -11,22 +11,6 @@ service cloud.firestore {
       allow get: if true;
     }
 
-    function isValidIncomingNotification(data) {
-      return (
-        (('text' in data) && data.text is string && data.text.size() > 0 && data.text.size() <= 2000) ||
-        (('mensagem' in data) && data.mensagem is string && data.mensagem.size() > 0 && data.mensagem.size() <= 2000) ||
-        (('conteudo' in data) && data.conteudo is string && data.conteudo.size() > 0 && data.conteudo.size() <= 2000) ||
-        (('body' in data) && data.body is string && data.body.size() > 0 && data.body.size() <= 2000) ||
-        (('not_text' in data) && data.not_text is string && data.not_text.size() > 0 && data.not_text.size() <= 2000)
-      );
-    }
-
-    // Direct buffer for mobile bank notifications (MacroDroid / Tasker / Webhook)
-    match /incoming_notifications/{notifId} {
-      allow create: if isValidIncomingNotification(incoming());
-      allow get, list, delete: if true;
-    }
-
     function isValidId(id) {
       return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
     }
@@ -91,14 +75,6 @@ service cloud.firestore {
         && (!('userId' in data) || data.userId == userId);
     }
 
-    function isValidPendingSuggestion(data, userId) {
-      return data.descricao is string && data.descricao.size() > 0 && data.descricao.size() <= 250
-        && data.valor is number
-        && (data.tipoItem == 'despesa' || data.tipoItem == 'receita')
-        && (data.status == 'pendente' || data.status == 'aprovada' || data.status == 'descartada')
-        && (!('userId' in data) || data.userId == userId);
-    }
-
     function isValidBudgetConfig(data, userId) {
       return data.needsPct is number && data.needsPct >= 0 && data.needsPct <= 100
         && data.wantsPct is number && data.wantsPct >= 0 && data.wantsPct <= 100
@@ -143,13 +119,6 @@ service cloud.firestore {
         allow create: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
         allow update: if isOwner(userId) && isValidId(ruleId) && isValidRecurrentRule(incoming(), userId);
         allow delete: if isOwner(userId) && isValidId(ruleId);
-      }
-
-      match /pending_suggestions/{suggestionId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
-        allow update: if isOwner(userId) && isValidId(suggestionId) && isValidPendingSuggestion(incoming(), userId);
-        allow delete: if isOwner(userId) && isValidId(suggestionId);
       }
 
       match /preferences/{prefId} {

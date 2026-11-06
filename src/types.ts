@@ -171,23 +171,6 @@ export interface AppNotification {
   tipo: 'alerta' | 'ofensiva' | 'sucesso' | 'info';
 }
 
-export interface PendingSuggestion {
-  id: string;
-  rawText: string;
-  banco: string;
-  descricao: string;
-  valor: number;
-  tipoItem: 'despesa' | 'receita';
-  categoria: string;
-  accountId: string;
-  data: string; // YYYY-MM-DD
-  status: 'pendente' | 'aprovada' | 'descartada';
-  userId?: string;
-  createdAt: string;
-  parcelas?: number;
-  valorTotal?: number;
-}
-
 export function safeRandomUUID(): string {
   if (typeof window !== 'undefined' && window.crypto && typeof window.crypto.randomUUID === 'function') {
     return window.crypto.randomUUID();

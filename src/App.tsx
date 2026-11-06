@@ -8,7 +8,7 @@ import {
   Layers, CheckCircle2, ChevronDown, Zap, MoreVertical, ShieldCheck
 } from 'lucide-react';
 import {
-  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, PendingSuggestion, BANK_COLOR_OPTIONS, BudgetRuleConfig, DEFAULT_BUDGET_CONFIG, isTransferTransaction
+  Transaction, Project, SubPainelType, ExtratoFilter, AppNotification, BankAccount, safeRandomUUID, RecurrentRule, getBillMonthForDate, getInstallmentBillMonth, getInstallmentTransactionDate, BANK_COLOR_OPTIONS, BudgetRuleConfig, DEFAULT_BUDGET_CONFIG, isTransferTransaction
 } from './types';
 import {
   auth, db, testConnection, loginWithGoogle, logoutUser,
@@ -22,8 +22,7 @@ import {
   addProjectToFirestore, deleteProjectFromFirestore,
   saveRecurrentRuleToFirestore, deleteRecurrentRuleFromFirestore,
   addCategoryToFirestore, deleteCategoryFromFirestore,
-  savePendingSuggestionToFirestore, updatePendingSuggestionStatusInFirestore, deletePendingSuggestionFromFirestore,
-  subscribeToIncomingNotifications, saveBudgetConfigToFirestore, getBudgetConfigFromFirestore,
+  saveBudgetConfigToFirestore, getBudgetConfigFromFirestore,
   saveAccountToFirestore, deleteAccountFromFirestore
 } from './lib/dataSync';
 import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
@@ -43,12 +42,8 @@ import { CreditCardBills } from './components/CreditCardBills';
 import { ImportStatementModal } from './components/ImportStatementModal';
 import { FirebaseDomainModal } from './components/FirebaseDomainModal';
 import { ManageRecurrentModal } from './components/ManageRecurrentModal';
-import { BankNotificationBanner } from './components/BankNotificationBanner';
-import { MacroDroidModal } from './components/MacroDroidModal';
-import { AdjustSuggestionModal } from './components/AdjustSuggestionModal';
 import { BudgetGoalSelector } from './components/BudgetGoalSelector';
 import { MobileHeaderMenu } from './components/MobileHeaderMenu';
-import { createPendingSuggestionFromNotification } from './lib/notificationParser';
 
 interface Toast {
   id: string;
@@ -199,12 +194,10 @@ export default function App() {
   });
   const [isManageRecurrentModalOpen, setIsManageRecurrentModalOpen] = useState<boolean>(false);
 
-  // Bank notifications pending suggestions (MacroDroid integration)
-  const [pendingSuggestions, setPendingSuggestions] = useState<PendingSuggestion[]>(() => {
-    return getLocal<PendingSuggestion[]>('fintech_pending_suggestions', []);
-  });
-  const [isMacroDroidModalOpen, setIsMacroDroidModalOpen] = useState<boolean>(false);
-  const [adjustingSuggestion, setAdjustingSuggestion] = useState<PendingSuggestion | null>(null);
+  // Clean up legacy pending suggestions storage
+  useEffect(() => {
+    localStorage.removeItem('fintech_pending_suggestions');
+  }, []);
 
   const handleDeleteAccount = (id: string) => {
     if (accounts.length <= 1) {
@@ -544,10 +537,6 @@ export default function App() {
           saveLocal(`local_categorias_receita_${currentUser.email}`, mergedReceitas);
         }
       },
-      onPendingSuggestions: (cloudSuggestions) => {
-        setPendingSuggestions(cloudSuggestions);
-        saveLocal('fintech_pending_suggestions', cloudSuggestions);
-      },
       onError: (err) => {
         console.warn('Real-time sync notice:', err);
       }
@@ -555,60 +544,6 @@ export default function App() {
 
     return () => unsubscribe();
   }, [firebaseUser, currentUser.email]);
-
-  // Process incoming notification text from any source (Firestore cloud or local webhook)
-  const processIncomingNotificationText = (text: string, title?: string) => {
-    if (!text || text.trim().length === 0) return;
-    const suggestion = createPendingSuggestionFromNotification(text, accounts, currentUser.email, title);
-    if (!suggestion) return;
-
-    setPendingSuggestions((prev) => {
-      // Avoid duplicate suggestion
-      if (prev.some(p => p.id === suggestion.id || (p.rawText === suggestion.rawText && Math.abs(new Date(p.createdAt).getTime() - new Date(suggestion.createdAt).getTime()) < 10000))) {
-        return prev;
-      }
-      const updated = [suggestion, ...prev];
-      saveLocal('fintech_pending_suggestions', updated);
-      return updated;
-    });
-
-    if (firebaseUser) {
-      savePendingSuggestionToFirestore(firebaseUser.uid, suggestion).catch(() => {});
-    }
-
-    // Vocal & Audio alert by JARVIS
-    jarvisAudio.playSound('wake');
-    jarvisAudio.speak(`Senhor, identifiquei uma notificação do ${suggestion.banco}. ${suggestion.descricao}, no valor de ${suggestion.valor.toFixed(2)} reais. Deseja registrar?`);
-    showToast(`Transação detectada: ${suggestion.descricao} (${formatCurrency(suggestion.valor)})`, 'info');
-  };
-
-  // 1. Direct cloud real-time listener via Firebase Firestore (Works everywhere including GitHub Pages)
-  useEffect(() => {
-    const unsubscribe = subscribeToIncomingNotifications((notif) => {
-      processIncomingNotificationText(notif.text, notif.title);
-    });
-    return () => unsubscribe();
-  }, [accounts, currentUser.email, firebaseUser]);
-
-  // 2. Secondary polling for local Express dev server
-  useEffect(() => {
-    const pollInterval = setInterval(async () => {
-      try {
-        const res = await fetch('/api/webhook/pending');
-        if (!res.ok) return;
-        const data = await res.json();
-        if (data.success && Array.isArray(data.notifications) && data.notifications.length > 0) {
-          for (const rawItem of data.notifications) {
-            processIncomingNotificationText(rawItem.text, rawItem.title);
-          }
-        }
-      } catch {
-        // Ignore network polling glitches
-      }
-    }, 4000);
-
-    return () => clearInterval(pollInterval);
-  }, [accounts, currentUser.email, firebaseUser]);
 
   const [domainModalError, setDomainModalError] = useState<{ isOpen: boolean; code?: string; message?: string }>({
     isOpen: false
@@ -961,138 +896,6 @@ export default function App() {
     // JARVIS vocal and sound confirmation
     jarvisAudio.announceTransactionAdded(tipoItem, valor, descricao);
   };
-
-  // Bank notifications suggestions handlers (MacroDroid)
-  const handleApproveSuggestion = async (suggestion: PendingSuggestion) => {
-    const acc = accounts.find(a => a.id === suggestion.accountId);
-    const closingDay = acc?.diaFechamento || 5;
-
-    if (suggestion.parcelas && suggestion.parcelas > 1) {
-      const count = suggestion.parcelas;
-      const valorParcela = Math.round((suggestion.valor / count) * 100) / 100;
-      for (let i = 0; i < count; i++) {
-        const installmentDate = getInstallmentTransactionDate(suggestion.data, i);
-        const installmentFaturaMes = getInstallmentBillMonth(suggestion.data, i, closingDay);
-        const installmentDesc = `${suggestion.descricao} (${i + 1}/${count})`;
-        await handleAddTransaction(
-          installmentDesc,
-          valorParcela,
-          installmentDate,
-          suggestion.categoria,
-          suggestion.tipoItem,
-          suggestion.accountId,
-          installmentFaturaMes
-        );
-      }
-    } else {
-      await handleAddTransaction(
-        suggestion.descricao,
-        suggestion.valor,
-        suggestion.data,
-        suggestion.categoria,
-        suggestion.tipoItem,
-        suggestion.accountId
-      );
-    }
-
-    setPendingSuggestions(prev => {
-      const updated = prev.filter(p => p.id !== suggestion.id);
-      saveLocal('fintech_pending_suggestions', updated);
-      return updated;
-    });
-
-    if (firebaseUser) {
-      updatePendingSuggestionStatusInFirestore(firebaseUser.uid, suggestion.id, 'aprovada').catch(() => {});
-    }
-
-    jarvisAudio.playSound('success');
-    if (suggestion.parcelas && suggestion.parcelas > 1) {
-      jarvisAudio.speak(`Transação parcelada em ${suggestion.parcelas} vezes registrada com sucesso!`);
-      showToast(`Compra parcelada em ${suggestion.parcelas}x lançada no extrato!`, 'sucesso');
-    } else {
-      jarvisAudio.speak('Transação bancária aprovada e registrada com sucesso!');
-      showToast(`Transação de ${formatCurrency(suggestion.valor)} lançada no extrato!`, 'sucesso');
-    }
-  };
-
-  const handleEditSuggestion = (suggestion: PendingSuggestion) => {
-    setAdjustingSuggestion(suggestion);
-  };
-
-  const handleSaveAdjustedSuggestion = async (adjusted: {
-    descricao: string;
-    valor: number;
-    data: string;
-    categoria: string;
-    tipoItem: 'despesa' | 'receita';
-    accountId: string;
-    faturaMes?: string;
-    parcelas?: number;
-  }) => {
-    const acc = accounts.find(a => a.id === adjusted.accountId);
-    const closingDay = acc?.diaFechamento || 5;
-
-    if (adjusted.parcelas && adjusted.parcelas > 1) {
-      const count = adjusted.parcelas;
-      const valorParcela = Math.round((adjusted.valor / count) * 100) / 100;
-      for (let i = 0; i < count; i++) {
-        const installmentDate = getInstallmentTransactionDate(adjusted.data, i);
-        const installmentFaturaMes = getInstallmentBillMonth(adjusted.data, i, closingDay);
-        const installmentDesc = `${adjusted.descricao} (${i + 1}/${count})`;
-        await handleAddTransaction(
-          installmentDesc,
-          valorParcela,
-          installmentDate,
-          adjusted.categoria,
-          adjusted.tipoItem,
-          adjusted.accountId,
-          installmentFaturaMes
-        );
-      }
-    } else {
-      await handleAddTransaction(
-        adjusted.descricao,
-        adjusted.valor,
-        adjusted.data,
-        adjusted.categoria,
-        adjusted.tipoItem,
-        adjusted.accountId,
-        adjusted.faturaMes
-      );
-    }
-
-    if (adjustingSuggestion) {
-      setPendingSuggestions(prev => {
-        const updated = prev.filter(p => p.id !== adjustingSuggestion.id);
-        saveLocal('fintech_pending_suggestions', updated);
-        return updated;
-      });
-
-      if (firebaseUser) {
-        updatePendingSuggestionStatusInFirestore(firebaseUser.uid, adjustingSuggestion.id, 'aprovada').catch(() => {});
-      }
-    }
-
-    setAdjustingSuggestion(null);
-    jarvisAudio.playSound('success');
-    showToast(`Transação "${adjusted.descricao}" lançada no extrato!`, 'sucesso');
-  };
-
-  const handleDismissSuggestion = (suggestion: PendingSuggestion) => {
-    setPendingSuggestions(prev => {
-      const updated = prev.filter(p => p.id !== suggestion.id);
-      saveLocal('fintech_pending_suggestions', updated);
-      return updated;
-    });
-
-    if (firebaseUser) {
-      updatePendingSuggestionStatusInFirestore(firebaseUser.uid, suggestion.id, 'descartada').catch(() => {});
-    }
-
-    showToast('Notificação descartada.', 'info');
-  };
-
-
 
   // Batch add transactions from statement import
   const handleBatchAddTransactions = async (
@@ -2745,20 +2548,6 @@ export default function App() {
               {/* JARVIS Audio Controls */}
               <AudioControls />
 
-              {/* MacroDroid Bank Notification Integration Trigger */}
-              <button
-                onClick={() => setIsMacroDroidModalOpen(true)}
-                title="Integração com Notificações Bancárias (MacroDroid)"
-                className="relative p-2 bg-zinc-100 hover:bg-zinc-200/70 dark:bg-[#252530] dark:hover:bg-[#4C4E5D]/50 border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-xl cursor-pointer text-zinc-600 dark:text-[#DDD5D0] transition-colors shrink-0"
-              >
-                <Zap className="w-4 h-4 text-amber-500" />
-                {pendingSuggestions.length > 0 && (
-                  <span className="absolute -top-1 -right-1 w-4 h-4 bg-rose-500 text-white rounded-full text-[9px] font-bold flex items-center justify-center animate-bounce shadow-xs">
-                    {pendingSuggestions.length}
-                  </span>
-                )}
-              </button>
-
               {/* Streak Modal Trigger */}
               <button
                 onClick={() => {
@@ -2804,8 +2593,6 @@ export default function App() {
                 notifications={notifications}
                 unreadNotificationsCount={notifications.filter(n => !n.lida).length}
                 onOpenNotifications={() => setIsMobileNotifsOpen(true)}
-                pendingSuggestionsCount={pendingSuggestions.length}
-                onOpenMacroDroid={() => setIsMacroDroidModalOpen(true)}
                 isDarkMode={isDarkMode}
                 onToggleTheme={toggleTheme}
                 streak={streak}
@@ -2908,16 +2695,6 @@ export default function App() {
         {/* MAIN STAGE CONTENT - Viewport container with internal contained scroll */}
         <main className="flex-1 overflow-y-auto p-3 sm:p-4.5 custom-scrollbar pb-8 md:pb-4">
           <div className="max-w-7xl mx-auto space-y-3">
-            {/* Bank Notification Pending Suggestions Banner (visible globally across any tab/screen) */}
-            {pendingSuggestions.length > 0 && (
-              <BankNotificationBanner
-                suggestions={pendingSuggestions}
-                onApprove={handleApproveSuggestion}
-                onEdit={handleEditSuggestion}
-                onDismiss={handleDismissSuggestion}
-                onOpenMacroDroidModal={() => setIsMacroDroidModalOpen(true)}
-              />
-            )}
             {renderMainContent()}
           </div>
         </main>
@@ -3373,35 +3150,6 @@ export default function App() {
         onToggleRule={handleToggleRecurrentRule}
         onDeleteRule={handleDeleteRecurrentRule}
         accounts={accounts}
-      />
-
-      {/* MACRODROID BANK NOTIFICATION INTEGRATION MODAL */}
-      <MacroDroidModal
-        isOpen={isMacroDroidModalOpen}
-        onClose={() => setIsMacroDroidModalOpen(false)}
-      />
-
-      {/* ADJUST SUGGESTED BANK TRANSACTION MODAL */}
-      <AdjustSuggestionModal
-        isOpen={!!adjustingSuggestion}
-        suggestion={adjustingSuggestion}
-        onClose={() => setAdjustingSuggestion(null)}
-        onSave={handleSaveAdjustedSuggestion}
-        onDismiss={(id) => {
-          setPendingSuggestions(prev => {
-            const updated = prev.filter(p => p.id !== id);
-            saveLocal('fintech_pending_suggestions', updated);
-            return updated;
-          });
-          if (firebaseUser) {
-            updatePendingSuggestionStatusInFirestore(firebaseUser.uid, id, 'descartada').catch(() => {});
-          }
-          setAdjustingSuggestion(null);
-          showToast('Sugestão descartada.', 'info');
-        }}
-        accounts={accounts}
-        categoriasDespesa={categoriasDespesa}
-        categoriasReceita={categoriasReceita}
       />
     </div>
   );

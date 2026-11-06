@@ -1,6 +1,6 @@
 {
-  "summary":  "Plano de implementação detalhado para:\n1. Cálculo e exibição do saldo cronológico individual da conta correspondente abaixo de cada lançamento no Extrato e no Histórico Geral.\n2. Correção de transbordo e contenção de largura na visualização mobile do Histórico Geral (overflow, inputs responsivos e contenção de grid).",
-  "updatedAt":  "2026-11-01T21:58:20.601763540Z",
-  "requestFeedback":  true,
-  "userFacing":  true
+  "summary": "Plano detalhado para remoção completa de todo o código, telas, webhooks, regras do Firestore e coleções vinculadas à integração com o MacroDroid e captura de notificações bancárias.",
+  "updatedAt": "2026-11-06T22:53:01.528771993Z",
+  "requestFeedback": true,
+  "userFacing": true
 }
