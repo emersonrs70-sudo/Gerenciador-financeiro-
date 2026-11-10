@@ -2341,32 +2341,18 @@ export default function App() {
         )}
 
         {dashboardTab === 'cartoes' && (
-          <div className="space-y-6">
-            {accounts.filter(a => a.tipo === 'credito').length === 0 ? (
-              <div className="p-8 text-center bg-white dark:bg-[#32323F] border border-zinc-200/80 dark:border-[#4C4E5D]/60 rounded-2xl">
-                <CreditCard className="w-8 h-8 mx-auto text-[#988E96] mb-2" />
-                <p className="text-sm font-bold text-zinc-900 dark:text-[#DDD5D0]">Nenhum cartão de crédito cadastrado</p>
-                <p className="text-xs text-[#988E96] mt-1">Cadastre seu cartão Santander SX ou outros na barra lateral.</p>
-                <button
-                  onClick={() => setIsAddAccountModalOpen(true)}
-                  className="mt-4 px-4 py-2 bg-[#32323F] dark:bg-[#4C4E5D] text-white dark:text-[#DDD5D0] rounded-xl text-xs font-bold"
-                >
-                  Cadastrar Cartão
-                </button>
-              </div>
-            ) : (
-              accounts.filter(a => a.tipo === 'credito').map(cardAcc => (
-                <CreditCardBills
-                  key={cardAcc.id}
-                  activeAccount={cardAcc}
-                  transactions={transactions}
-                  checkingAccounts={accounts.filter(a => a.tipo !== 'credito')}
-                  onAddTransaction={handleAddTransaction}
-                  accountBalances={accountBalances}
-                />
-              ))
-            )}
-          </div>
+          <CreditCardBills
+            creditAccounts={accounts.filter(a => a.tipo === 'credito')}
+            activeAccountId={selectedAccountId}
+            transactions={transactions}
+            checkingAccounts={accounts.filter(a => a.tipo !== 'credito')}
+            onAddTransaction={handleAddTransaction}
+            accountBalances={accountBalances}
+            currentMonth={currentMonth}
+            currentYear={currentYear}
+            onOpenAddCardModal={() => setIsAddAccountModalOpen(true)}
+            onSelectAccount={setSelectedAccountId}
+          />
         )}
       </div>
     );

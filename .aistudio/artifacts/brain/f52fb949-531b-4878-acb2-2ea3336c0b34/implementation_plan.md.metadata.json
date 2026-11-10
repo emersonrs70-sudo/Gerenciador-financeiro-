@@ -1,6 +1,6 @@
 {
-  "summary":  "Plano de implementação detalhado para adicionar a linha de projeção e histórico de saldo em conta (ou fatura acumulada para cartões de crédito) com eixo Y independente e preenchimento suave no gráfico de fluxo financeiro em Gráficos & Relatórios.",
-  "updatedAt":  "2026-11-08T23:01:13.883254648Z",
+  "summary":  "Plano detalhado de reorganização da aba 'Faturas e Cartão', integrando com a régua de meses da Dashboard, seletor de cartões em abas horizontais e layout split em tela cheia sem scroll de página.",
+  "updatedAt":  "2026-11-10T12:09:22.589276043Z",
   "requestFeedback":  true,
   "userFacing":  true
 }

@@ -1,4 +1,5 @@
-import express, { Request, Response } from 'express';
+import express from 'express';
+import type { Request, Response } from 'express';
 import { createServer as createViteServer } from 'vite';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -8,7 +9,11 @@ const __dirname = path.dirname(__filename);
 
 async function startServer() {
   const app = express();
-  const PORT = Number(process.env.PORT) || 3000;
+  
+  // Dev server must always run on port 3000 as required by AI Studio control-plane-api
+  const portArgIndex = process.argv.indexOf('--port');
+  const portFromArg = portArgIndex !== -1 && process.argv[portArgIndex + 1] ? Number(process.argv[portArgIndex + 1]) : null;
+  const PORT = portFromArg || (process.env.NODE_ENV === 'production' ? (Number(process.env.PORT) || 3000) : 3000);
 
   // Basic middleware
   app.use(express.json());
@@ -22,7 +27,10 @@ async function startServer() {
   // Vite development server integration vs Production static files
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
-      server: { middlewareMode: true },
+      server: {
+        middlewareMode: true,
+        hmr: false,
+      },
       appType: 'spa',
     });
     app.use(vite.middlewares);
