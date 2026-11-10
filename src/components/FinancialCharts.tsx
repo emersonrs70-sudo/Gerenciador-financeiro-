@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer,
+  AreaChart, Area, Line, BarChart, Bar, PieChart, Pie, Cell, ResponsiveContainer,
   XAxis, YAxis, Tooltip, CartesianGrid
 } from 'recharts';
 import {
@@ -9,7 +9,7 @@ import {
   Filter, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Transaction, BankAccount, isTransferTransaction } from '../types';
+import { Transaction, BankAccount, isTransferTransaction, getBillMonthForDate } from '../types';
 import { ExpenseCalendar } from './ExpenseCalendar';
 
 interface FinancialChartsProps {
@@ -56,6 +56,10 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   const filteredByAccount = selectedAccountId && selectedAccountId !== 'consolidado'
     ? transactions.filter(t => t.accountId === selectedAccountId)
     : transactions;
+
+  const activeAccount = accounts.find(a => a.id === selectedAccountId);
+  const isCreditCard = activeAccount?.tipo === 'credito';
+  const isConsolidado = !selectedAccountId || selectedAccountId === 'consolidado';
 
   // Available categories for dropdown filter
   const { categoriasDespesaList, categoriasReceitaList } = useMemo(() => {
@@ -144,11 +148,103 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
   const filteredCategoryIsReceita = isCategoryFiltered && categoriasReceitaList.includes(fluxoCategoriaFiltro);
   const filteredCategoryIsDespesa = isCategoryFiltered && categoriasDespesaList.includes(fluxoCategoriaFiltro);
 
-  // 1. Time-series Data for AreaChart (Fluxo Financeiro)
-  const fluxoData: Array<{ lbl: string; Receita: number; Gasto: number }> = [];
+  // Helper functions for continuous balance and credit card invoice progression
+  const getInitialBalanceBefore = (cutoffDateStr: string) => {
+    if (isCreditCard && activeAccount) {
+      // Credit card bills: invoice size accumulated up to cutoffDateStr for this billing month
+      const targetBillMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+      let invoiceSoFar = 0;
+      transactions.forEach(t => {
+        if (!t.data || t.data >= cutoffDateStr) return;
+        if (t.accountId !== activeAccount.id) return;
+        const bMonth = t.faturaMes || getBillMonthForDate(t.data, activeAccount.diaFechamento || 5);
+        if (bMonth === targetBillMonth) {
+          invoiceSoFar += (t.tipoItem === 'despesa' ? t.valor : -t.valor);
+        }
+      });
+      return invoiceSoFar;
+    }
+
+    if (!isConsolidado && activeAccount) {
+      let bal = activeAccount.saldoInicial || 0;
+      transactions.forEach(t => {
+        if (!t.data || t.data >= cutoffDateStr) return;
+        if (t.accountId !== activeAccount.id) return;
+        bal += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+      });
+      return bal;
+    }
+
+    // Consolidado: sum of initial balances of all liquid accounts (tipo !== 'credito')
+    const liquidAccounts = accounts.filter(a => a.tipo !== 'credito');
+    const liquidIds = new Set(liquidAccounts.map(a => a.id));
+    let bal = liquidAccounts.reduce((sum, a) => sum + (a.saldoInicial || 0), 0);
+
+    transactions.forEach(t => {
+      if (!t.data || t.data >= cutoffDateStr) return;
+      if (t.accountId && !liquidIds.has(t.accountId)) return;
+      bal += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+    });
+    return bal;
+  };
+
+  const getNetChangeForMonth = (y: number, m: number) => {
+    let delta = 0;
+    transactions.forEach(t => {
+      if (!t.data) return;
+      const p = t.data.split('-');
+      if (p.length < 3) return;
+      if (parseInt(p[0], 10) !== y || (parseInt(p[1], 10) - 1) !== m) return;
+
+      if (isCreditCard && activeAccount) {
+        if (t.accountId !== activeAccount.id) return;
+        delta += (t.tipoItem === 'despesa' ? t.valor : -t.valor);
+      } else if (!isConsolidado && activeAccount) {
+        if (t.accountId !== activeAccount.id) return;
+        delta += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+      } else {
+        const liquidAccounts = accounts.filter(a => a.tipo !== 'credito');
+        const liquidIds = new Set(liquidAccounts.map(a => a.id));
+        if (t.accountId && !liquidIds.has(t.accountId)) return;
+        delta += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+      }
+    });
+    return delta;
+  };
+
+  const getNetChangeForDate = (dateStr: string) => {
+    let delta = 0;
+    transactions.forEach(t => {
+      if (t.data !== dateStr) return;
+
+      if (isCreditCard && activeAccount) {
+        if (t.accountId !== activeAccount.id) return;
+        const targetBillMonth = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`;
+        const bMonth = t.faturaMes || getBillMonthForDate(t.data, activeAccount.diaFechamento || 5);
+        if (bMonth === targetBillMonth) {
+          delta += (t.tipoItem === 'despesa' ? t.valor : -t.valor);
+        }
+      } else if (!isConsolidado && activeAccount) {
+        if (t.accountId !== activeAccount.id) return;
+        delta += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+      } else {
+        const liquidAccounts = accounts.filter(a => a.tipo !== 'credito');
+        const liquidIds = new Set(liquidAccounts.map(a => a.id));
+        if (t.accountId && !liquidIds.has(t.accountId)) return;
+        delta += (t.tipoItem === 'receita' ? t.valor : -t.valor);
+      }
+    });
+    return delta;
+  };
+
+  // 1. Time-series Data for AreaChart + Line (Fluxo Financeiro & Saldo/Fatura)
+  const fluxoData: Array<{ lbl: string; Receita: number; Gasto: number; Saldo: number }> = [];
 
   if (periodoFiltro === 'ano') {
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const cutoffAno = `${currentYear}-01-01`;
+    let runningBal = getInitialBalanceBefore(cutoffAno);
+
     for (let m = 0; m < 12; m++) {
       const mDespesas = filteredByAccount
         .filter(t => {
@@ -170,14 +266,36 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
 
+      let pontoSaldo = 0;
+      if (isCreditCard && activeAccount) {
+        const mBill = `${currentYear}-${String(m + 1).padStart(2, '0')}`;
+        let faturaTotal = 0;
+        transactions.forEach(t => {
+          if (t.accountId !== activeAccount.id) return;
+          const bMonth = t.faturaMes || getBillMonthForDate(t.data, activeAccount.diaFechamento || 5);
+          if (bMonth === mBill) {
+            faturaTotal += (t.tipoItem === 'despesa' ? t.valor : -t.valor);
+          }
+        });
+        pontoSaldo = faturaTotal;
+      } else {
+        runningBal += getNetChangeForMonth(currentYear, m);
+        pontoSaldo = runningBal;
+      }
+
       fluxoData.push({
         lbl: monthNames[m],
         Gasto: parseFloat(mDespesas.toFixed(2)),
-        Receita: parseFloat(mReceitas.toFixed(2))
+        Receita: parseFloat(mReceitas.toFixed(2)),
+        Saldo: parseFloat(pontoSaldo.toFixed(2))
       });
     }
   } else if (periodoFiltro === '3meses') {
     const monthNames = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+    const targetStartDate = new Date(currentYear, currentMonth - 2, 1);
+    const cutoff3m = `${targetStartDate.getFullYear()}-${String(targetStartDate.getMonth() + 1).padStart(2, '0')}-01`;
+    let runningBal = getInitialBalanceBefore(cutoff3m);
+
     for (let i = -2; i <= 0; i++) {
       const targetDate = new Date(currentYear, currentMonth + i, 1);
       const mIdx = targetDate.getMonth();
@@ -203,10 +321,28 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
 
+      let pontoSaldo = 0;
+      if (isCreditCard && activeAccount) {
+        const mBill = `${yVal}-${String(mIdx + 1).padStart(2, '0')}`;
+        let faturaTotal = 0;
+        transactions.forEach(t => {
+          if (t.accountId !== activeAccount.id) return;
+          const bMonth = t.faturaMes || getBillMonthForDate(t.data, activeAccount.diaFechamento || 5);
+          if (bMonth === mBill) {
+            faturaTotal += (t.tipoItem === 'despesa' ? t.valor : -t.valor);
+          }
+        });
+        pontoSaldo = faturaTotal;
+      } else {
+        runningBal += getNetChangeForMonth(yVal, mIdx);
+        pontoSaldo = runningBal;
+      }
+
       fluxoData.push({
         lbl: monthNames[mIdx],
         Gasto: parseFloat(mDespesas.toFixed(2)),
-        Receita: parseFloat(mReceitas.toFixed(2))
+        Receita: parseFloat(mReceitas.toFixed(2)),
+        Saldo: parseFloat(pontoSaldo.toFixed(2))
       });
     }
   } else {
@@ -214,6 +350,9 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
     const daysCount = periodoFiltro === '7dias' ? 7 : periodoFiltro === '15dias' ? 15 : new Date(currentYear, currentMonth + 1, 0).getDate();
     const startDay = periodoFiltro === 'mes' ? 1 : Math.max(1, refDate.getDate() - daysCount + 1);
     const endDay = periodoFiltro === 'mes' ? daysCount : refDate.getDate();
+
+    const firstDateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(startDay).padStart(2, '0')}`;
+    let runningBal = getInitialBalanceBefore(firstDateStr);
 
     for (let d = startDay; d <= endDay; d++) {
       const dateStr = `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
@@ -232,10 +371,13 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
         })
         .reduce((s, t) => s + t.valor, 0);
 
+      runningBal += getNetChangeForDate(dateStr);
+
       fluxoData.push({
         lbl: `${d}/${currentMonth + 1}`,
         Gasto: parseFloat(dDespesas.toFixed(2)),
-        Receita: parseFloat(dReceitas.toFixed(2))
+        Receita: parseFloat(dReceitas.toFixed(2)),
+        Saldo: parseFloat(runningBal.toFixed(2))
       });
     }
   }
@@ -557,7 +699,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
             {/* Smooth AreaChart with Debounce to prevent 60fps re-draw stalls during resize */}
             <div className="h-36 sm:h-40 xl:h-44 w-full mt-1">
               <ResponsiveContainer width="100%" height="100%" debounce={40}>
-                <AreaChart data={fluxoData} margin={{ top: 5, right: 10, left: -22, bottom: 0 }}>
+                <AreaChart data={fluxoData} margin={{ top: 8, right: 10, left: -20, bottom: 0 }}>
                   <defs>
                     <linearGradient id="colorReceita" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#10B981" stopOpacity={0.4}/>
@@ -566,6 +708,10 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     <linearGradient id="colorGasto" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="5%" stopColor="#F43F5E" stopOpacity={0.4}/>
                       <stop offset="95%" stopColor="#F43F5E" stopOpacity={0.0}/>
+                    </linearGradient>
+                    <linearGradient id="colorSaldo" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#71717A" stopOpacity={0.25}/>
+                      <stop offset="95%" stopColor="#71717A" stopOpacity={0.0}/>
                     </linearGradient>
                   </defs>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#4C4E5D" opacity={0.25} />
@@ -576,15 +722,46 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                     axisLine={{ stroke: '#E8E5DC' }}
                     tickLine={false}
                   />
+                  {/* Left Y-Axis: Receitas & Despesas */}
                   <YAxis
+                    yAxisId="left"
+                    orientation="left"
                     tick={{ fontSize: 9, fill: '#8E8E93' }}
                     stroke="#E8E5DC"
                     axisLine={false}
                     tickLine={false}
-                    tickFormatter={(v) => v >= 1000 ? `${(v/1000).toFixed(0)}k` : `${v}`}
+                    tickFormatter={(v: number) => {
+                      const sign = v < 0 ? '-' : '';
+                      const abs = Math.abs(v);
+                      if (abs >= 1000000) return `${sign}${(abs / 1000000).toFixed(1)}M`;
+                      if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(0)}k`;
+                      return `${v}`;
+                    }}
+                  />
+                  {/* Right Y-Axis: Projeção de Saldo / Fatura (Eixo Independente) */}
+                  <YAxis
+                    yAxisId="right"
+                    orientation="right"
+                    tick={{ fontSize: 9, fill: '#71717A' }}
+                    stroke="#71717A"
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(v: number) => {
+                      const sign = v < 0 ? '-' : '';
+                      const abs = Math.abs(v);
+                      if (abs >= 1000000) return `${sign}${(abs / 1000000).toFixed(1)}M`;
+                      if (abs >= 1000) return `${sign}${(abs / 1000).toFixed(0)}k`;
+                      return `${v}`;
+                    }}
                   />
                   <Tooltip
                     formatter={(val: number, name: string) => {
+                      if (name === 'Saldo') {
+                        const labelSaldo = isCreditCard ? 'Fatura do Mês' : 'Saldo em Conta';
+                        const sign = val < 0 ? '-' : '';
+                        const formatted = `${sign}R$ ${Math.abs(val).toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                        return [formatted, labelSaldo];
+                      }
                       const label = isCategoryFiltered
                         ? name === 'Gasto'
                           ? `${fluxoCategoriaFiltro} (-)`
@@ -592,7 +769,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                         : name === 'Receita'
                           ? 'Receitas (+)'
                           : 'Despesas (-)';
-                      return [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`, label];
+                      return [`R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, label];
                     }}
                     contentStyle={{
                       backgroundColor: '#1E1E26',
@@ -612,8 +789,21 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                       fontWeight: 700
                     }}
                   />
+                  {/* Linha/Área de Saldo em Conta ou Fatura do Mês (Tom de cinza com preenchimento sombreado suave abaixo e eixo Y direito independente) */}
+                  <Area
+                    yAxisId="right"
+                    type="monotone"
+                    dataKey="Saldo"
+                    name="Saldo"
+                    stroke="#71717A"
+                    strokeWidth={2}
+                    fillOpacity={1}
+                    fill="url(#colorSaldo)"
+                    activeDot={{ r: 4, fill: '#71717A', stroke: '#FFFFFF', strokeWidth: 1.5 }}
+                  />
                   {(!isCategoryFiltered || filteredCategoryIsReceita || fluxoData.some(d => d.Receita > 0)) && (
                     <Area
+                      yAxisId="left"
                       type="monotone"
                       dataKey="Receita"
                       stroke="#10B981"
@@ -624,6 +814,7 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                   )}
                   {(!isCategoryFiltered || filteredCategoryIsDespesa || fluxoData.some(d => d.Gasto > 0)) && (
                     <Area
+                      yAxisId="left"
                       type="monotone"
                       dataKey="Gasto"
                       stroke="#F43F5E"
@@ -640,10 +831,16 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
           <div className="flex items-center justify-between text-[10px] text-zinc-500 dark:text-[#988E96] border-t border-[#EAE7E0] dark:border-[#4C4E5D]/60 pt-2 mt-1">
             <div className="flex items-center gap-3">
               {isCategoryFiltered ? (
-                <span className="flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-200">
-                  <span className={`w-2 h-2 rounded-full ${filteredCategoryIsReceita ? 'bg-emerald-500' : 'bg-rose-500'}`} />
-                  {fluxoCategoriaFiltro} ({countCategoryFiltered} registros)
-                </span>
+                <>
+                  <span className="flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-200">
+                    <span className={`w-2 h-2 rounded-full ${filteredCategoryIsReceita ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+                    {fluxoCategoriaFiltro} ({countCategoryFiltered} registros)
+                  </span>
+                  <span className="flex items-center gap-1 font-medium text-zinc-600 dark:text-zinc-300">
+                    <span className="w-2.5 h-0.5 rounded-full bg-zinc-500 dark:bg-zinc-400" />
+                    {isCreditCard ? 'Fatura Cartão (Eixo Dir.)' : 'Saldo em Conta (Eixo Dir.)'}
+                  </span>
+                </>
               ) : (
                 <>
                   <span className="flex items-center gap-1 font-medium">
@@ -651,6 +848,10 @@ export const FinancialCharts: React.FC<FinancialChartsProps> = ({
                   </span>
                   <span className="flex items-center gap-1 font-medium">
                     <span className="w-2 h-2 rounded-full bg-rose-500" /> Despesas
+                  </span>
+                  <span className="flex items-center gap-1 font-medium text-zinc-600 dark:text-zinc-300">
+                    <span className="w-2.5 h-0.5 rounded-full bg-zinc-500 dark:bg-zinc-400" />
+                    {isCreditCard ? 'Fatura Cartão (Eixo Dir.)' : 'Saldo em Conta (Eixo Dir.)'}
                   </span>
                 </>
               )}

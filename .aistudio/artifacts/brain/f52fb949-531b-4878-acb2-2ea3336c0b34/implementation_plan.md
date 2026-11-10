@@ -1,106 +1,65 @@
-# Remoção Completa da Integração com MacroDroid e Notificações Bancárias
+# Plano de Implementação: Projeção de Saldo e Fatura no Gráfico de Fluxo Financeiro
 
-Plano estruturado para remover em definitivo do sistema toda a lógica, interface, endpoints de webhook, funções de parser e coleções no Firestore associadas ao aplicativo MacroDroid e ao fluxo de captura de notificações móveis.
-
----
-
-### Decisões do Usuário & Confirmações
-
-> [!IMPORTANT]
-> - **Escopo Confirmado**: Remoção integral de todo o subsistema de captura e webhook (UI, parser, rotas do servidor Express e endpoints).
-> - **Limpeza de Dados**: Desativação e exclusão das regras e estruturas das coleções de buffer de notificações (`incoming_notifications` e `pending_suggestions`), além da limpeza do armazenamento local (`localStorage`).
-> - **Preservação**: O extrato de transações (`transactions`), as contas (`accounts`), os projetos (`projects`) e as metas orçamentárias (`budgetConfig`) permanecem 100% intactos e funcionais.
+Adicionar ao gráfico de evolução temporal (em "Gráficos & Relatórios") uma série visual contínua que demonstra a evolução real do saldo da conta ao longo do período selecionado (ou a evolução da fatura mensal para contas do tipo cartão de crédito), com eixo Y independente, estilização em tons de cinza e persistência mesmo quando filtros de categoria estiverem ativos.
 
 ---
 
-## 1. Visão Geral & Escopo da Remoção
+## 1. Visão Geral da Funcionalidade
 
-O FintechCore possuía um fluxo experimental que conectava um aplicativo Android (MacroDroid) via webhook HTTP ou gravação direta no Firestore para capturar notificações de push bancárias (Pix, compras no cartão) e transformá-las em sugestões pendentes de aprovação.
-
-A remoção eliminará:
-1. **Componentes e Telas de UI**:
-   - `MacroDroidModal.tsx`: modal com guia de configuração, passo a passo no Android e webhook URL.
-   - `BankNotificationBanner.tsx`: banner fixo no topo do dashboard que exibia sugestões pendentes capturadas.
-   - `AdjustSuggestionModal.tsx`: modal para editar descrição, parcelas e categoria da notificação antes de aprovar.
-   - Botão e gatilho do MacroDroid no cabeçalho desktop (`App.tsx`) e no menu de ações mobile (`MobileHeaderMenu.tsx`).
-2. **Servidor Backend (`server.ts`)**:
-   - Rotas de webhook: `POST /api/webhook/bank-notification`, `GET /api/webhook/bank-notification`, `GET /api/webhook/status` e `GET /api/webhook/pending`.
-   - Buffer em memória `pendingWebhookNotifications`.
-3. **Bibliotecas e Tipos Frontend**:
-   - `src/lib/notificationParser.ts`: parser regex de SMS e notificações bancárias.
-   - Tipo `PendingSuggestion` em `src/types.ts`.
-   - Listeners e funções de persistência de sugestões em `src/lib/dataSync.ts`.
-4. **Segurança e Nuvem (Firestore)**:
-   - Coleções `incoming_notifications` e `users/{userId}/pending_suggestions` em `firestore.rules` e `firebase-blueprint.json`.
-   - Limpeza do cache local (`fintech_pending_suggestions`).
+- **Saldo em Conta Contínuo**:
+  - Para contas correntes, carteiras físicas ou visão consolidada: calcula o saldo acumulado dia a dia a partir do saldo inicial e de todas as receitas e despesas efetuadas até cada data.
+  - Demonstra visualmente como o saldo subiu ou desceu ao longo do período (últimos 7 dias, 15 dias, mês selecionado, 3 meses ou ano).
+- **Fatura do Cartão de Crédito**:
+  - Para contas do tipo `credito`, a linha representa o valor acumulado da fatura corrente até aquela data (compras no crédito acumuladas menos eventuais pagamentos/estornos).
+- **Independência de Filtros de Categoria**:
+  - Quando o usuário filtrar por uma ou mais categorias específicas (ex: "Alimentação"), as barras/áreas de *Receitas* e *Despesas* exibem apenas os valores da categoria selecionada, enquanto a linha de *Saldo / Fatura* permanece visível refletindo a saúde financeira global da conta selecionada.
+- **Eixo Y Independente (Dual Y-Axis)**:
+  - **Eixo Esquerdo (Left)**: Escala monetária dos fluxos pontuais do período (Receitas e Despesas diárias/agrupadas).
+  - **Eixo Direito (Right)**: Escala monetária do saldo acumulado / fatura, com formatação monetária compacta (`R$ ...`), evitando que a magnitude do saldo achate as barras/áreas de despesas diárias.
+- **Design Visual**:
+  - Curva contínua no mesmo padrão das existentes (`type="monotone"`).
+  - Tom de cinza neutro e elegante (`#71717A` / `#9CA3AF`).
+  - Preenchimento gradiente suave e sombreado abaixo da linha (`opacity 0.25` a `0.00`).
+  - Tooltip integrado e legenda com badge estilizado.
 
 ---
 
-## 2. Experiência do Usuário (UX) Pós-Remoção
+## 2. Detalhes Técnicos e Arquitetura
 
-- **Interface Mais Leve e Limpa**:
-  - O cabeçalho mobile (`MobileHeaderMenu`) perde o item "Captura Bancária (MacroDroid)", ficando focado exclusivamente em ações essenciais (Notificações, Áudio JARVIS, Modo Escuro e Exportação).
-  - No desktop, o ícone de sincronização de notificações bancárias é removido do cabeçalho, deixando a barra superior despoluída.
-  - O dashboard deixa de exibir o banner de sugestões pendentes, mantendo foco direto nos cartões de métricas consolidados e no extrato financeiro.
-- **Fluxo de Lançamentos Preservado**:
-  - Lançamento manual (Formulário rápido), importação de extrato bancário em PDF e lançamentos fixos recorrentes continuam funcionando perfeitamente.
+### 2.1. Arquivo de Destino
+- `src/components/FinancialCharts.tsx`
+
+### 2.2. Algoritmo de Cálculo de Saldo Acumulado
+1. **Identificação da Conta**:
+   - Se `selectedAccountId === 'consolidado'`: soma os saldos iniciais de todas as contas não-crédito e computa todas as movimentações.
+   - Se `tipo === 'credito'`: acumula os gastos no crédito do mês de referência (tamanho da fatura progressivo).
+   - Se conta bancária padrão: obtém `saldoInicial` da conta + soma de transações passadas anteriores ao período de corte para saber o saldo no início do intervalo, e vai acumulando dia a dia.
+2. **Enriquecimento dos Dados (`fluxoData`)**:
+   - Cada ponto do array `fluxoData` conterá:
+     ```ts
+     {
+       lbl: string, // ex: "05/11" ou dia do mês
+       dateKey: string, // "YYYY-MM-DD"
+       Receita: number, // Filtrado por categoria (se houver)
+       Gasto: number, // Filtrado por categoria (se houver)
+       Saldo: number, // Saldo acumulado real / Fatura acumulada da conta
+     }
+     ```
+3. **Componentes Recharts**:
+   - `<defs>`: inclusão do gradiente `colorSaldo` (`#71717A` para `rgba(113, 113, 122, 0.0)`).
+   - `<YAxis yAxisId="left" orientation="left" ... />` para Receita e Gasto.
+   - `<YAxis yAxisId="right" orientation="right" ... />` com formatação monetária limpa para o Saldo/Fatura.
+   - `<Area yAxisId="right" dataKey="Saldo" name={isCreditCard ? "Fatura do Mês" : "Saldo em Conta"} stroke="#71717A" strokeWidth={2} fill="url(#colorSaldo)" dot={false} activeDot={{ r: 4, fill: '#71717A' }} />`.
+   - Tooltip customizado formatando os 3 valores de forma clara e visualmente balanceada.
 
 ---
 
-## 3. Arquitetura e Limpeza Técnica
+## 3. Plano de Verificação
 
-```
-┌────────────────────────────────────────────────────────┐
-│                      FintechCore                       │
-├────────────────────────────────────────────────────────┤
-│ REMOVIDO:                                              │
-│  ✖ MacroDroidModal.tsx                                 │
-│  ✖ BankNotificationBanner.tsx                          │
-│  ✖ AdjustSuggestionModal.tsx                           │
-│  ✖ notificationParser.ts                               │
-│  ✖ server.ts: /api/webhook/*                           │
-│  ✖ firestore.rules: incoming_notifications             │
-│  ✖ firestore.rules: pending_suggestions                │
-│                                                        │
-│ MANTIDO:                                               │
-│  ✔ Dashboard Financeiro (Métricas + Subpainéis)       │
-│  ✔ Extrato & Lançamento de Transações (Manual e PDF)   │
-│  ✔ Sincronização em Nuvem (Firebase Firestore + Auth)  │
-│  ✔ Gerenciador de Contas, Cartões e Fundo Protegido    │
-│  ✔ Assistente por Voz JARVIS & Inteligência Orçamentária│
-└────────────────────────────────────────────────────────┘
-```
-
-### Detalhamento das Alterações:
-
-1. **Remoção de Arquivos**:
-   - `src/components/MacroDroidModal.tsx`
-   - `src/components/BankNotificationBanner.tsx`
-   - `src/components/AdjustSuggestionModal.tsx`
-   - `src/lib/notificationParser.ts`
-2. **Atualização em `src/components/MobileHeaderMenu.tsx`**:
-   - Remover `onOpenMacroDroid` das props e da interface `MobileHeaderMenuProps`.
-   - Remover o botão correspondente do menu dropdown.
-3. **Atualização em `server.ts`**:
-   - Remover as rotas `/api/webhook/*` e o array de notificações pendentes.
-   - Manter `/api/health` e o middleware de dev do Vite intactos.
-4. **Atualização em `src/lib/dataSync.ts`**:
-   - Remover `subscribeToIncomingNotifications`, `savePendingSuggestionToFirestore`, `updatePendingSuggestionStatusInFirestore` e `deletePendingSuggestionFromFirestore`.
-   - Remover `onPendingSuggestions` e o listener `unsubPendingSuggestions` em `subscribeToUserFinance`.
-5. **Atualização em `src/types.ts`**:
-   - Remover a interface `PendingSuggestion`.
-6. **Atualização em `src/App.tsx`**:
-   - Remover imports dos 3 componentes e do parser.
-   - Remover estados `isMacroDroidModalOpen`, `pendingSuggestions` e `adjustingSuggestion`.
-   - Remover polling `/api/webhook/pending` e listener `subscribeToIncomingNotifications`.
-   - Remover handlers `handleApproveSuggestion`, `handleEditSuggestion` e `handleDismissSuggestion`.
-   - Remover botão do MacroDroid no cabeçalho desktop e prop no `MobileHeaderMenu`.
-   - Remover tags JSX `<MacroDroidModal>`, `<BankNotificationBanner>` e `<AdjustSuggestionModal>`.
-   - Adicionar rotina única para limpar chave `'fintech_pending_suggestions'` do `localStorage`.
-7. **Atualização em `firestore.rules` & `firebase-blueprint.json`**:
-   - Remover regras e esquemas de `incoming_notifications` e `pending_suggestions`.
-   - Re-implantar as regras atualizadas no Firebase via `deploy_firebase`.
-8. **Verificação & Testes**:
-   - Executar validação de tipos TypeScript (`tsc --noEmit`).
-   - Compilar aplicação (`compile_applet`).
-   - Verificar saúde do servidor (`/api/health`).
+1. **Compilação e Linter**:
+   - Executar `compile_applet` e `lint_applet` para assegurar ausência de erros de tipagem TypeScript ou importações.
+2. **Validação de Cenários de Uso**:
+   - Selecionar conta bancária padrão: verificar se o saldo inicial + movimentações refletem com exatidão a curva de saldo.
+   - Filtrar categorias: verificar se a linha cinza de saldo permanece inalterada enquanto as receitas/despesas se ajustam à categoria.
+   - Selecionar conta do tipo Cartão de Crédito: verificar se a legenda e o valor mostram a progressão da fatura do mês.
+   - Alternar períodos (7 dias, 15 dias, Mês, 3 Meses, Ano): confirmar que a interpolação do saldo acumulado flui perfeitamente no gráfico.

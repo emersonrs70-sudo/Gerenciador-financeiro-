@@ -1,6 +1,6 @@
 {
-  "summary": "Plano detalhado para remoção completa de todo o código, telas, webhooks, regras do Firestore e coleções vinculadas à integração com o MacroDroid e captura de notificações bancárias.",
-  "updatedAt": "2026-11-06T22:53:01.528771993Z",
-  "requestFeedback": true,
-  "userFacing": true
+  "summary":  "Plano de implementação detalhado para adicionar a linha de projeção e histórico de saldo em conta (ou fatura acumulada para cartões de crédito) com eixo Y independente e preenchimento suave no gráfico de fluxo financeiro em Gráficos & Relatórios.",
+  "updatedAt":  "2026-11-08T23:01:13.883254648Z",
+  "requestFeedback":  true,
+  "userFacing":  true
 }
