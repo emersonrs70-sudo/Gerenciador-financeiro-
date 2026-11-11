@@ -1290,17 +1290,35 @@ export default function App() {
     }
   }, [currentMonth, currentYear, recurrentRules.length, firebaseUser]);
 
+  const getLocalDateStr = (d: Date = new Date()): string => {
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const todayStr = getLocalDateStr(new Date());
+
   // --- MULTIBANCO ACCOUNT CALCULATORS ---
-  const getAccountBalances = () => {
+  // Calculates account balances up to today (data <= hoje), so "Disponível Hoje" accurately reflects real cash now
+  const getAccountBalances = (upToDateStr: string = todayStr) => {
     const balances: { [accId: string]: number } = {};
     accounts.forEach((acc) => {
       if (acc.tipo === 'credito') {
-        const cardExpenses = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
-        const cardPayments = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
+        const cardExpenses = transactions
+          .filter(t => t.accountId === acc.id && t.tipoItem === 'despesa' && (!upToDateStr || !t.data || t.data <= upToDateStr))
+          .reduce((sum, t) => sum + t.valor, 0);
+        const cardPayments = transactions
+          .filter(t => t.accountId === acc.id && t.tipoItem === 'receita' && (!upToDateStr || !t.data || t.data <= upToDateStr))
+          .reduce((sum, t) => sum + t.valor, 0);
         balances[acc.id] = cardExpenses - cardPayments; // spent amount
       } else {
-        const income = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'receita').reduce((sum, t) => sum + t.valor, 0);
-        const expenses = transactions.filter(t => t.accountId === acc.id && t.tipoItem === 'despesa').reduce((sum, t) => sum + t.valor, 0);
+        const income = transactions
+          .filter(t => t.accountId === acc.id && t.tipoItem === 'receita' && (!upToDateStr || !t.data || t.data <= upToDateStr))
+          .reduce((sum, t) => sum + t.valor, 0);
+        const expenses = transactions
+          .filter(t => t.accountId === acc.id && t.tipoItem === 'despesa' && (!upToDateStr || !t.data || t.data <= upToDateStr))
+          .reduce((sum, t) => sum + t.valor, 0);
         balances[acc.id] = acc.saldoInicial + income - expenses;
       }
     });
@@ -1377,12 +1395,6 @@ export default function App() {
     }
   }
 
-  const getLocalDateStr = (d: Date = new Date()): string => {
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  };
 
   // Active Logging Streak Score
   const computeStreak = () => {
@@ -2177,6 +2189,8 @@ export default function App() {
                     ? 'Investimentos'
                     : selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'credito'
                     ? 'Limite Disponível'
+                    : selectedAccountId !== 'consolidado' && activeAccount
+                    ? `Disponível (${activeAccount.nome})`
                     : 'Disponível Hoje'
                 }
                 value={formatCurrency(saldoRealAcumulado)}
@@ -2184,12 +2198,12 @@ export default function App() {
                   selectedAccountId === 'consolidado'
                     ? totalSavingsFundConsolidated > 0
                       ? `+ ${formatCurrency(totalSavingsFundConsolidated)} guardado em poupança`
-                      : 'Limite diário de gastos'
+                      : 'Contas correntes e carteiras'
                     : selectedAccountId !== 'consolidado' && (activeAccount?.tipo === 'poupanca' || activeAccount?.tipo === 'investimento')
                     ? 'Reserva protegida de gastos'
                     : selectedAccountId !== 'consolidado' && activeAccount?.tipo === 'credito'
                     ? 'Limite livre do cartão'
-                    : 'Conta corrente / carteira'
+                    : `Saldo atual em ${activeAccount?.nome || 'conta'}`
                 }
                 icon={selectedAccountId !== 'consolidado' && (activeAccount?.tipo === 'poupanca' || activeAccount?.tipo === 'investimento') ? ShieldCheck : Wallet}
                 isActive={subpainelAberto === 'saldo-real'}
